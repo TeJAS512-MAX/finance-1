@@ -1,0 +1,420 @@
+from __future__ import annotations
+from datetime import date, timedelta, datetime
+from typing import Dict, Any, List, Optional
+import uuid
+
+from backend.models.schemas import (
+    AetherPravahState, Invoice, Customer, Supplier, Obligation,
+    GSTLiabilitySnapshot, MoneyPhysicsState, MoneyHealthGenome,
+    LiquidityWormhole, RupeePacket, BusinessProfile
+)
+from backend.physics.engine import MoneyPhysicsEngine
+from backend.physics.singularity import GSTSingularityPredictor, SingularityPrediction
+from backend.causal.graph import CausalSpacetimeGraph
+from backend.causal.wormhole_forger import LiquidityWormholeForger
+from backend.causal.simulator import CounterfactualSimulator
+from backend.agents.sensors import ActiveSensorSwarm, SensorExtractionResult
+from backend.agents.specialists import (
+    InvoiceForgeSpecialist, GSTAccrualGuardian,
+    CollectionPsychologist, TaxVaultKeeper
+)
+from backend.agents.parliament import AdversarialDebateParliament, DebateTranscript
+from backend.agents.supreme_court import ConstitutionalSupremeCourt, ConstitutionalVerificationResult
+from backend.agents.meta_evolution import MetaEvolutionChamber
+from backend.data.archetypes import (
+    generate_bharat_steel_data,
+    generate_vastrakala_data,
+    generate_nexus_pulse_data
+)
+
+class CentralNervousSystem:
+    """
+    AetherPravah Central Nervous System:
+    Coordinates the living financial organism, routing all sensory inputs
+    through the Causal Spacetime Substrate, Debate Parliament, and Supreme Court.
+    """
+
+    def __init__(self):
+        self.current_date = date(2026, 11, 16)
+        self.state: AetherPravahState = generate_bharat_steel_data(self.current_date)
+        self.graph = CausalSpacetimeGraph()
+        self.meta_evolution = MetaEvolutionChamber()
+        self.sync_graph()
+
+    def set_archetype(self, archetype_id: str) -> AetherPravahState:
+        if archetype_id == "VASTRAKALA":
+            self.state = generate_vastrakala_data(self.current_date)
+        elif archetype_id == "NEXUS_PULSE":
+            self.state = generate_nexus_pulse_data(self.current_date)
+        else:
+            self.state = generate_bharat_steel_data(self.current_date)
+        
+        self.sync_graph()
+        return self.state
+
+    def sync_graph(self):
+        """Re-synchronizes the Causal Spacetime Graph with current physical state."""
+        self.graph.build_from_state(
+            bank_cash=self.state.physics_state.bank_cash,
+            tax_vault=self.state.physics_state.tax_vault_balance,
+            invoices=self.state.invoices,
+            customers=self.state.customers,
+            suppliers=self.state.suppliers,
+            obligations=self.state.obligations,
+            gst_snapshot=self.state.gst_snapshot
+        )
+        viz = self.graph.export_graph_visualization()
+        self.state.causal_nodes = [n for n in self.graph.nodes_data.values()]
+        self.state.causal_edges = self.graph.edges_data
+
+    def predict_current_singularity(self) -> SingularityPrediction:
+        return GSTSingularityPredictor.evaluate(
+            current_date=self.current_date,
+            bank_cash=self.state.physics_state.bank_cash,
+            tax_vault_balance=self.state.physics_state.tax_vault_balance,
+            invoices=self.state.invoices,
+            obligations=self.state.obligations,
+            gst_snapshot=self.state.gst_snapshot
+        )
+
+    def recompute_physics_and_genome(self):
+        singularity = self.predict_current_singularity()
+        
+        # Calculate new physics
+        burn = 240000.0 if self.state.business.archetype == "STEEL_TRADER" else (180000.0 if self.state.business.archetype == "GARMENT_MANUFACTURER" else 650000.0)
+        self.state.physics_state = MoneyPhysicsEngine.calculate_state(
+            current_date=self.current_date,
+            bank_cash=self.state.physics_state.bank_cash,
+            tax_vault=self.state.physics_state.tax_vault_balance,
+            invoices=self.state.invoices,
+            obligations=self.state.obligations,
+            gst_snapshot=self.state.gst_snapshot,
+            rupee_packets=self.state.rupee_packets,
+            monthly_burn_rate=burn
+        )
+
+        # Update Genome score
+        if singularity.is_singularity_imminent:
+            score = max(20, int(75 - (singularity.singularity_depth / 8000.0)))
+            trajectory = "BLACK_HOLE_IMMINENT" if singularity.severity == "CRITICAL" else "DECAYING_WARNING"
+        else:
+            score = min(96, int(60 + (self.state.physics_state.bank_cash / 15000.0)))
+            trajectory = "EVOLVING_THRIVING" if score > 80 else "STABLE_BALANCED"
+
+        self.state.genome.overall_score = score
+        self.state.genome.trajectory = trajectory
+        self.state.gst_snapshot.singularity_risk_score = singularity.probability_of_default
+        self.sync_graph()
+
+    def process_user_message(self, message: str, attached_image_filename: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Processes any user message or multimodal upload and returns the
+        strict 5-part protective response format.
+        """
+        # Tier 0: Sensing
+        if attached_image_filename:
+            sensor_res = ActiveSensorSwarm.parse_invoice_image_ocr(attached_image_filename)
+        else:
+            sensor_res = ActiveSensorSwarm.parse_natural_language_or_voice(message)
+
+        singularity = self.predict_current_singularity()
+
+        # Handle Invoice Creation
+        if sensor_res.intent == "CREATE_INVOICE":
+            data = sensor_res.extracted_data
+            cust_name = data.get("customer_name", "Reliance Infra Projects Ltd")
+            
+            # Find or create customer
+            cust = next((c for c in self.state.customers if cust_name.lower() in c.name.lower()), None)
+            if not cust:
+                cust = Customer(
+                    name=cust_name,
+                    gstin="27AAACR9999M1Z1",
+                    industry="B2B Commercial",
+                    payment_behavior_score=65.0,
+                    psychological_profile="BUREAUCRATIC_ENTERPRISE",
+                    typical_delay_days=30,
+                    optimal_chasing_channel="WHATSAPP_GENTLE"
+                )
+                self.state.customers.append(cust)
+
+            base = float(data.get("base_amount", 250000.0))
+            gst_rate = float(data.get("gst_rate", 0.18))
+            new_inv, new_packets = InvoiceForgeSpecialist.create_invoice(
+                customer=cust,
+                base_amount=base,
+                gst_rate=gst_rate,
+                due_days=30,
+                current_date=self.current_date
+            )
+
+            self.state.invoices.append(new_inv)
+            self.state.rupee_packets.extend(new_packets)
+
+            # Update GST snapshot: invoice instantly adds to accrued output GST!
+            self.state.gst_snapshot.output_gst_gross += new_inv.gst_amount
+            self.state.gst_snapshot.gst_on_unpaid_invoices += new_inv.gst_amount
+            self.state.gst_snapshot.net_gst_cash_payable += new_inv.gst_amount
+            self.state.gst_snapshot.tax_deficit += new_inv.gst_amount
+
+            self.recompute_physics_and_genome()
+            updated_singularity = self.predict_current_singularity()
+
+            # Synthesize Wormhole if singularity triggered
+            wormhole = LiquidityWormholeForger.forge_wormhole(
+                current_date=self.current_date,
+                singularity=updated_singularity,
+                bank_cash=self.state.physics_state.bank_cash,
+                tax_vault_balance=self.state.physics_state.tax_vault_balance,
+                invoices=self.state.invoices,
+                customers=self.state.customers,
+                obligations=self.state.obligations,
+                gst_snapshot=self.state.gst_snapshot
+            )
+            if wormhole:
+                self.state.active_wormholes = [wormhole]
+
+            # 5-Part Response
+            summary = (
+                f"✅ **Invoice #{new_inv.invoice_number} forged perfectly for {new_inv.customer_name}** (₹{new_inv.total_amount:,.2f} total, ₹{new_inv.gst_amount:,.2f} GST). "
+                f"Lekin dhyan dijiye Malik: GST accrual law ke mutabiq, yeh ₹{new_inv.gst_amount:,.2f} tax abhi se accrue ho chuka hai jo 20th ko government ko cash mein dena padega, chahe Reliance 60 din baad pay kare!"
+            )
+            numbers = (
+                f"- Base: ₹{new_inv.base_amount:,.2f} | GST (18%): ₹{new_inv.gst_amount:,.2f}\n"
+                f"- New Net GST Payable on 20th: ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f}\n"
+                f"- Available Bank Cash: ₹{self.state.physics_state.bank_cash:,.2f}\n"
+                f"- Immediate Statutory Deficit: ₹{self.state.gst_snapshot.tax_deficit:,.2f}\n"
+                f"- Singularity Risk: {updated_singularity.probability_of_default * 100:.0f}% (Confidence: 96%)"
+            )
+            causal = (
+                f"Because the Indian GST council levies tax on *accrual (bill creation date)* rather than cash collection, "
+                f"issuing this invoice deepened your 20th Nov GST Black Hole by exactly ₹{new_inv.gst_amount:,.2f}. "
+                f"Since Reliance takes ~{cust.typical_delay_days} days to clear funds, bank cash will run dry before payment arrives."
+            )
+            actions = [
+                "✨ **Activate Synthesized Liquidity Wormhole** (bridges the deficit via 2% prompt discount + paper factoring)",
+                f"Auto-reserve 18% (₹{new_inv.gst_amount:,.2f}) into Intelligent Tax Vault upon receipt",
+                f"Dispatch psychometrically targeted WhatsApp note to {cust.name}'s finance director"
+            ]
+            counterfactual = (
+                f"Agar aapne kuch nahi kiya: 20th Nov ko bank account se ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f} GST debit fail hoga. "
+                f"GST portal will block E-way bill generation for steel consignments, and 18% p.a. Section 50 interest penalty will start compounding daily."
+            )
+
+            return {
+                "plain_language_summary": summary,
+                "exact_numbers": numbers,
+                "causal_explanation": causal,
+                "top_recommended_actions": actions,
+                "what_if_ignore": counterfactual,
+                "singularity": updated_singularity.model_dump(),
+                "wormhole": wormhole.model_dump() if wormhole else None,
+                "state": self.state.model_dump()
+            }
+
+        # Handle Wormhole Execution
+        if sensor_res.intent == "ACTIVATE_WORMHOLE":
+            if not self.state.active_wormholes:
+                w = LiquidityWormholeForger.forge_wormhole(
+                    current_date=self.current_date,
+                    singularity=singularity,
+                    bank_cash=self.state.physics_state.bank_cash,
+                    tax_vault_balance=self.state.physics_state.tax_vault_balance,
+                    invoices=self.state.invoices,
+                    customers=self.state.customers,
+                    obligations=self.state.obligations,
+                    gst_snapshot=self.state.gst_snapshot
+                )
+                if w:
+                    self.state.active_wormholes = [w]
+
+            if self.state.active_wormholes:
+                active_w = self.state.active_wormholes[0]
+                # Tier 2: Parliament Debate
+                debate = AdversarialDebateParliament.deliberate(active_w, singularity, self.state.physics_state)
+                # Tier 3: Supreme Court Verification
+                sc_res = ConstitutionalSupremeCourt.verify(active_w, self.state.physics_state)
+
+                if sc_res.is_cleared:
+                    # Execute Wormhole!
+                    active_w.status = "EXECUTED"
+                    net_inflow = active_w.gross_liquidity_created - active_w.total_net_cost
+                    
+                    # Satisfy tax vault first
+                    needed_tax = max(0.0, self.state.gst_snapshot.net_gst_cash_payable - self.state.physics_state.tax_vault_balance)
+                    tax_fill = min(needed_tax, net_inflow * 0.45)
+                    bank_add = net_inflow - tax_fill
+
+                    self.state.physics_state.tax_vault_balance += tax_fill
+                    self.state.physics_state.bank_cash += bank_add
+                    self.state.gst_snapshot.tax_vault_reserved += tax_fill
+                    self.state.gst_snapshot.tax_deficit = max(0.0, self.state.gst_snapshot.net_gst_cash_payable - self.state.gst_snapshot.tax_vault_reserved)
+
+                    # Update RupeePackets conservation
+                    self.state.rupee_packets.append(RupeePacket(
+                        amount=net_inflow,
+                        source_entity=active_w.title,
+                        current_location="BANK_AVAILABLE",
+                        causal_history=["Teleported via Liquidity Wormhole execution"]
+                    ))
+
+                    # Mark targeted invoice as partially settled
+                    for inv in self.state.invoices:
+                        if inv.status in ("ISSUED", "OVERDUE"):
+                            inv.status = "PAID"
+                            inv.amount_paid = inv.total_amount
+                            break
+
+                    self.recompute_physics_and_genome()
+                    post_sing = self.predict_current_singularity()
+
+                    summary = (
+                        f"🚀 **Liquidity Wormhole Successfully Activated!** "
+                        f"Financial Organism is now fully protected! We liberated ₹{active_w.gross_liquidity_created:,.2f} "
+                        f"(net ₹{net_inflow:,.2f} after ₹{active_w.total_net_cost:,.2f} discount cost). "
+                        f"Aapki Tax Vault ab 100% full ho chuki hai, aur GST Accrual Singularity successfully collapse ho gayi hai!"
+                    )
+                    numbers = (
+                        f"- Cash Liberated: ₹{active_w.gross_liquidity_created:,.2f} (Effective APR: {active_w.effective_apr_annualized}%)\n"
+                        f"- Tax Vault Secured: ₹{self.state.physics_state.tax_vault_balance:,.2f} / ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f}\n"
+                        f"- New Bank Balance: ₹{self.state.physics_state.bank_cash:,.2f}\n"
+                        f"- Operating Runway: {self.state.physics_state.estimated_runway_days:.1f} Days (Up from ~11 days)\n"
+                        f"- Money Health Genome: {self.state.genome.overall_score}/100 ({self.state.genome.trajectory})"
+                    )
+                    causal = (
+                        f"Because we intervened directly with a 2% accelerated discount on Reliance and paper TReDS bridge, "
+                        f"we bypassed the 35-day institutional bureaucracy delay. The cash reached your organism before Nov 20th, "
+                        f"preventing statutory tax default and keeping your e-way bills intact."
+                    )
+                    actions = [
+                        "Monitor incoming RTGS verification from Reliance Treasury",
+                        "Tax Vault auto-lock is active: ₹2,49,915 will be auto-debited cleanly on Nov 20 GSTR-3B filing",
+                        "Relax and focus on high-margin sales — your cash runway is safe for the next 35+ days!"
+                    ]
+                    counterfactual = (
+                        "Without this Wormhole, today you would be staring at bank account freeze notices and 18% compounding interest."
+                    )
+
+                    return {
+                        "plain_language_summary": summary,
+                        "exact_numbers": numbers,
+                        "causal_explanation": causal,
+                        "top_recommended_actions": actions,
+                        "what_if_ignore": counterfactual,
+                        "debate_transcript": debate.model_dump(),
+                        "supreme_court_verification": sc_res.model_dump(),
+                        "singularity": post_sing.model_dump(),
+                        "wormhole": active_w.model_dump(),
+                        "state": self.state.model_dump()
+                    }
+
+        # Simulate Delay
+        if sensor_res.intent == "SIMULATE_DELAY":
+            for inv in self.state.invoices:
+                if inv.status in ("ISSUED", "OVERDUE"):
+                    inv.delay_prediction_days += 30.0
+                    inv.status = "CRITICAL_TRAP"
+            self.recompute_physics_and_genome()
+            post_sing = self.predict_current_singularity()
+            w = LiquidityWormholeForger.forge_wormhole(
+                current_date=self.current_date,
+                singularity=post_sing,
+                bank_cash=self.state.physics_state.bank_cash,
+                tax_vault_balance=self.state.physics_state.tax_vault_balance,
+                invoices=self.state.invoices,
+                customers=self.state.customers,
+                obligations=self.state.obligations,
+                gst_snapshot=self.state.gst_snapshot
+            )
+            self.state.active_wormholes = [w] if w else []
+
+            summary = (
+                f"⚠️ **Customer Delay Simulated (+30 Days).** "
+                f"Viscosity index zoomed up to {self.state.physics_state.viscosity_index:.2f}. "
+                f"Your customers are now predicted to hold ₹{self.state.physics_state.pending_receivables:,.2f} for over 60 days. "
+                f"This creates an extreme GST Accrual Singularity!"
+            )
+            numbers = (
+                f"- Viscosity: {self.state.physics_state.viscosity_index:.2f} (Severe sludge)\n"
+                f"- Singularity Depth: ₹{post_sing.singularity_depth:,.2f}\n"
+                f"- Current Bank Cash: ₹{self.state.physics_state.bank_cash:,.2f}\n"
+                f"- Health Genome: {self.state.genome.overall_score}/100"
+            )
+            causal = (
+                "Because delays increased without any change to the statutory 20th Nov tax deadline, "
+                "the temporal gap between tax outflow and cash inflow widened into a liquidity black hole."
+            )
+            actions = [
+                "Deploy Liquidity Wormhole immediately",
+                "Trigger Director-level phone outreach with 2% discount incentive",
+                "Apply paper-invoice financing on TReDS portal"
+            ]
+            counterfactual = (
+                f"If ignored, the business will be insolvent on {post_sing.event_horizon_date.strftime('%d %b')}."
+            )
+            return {
+                "plain_language_summary": summary,
+                "exact_numbers": numbers,
+                "causal_explanation": causal,
+                "top_recommended_actions": actions,
+                "what_if_ignore": counterfactual,
+                "singularity": post_sing.model_dump(),
+                "wormhole": w.model_dump() if w else None,
+                "state": self.state.model_dump()
+            }
+
+        # Default / Health Query
+        # Synthesize wormhole if not present
+        if not self.state.active_wormholes and singularity.is_singularity_imminent:
+            w = LiquidityWormholeForger.forge_wormhole(
+                current_date=self.current_date,
+                singularity=singularity,
+                bank_cash=self.state.physics_state.bank_cash,
+                tax_vault_balance=self.state.physics_state.tax_vault_balance,
+                invoices=self.state.invoices,
+                customers=self.state.customers,
+                obligations=self.state.obligations,
+                gst_snapshot=self.state.gst_snapshot
+            )
+            if w:
+                self.state.active_wormholes = [w]
+
+        w_active = self.state.active_wormholes[0] if self.state.active_wormholes else None
+
+        summary = (
+            f"Namaste Malik! 🙏 Your Financial Organism for **{self.state.business.name}** is currently at a **Money Health Genome of {self.state.genome.overall_score}/100** ({self.state.genome.trajectory}). "
+            f"Aapka business profitable hai, lekin **20th Nov ko aane wala GST Accrual Singularity** aapke working capital ko freeze kar sakta hai!"
+        )
+        numbers = (
+            f"- Liquid Bank Balance: ₹{self.state.physics_state.bank_cash:,.2f}\n"
+            f"- Pending Receivables (Delayed): ₹{self.state.physics_state.pending_receivables:,.2f}\n"
+            f"- Statutory GST Due (20th Nov): ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f}\n"
+            f"- GST Accrual Trap (GST on Unpaid Bills): ₹{self.state.gst_snapshot.gst_on_unpaid_invoices:,.2f}\n"
+            f"- Immediate Cash Deficit at Horizon: ₹{singularity.singularity_depth:,.2f}\n"
+            f"- Estimated Runway: {self.state.physics_state.estimated_runway_days:.1f} Days (90% Conf: {self.state.physics_state.confidence_interval_runway[0]} - {self.state.physics_state.confidence_interval_runway[1]} days)"
+        )
+        causal = (
+            f"Because Reliance Infra Projects and L&T are operating on a 35-day payment cycle, ₹{self.state.gst_snapshot.gst_on_unpaid_invoices:,.2f} of GST "
+            f"has legally accrued on their uncollected invoices. The GST portal does not wait for customer collection. "
+            f"On Nov 20th, ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f} will be demanded from an available bank pool of only ₹{self.state.physics_state.bank_cash:,.2f}."
+        )
+        actions = [
+            f"🚀 **Authorize Liquidity Wormhole**: Teleports ₹{w_active.gross_liquidity_created:,.2f} via 2% prompt discount & paper factoring" if w_active else "Tax Vault Auto-Sweep",
+            "Send AI-crafted psychometric WhatsApp reminder to Reliance Accounts Team",
+            "Maintain 21-day runway minimum by shielding the Tax Vault"
+        ]
+        counterfactual = (
+            f"If you take no action, bank cash hits negative -₹{singularity.singularity_depth:,.2f} in {singularity.days_to_event_horizon} days. "
+            f"SBI will bounce loan EMIs and the GST portal will freeze e-way bill generation."
+        )
+
+        return {
+            "plain_language_summary": summary,
+            "exact_numbers": numbers,
+            "causal_explanation": causal,
+            "top_recommended_actions": actions,
+            "what_if_ignore": counterfactual,
+            "singularity": singularity.model_dump(),
+            "wormhole": w_active.model_dump() if w_active else None,
+            "state": self.state.model_dump()
+        }

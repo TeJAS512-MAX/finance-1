@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AetherPravah — AI that handles money better</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              500: '#10b981',
+              600: '#059669',
+              900: '#064e3b',
+            },
+            darkbg: '#0a0d14',
+            panel: '#111726',
+            panelborder: '#1f293d',
+            accentcyan: '#06b6d4',
+            accentpurple: '#8b5cf6',
+            warningamber: '#f59e0b',
+            dangerrose: '#f43f5e',
+          },
+          animation: {
+            'pulse-glow': 'pulseGlow 2s infinite',
+            'flow': 'flowPulse 3s linear infinite',
+          },
+          keyframes: {
+            pulseGlow: {
+              '0%, 100%': { opacity: '0.9', transform: 'scale(1)' },
+              '50%': { opacity: '0.4', transform: 'scale(1.05)' },
+            },
+            flowPulse: {
+              '0%': { strokeDashoffset: '24' },
+              '100%': { strokeDashoffset: '0' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Chart.js for Trajectory & Genome Charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #080b11;
+      color: #e2e8f0;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0a0d14; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    .glass {
+      background: rgba(17, 23, 38, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+    .singularity-glow {
+      box-shadow: 0 0 25px -5px rgba(244, 63, 94, 0.35);
+    }
+    .wormhole-glow {
+      box-shadow: 0 0 30px -5px rgba(6, 182, 212, 0.4);
+    }
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+  <!-- TOP NAVIGATION HEADER -->
+  <header class="h-16 border-b border-panelborder bg-darkbg/90 px-6 flex items-center justify-between z-30 shrink-0">
+    <div class="flex items-center gap-4">
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-brand-600 via-accentcyan to-accentpurple p-0.5 shadow-lg shadow-brand-500/20 flex items-center justify-center">
+        <div class="w-full h-full bg-darkbg rounded-[10px] flex items-center justify-center">
+          <i data-lucide="activity" class="w-5 h-5 text-accentcyan animate-pulse"></i>
+        </div>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-accentcyan bg-clip-text text-transparent">AetherPravah</span>
+          <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-500 border border-brand-500/20">Causal Organism v3.8</span>
+        </div>
+        <p class="text-xs text-slate-400 font-medium">AI that handles money better • <span class="italic text-slate-500">“Treats money like a living organism and never lets it die.”</span></p>
+      </div>
+    </div>
+
+    <!-- BUSINESS ARCHETYPE SELECTOR -->
+    <div class="flex items-center gap-3">
+      <div class="flex items-center bg-panel rounded-xl p-1 border border-panelborder text-xs">
+        <button id="btn-arch-steel" onclick="switchArchetype('STEEL_TRADER')" class="px-3 py-1.5 rounded-lg font-medium transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1.5">
+          <i data-lucide="shield" class="w-3.5 h-3.5"></i>
+          <span>Bharat Steel Traders (Navi Mumbai)</span>
+        </button>
+        <button id="btn-arch-garment" onclick="switchArchetype('VASTRAKALA')" class="px-3 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1.5">
+          <i data-lucide="scissors" class="w-3.5 h-3.5"></i>
+          <span>VastraKala Textiles (Surat)</span>
+        </button>
+        <button id="btn-arch-agency" onclick="switchArchetype('NEXUS_PULSE')" class="px-3 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1.5">
+          <i data-lucide="cpu" class="w-3.5 h-3.5"></i>
+          <span>NexusPulse Media (Bengaluru)</span>
+        </button>
+      </div>
+
+      <!-- HEALTH GENOME PILL -->
+      <div id="genome-badge" class="flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border border-dangerrose/30 bg-dangerrose/10 text-dangerrose">
+        <div class="relative flex items-center justify-center">
+          <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-dangerrose opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-dangerrose"></span>
+        </div>
+        <div class="flex flex-col text-right">
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Health Genome</span>
+          <span id="genome-score" class="text-sm font-black mono leading-none">38 / 100</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN DUAL-PANE CONTAINER -->
+  <main class="flex-1 flex overflow-hidden">
+
+    <!-- LEFT PANE: CONVERSATIONAL AGENT TWIN (WHATSAPP-STYLE) -->
+    <section class="w-1/2 flex flex-col border-r border-panelborder bg-[#080b12] relative">
+      <!-- Chat Header -->
+      <div class="h-12 border-b border-panelborder px-4 flex items-center justify-between bg-panel/40">
+        <div class="flex items-center gap-2">
+          <div class="w-2.5 h-2.5 rounded-full bg-brand-500 animate-pulse"></div>
+          <span class="text-xs font-semibold text-slate-300">AetherPravah Autonomous Twin</span>
+          <span class="text-[10px] text-slate-500">• Continuous Causal State Estimator Active</span>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-slate-400">
+          <span class="mono text-[11px] text-slate-400" id="biz-city-label">Navi Mumbai</span>
+          <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 mono text-[10px]">GST: 27AABCB1234F1Z8</span>
+        </div>
+      </div>
+
+      <!-- Quick Action Prompt Chips -->
+      <div class="p-2 border-b border-panelborder bg-darkbg/60 flex items-center gap-2 overflow-x-auto text-xs shrink-0">
+        <button onclick="sendQuickMessage('How is my money?')" class="px-2.5 py-1 rounded-full bg-panel border border-panelborder hover:border-brand-500 text-slate-300 hover:text-white transition flex items-center gap-1 whitespace-nowrap">
+          <span>🩺 How is my money?</span>
+        </button>
+        <button onclick="sendQuickMessage('Create invoice for Reliance 2.5 lakh')" class="px-2.5 py-1 rounded-full bg-panel border border-panelborder hover:border-accentcyan text-slate-300 hover:text-white transition flex items-center gap-1 whitespace-nowrap">
+          <span>📄 Create Reliance Invoice</span>
+        </button>
+        <button onclick="simulateDelay()" class="px-2.5 py-1 rounded-full bg-panel border border-panelborder hover:border-warningamber text-slate-300 hover:text-white transition flex items-center gap-1 whitespace-nowrap">
+          <span>⏳ Simulate 30-Day Delay</span>
+        </button>
+        <button onclick="activateWormhole()" class="px-2.5 py-1 rounded-full bg-accentcyan/10 border border-accentcyan/40 hover:bg-accentcyan/20 text-accentcyan transition flex items-center gap-1 whitespace-nowrap font-medium">
+          <span>⚡ Trigger Liquidity Wormhole</span>
+        </button>
+      </div>
+
+      <!-- Chat Messages Scroll Container -->
+      <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4">
+        <!-- Messages will be injected here dynamically -->
+      </div>
+
+      <!-- Voice Recording Simulation Indicator (hidden by default) -->
+      <div id="voice-indicator" class="hidden px-4 py-2 bg-accentpurple/10 border-t border-accentpurple/30 flex items-center justify-between text-xs text-accentpurple">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-accentpurple animate-ping"></span>
+          <span class="font-medium">Listening to Voice Note (Hinglish/English)...</span>
+          <div class="flex items-center gap-1">
+            <span class="w-1 h-3 bg-accentpurple animate-pulse"></span>
+            <span class="w-1 h-5 bg-accentpurple animate-pulse"></span>
+            <span class="w-1 h-2 bg-accentpurple animate-pulse"></span>
+            <span class="w-1 h-4 bg-accentpurple animate-pulse"></span>
+          </div>
+        </div>
+        <button onclick="cancelVoice()" class="text-slate-400 hover:text-white text-xs">Cancel</button>
+      </div>
+
+      <!-- Chat Input Area -->
+      <div class="p-3 border-t border-panelborder bg-darkbg flex flex-col gap-2 shrink-0">
+        <form id="chat-form" onsubmit="handleChatSubmit(event)" class="flex items-center gap-2">
+          <!-- Photo Upload Button -->
+          <label class="cursor-pointer p-2.5 rounded-xl bg-panel hover:bg-slate-800 text-slate-400 hover:text-white border border-panelborder transition flex items-center justify-center shrink-0" title="Upload Invoice Photo (Vision OCR)">
+            <input type="file" id="invoice-file-input" onchange="handleFileUpload(event)" accept="image/*,.pdf" class="hidden" />
+            <i data-lucide="camera" class="w-4 h-4"></i>
+          </label>
+
+          <!-- Voice Mic Button -->
+          <button type="button" onclick="startVoiceSimulation()" class="p-2.5 rounded-xl bg-panel hover:bg-slate-800 text-slate-400 hover:text-accentpurple border border-panelborder transition flex items-center justify-center shrink-0" title="Simulate Voice Note">
+            <i data-lucide="mic" class="w-4 h-4"></i>
+          </button>
+
+          <!-- Text Input -->
+          <input 
+            type="text" 
+            id="chat-input" 
+            placeholder="Ask about money, create GST invoices, simulate delays in Hinglish or English..." 
+            class="flex-1 bg-panel border border-panelborder focus:border-brand-500 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none transition" 
+          />
+
+          <!-- Send Button -->
+          <button type="submit" class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-medium text-sm transition flex items-center gap-1.5 shadow-md shadow-brand-600/20 shrink-0">
+            <span>Send</span>
+            <i data-lucide="send" class="w-3.5 h-3.5"></i>
+          </button>
+        </form>
+        <div class="flex items-center justify-between text-[11px] text-slate-500 px-1">
+          <span>Tip: Try <span class="text-slate-400">"Create invoice for Reliance 2.5 lakh"</span> or <span class="text-slate-400">"Paisa kaisa chal raha hai?"</span></span>
+          <span class="text-brand-500 flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3"></i> Money Conservation Strictly Enforced</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANE: ORGANISM VITALS, SINGULARITY RADAR & CAUSAL GRAPH -->
+    <section class="w-1/2 flex flex-col bg-darkbg overflow-hidden">
+      <!-- Tabs Header -->
+      <div class="h-12 border-b border-panelborder px-6 flex items-center justify-between bg-panel/20 shrink-0">
+        <div class="flex items-center gap-1">
+          <button onclick="switchTab('singularity')" id="tab-btn-singularity" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition border-b-2 border-dangerrose text-white flex items-center gap-1.5">
+            <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-dangerrose"></i>
+            <span>GST Singularity Radar</span>
+          </button>
+          <button onclick="switchTab('graph')" id="tab-btn-graph" class="px-3.5 py-1.5 rounded-lg text-xs font-medium transition text-slate-400 hover:text-white flex items-center gap-1.5">
+            <i data-lucide="git-fork" class="w-3.5 h-3.5"></i>
+            <span>Causal Spacetime Graph</span>
+          </button>
+          <button onclick="switchTab('wormhole')" id="tab-btn-wormhole" class="px-3.5 py-1.5 rounded-lg text-xs font-medium transition text-slate-400 hover:text-white flex items-center gap-1.5">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-accentcyan"></i>
+            <span>Liquidity Wormhole Forger</span>
+          </button>
+          <button onclick="switchTab('trajectory')" id="tab-btn-trajectory" class="px-3.5 py-1.5 rounded-lg text-xs font-medium transition text-slate-400 hover:text-white flex items-center gap-1.5">
+            <i data-lucide="trending-up" class="w-3.5 h-3.5 text-brand-500"></i>
+            <span>What-If Trajectory</span>
+          </button>
+        </div>
+        <div class="text-[11px] mono text-slate-400 flex items-center gap-1">
+          <i data-lucide="clock" class="w-3 h-3 text-slate-500"></i>
+          <span>Sim Date: 16 Nov 2026</span>
+        </div>
+      </div>
+
+      <!-- TAB CONTENT AREA -->
+      <div class="flex-1 overflow-y-auto p-6 space-y-6">
+
+        <!-- TAB 1: GST SINGULARITY RADAR -->
+        <div id="tab-content-singularity" class="space-y-6">
+          <!-- Singularity Alert Card -->
+          <div id="singularity-card" class="p-5 rounded-2xl glass singularity-glow border border-dangerrose/30 bg-dangerrose/5 relative overflow-hidden">
+            <div class="absolute -right-8 -top-8 w-32 h-32 bg-dangerrose/10 rounded-full blur-2xl pointer-events-none"></div>
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-dangerrose/20 text-dangerrose border border-dangerrose/30" id="singularity-severity-badge">CRITICAL BLACK HOLE</span>
+                  <span class="text-xs text-slate-400">Event Horizon in <span class="text-white font-bold mono" id="singularity-days-left">4 Days</span> (20 Nov 2026)</span>
+                </div>
+                <h3 class="text-lg font-bold text-white mt-1">GST Accrual Singularity Detected</h3>
+                <p class="text-xs text-slate-300 mt-1 max-w-xl">
+                  Accrual law mandates paying tax on issued invoices even though buyers haven't paid. The sovereign tax deadline will drain liquid reserves below zero!
+                </p>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-slate-400 uppercase tracking-wider">Deficit at Horizon</span>
+                <div class="text-2xl font-black text-dangerrose mono" id="singularity-depth-display">₹1,52,915.00</div>
+              </div>
+            </div>
+
+            <!-- Accrual Trap Breakdown Grid -->
+            <div class="grid grid-cols-4 gap-3 mt-5 pt-4 border-t border-panelborder text-xs">
+              <div class="p-3 rounded-xl bg-panel/70 border border-panelborder">
+                <span class="text-slate-400 block text-[10px] uppercase">Net GST Cash Due (20th)</span>
+                <span class="text-white font-bold mono text-sm" id="stat-net-gst">₹2,84,915.00</span>
+              </div>
+              <div class="p-3 rounded-xl bg-panel/70 border border-dangerrose/20">
+                <span class="text-dangerrose block text-[10px] uppercase font-semibold">GST on Unpaid Bills (Trap)</span>
+                <span class="text-dangerrose font-bold mono text-sm" id="stat-unpaid-gst">₹3,69,915.00</span>
+              </div>
+              <div class="p-3 rounded-xl bg-panel/70 border border-panelborder">
+                <span class="text-slate-400 block text-[10px] uppercase">Available Bank Cash</span>
+                <span class="text-white font-bold mono text-sm" id="stat-bank-cash">₹1,85,000.00</span>
+              </div>
+              <div class="p-3 rounded-xl bg-panel/70 border border-panelborder">
+                <span class="text-slate-400 block text-[10px] uppercase">Tax Vault Reserved</span>
+                <span class="text-accentcyan font-bold mono text-sm" id="stat-tax-vault">₹35,000.00</span>
+              </div>
+            </div>
+
+            <!-- Causal Propagation Chain -->
+            <div class="mt-4 p-3 rounded-xl bg-black/40 border border-panelborder text-xs">
+              <span class="font-semibold text-slate-300 block mb-1.5 flex items-center gap-1.5">
+                <i data-lucide="git-commit" class="w-3.5 h-3.5 text-accentcyan"></i>
+                <span>Causal Propagation Pathway</span>
+              </span>
+              <ul class="space-y-1 text-slate-400 text-[11px]" id="singularity-causal-list">
+                <li>• InvoiceBST/2026/1042 (₹14.75L) issued to Reliance with ₹2.25L GST accrued</li>
+                <li>• Reliance payment cycle is 35 days; cash will not land until Dec 21</li>
+                <li>• On Nov 20th GSTR-3B filing, bank balance drops below zero, triggering statutory freeze</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Organism Macroscopic Physics Vitals -->
+          <div class="grid grid-cols-3 gap-4">
+            <div class="p-4 rounded-xl glass border border-panelborder">
+              <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                <span>Fluid Viscosity Index</span>
+                <i data-lucide="droplet" class="w-4 h-4 text-warningamber"></i>
+              </div>
+              <div class="text-xl font-bold mono text-warningamber" id="stat-viscosity">3.85</div>
+              <p class="text-[10px] text-slate-500 mt-1">1.0 = Laminar, 3.0+ = Sluggish receivable delay</p>
+            </div>
+
+            <div class="p-4 rounded-xl glass border border-panelborder">
+              <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                <span>Tax Gravity Force</span>
+                <i data-lucide="anchor" class="w-4 h-4 text-accentpurple"></i>
+              </div>
+              <div class="text-xl font-bold mono text-accentpurple" id="stat-gravity">₹62,478 / day</div>
+              <p class="text-[10px] text-slate-500 mt-1">Downward pull toward 20th Nov statutory cut-off</p>
+            </div>
+
+            <div class="p-4 rounded-xl glass border border-panelborder">
+              <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                <span>Operating Runway</span>
+                <i data-lucide="clock" class="w-4 h-4 text-brand-500"></i>
+              </div>
+              <div class="text-xl font-bold mono text-brand-500" id="stat-runway">11.4 Days</div>
+              <p class="text-[10px] text-slate-500 mt-1">Conformal 90% Bound: [8.2 - 15.4 days]</p>
+            </div>
+          </div>
+
+          <!-- Pending Invoices Breakdown Table -->
+          <div class="p-4 rounded-xl glass border border-panelborder">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Unsettled Receivables & Accrual Matrix</h4>
+              <span class="text-[11px] text-slate-400 mono">Total Pending: <span id="stat-total-receivables" class="text-white font-bold">₹28,45,000.00</span></span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="text-slate-400 border-b border-panelborder">
+                    <th class="pb-2 font-medium">Invoice #</th>
+                    <th class="pb-2 font-medium">Customer</th>
+                    <th class="pb-2 font-medium">Total (₹)</th>
+                    <th class="pb-2 font-medium">GST Accrued</th>
+                    <th class="pb-2 font-medium">Delay Pred</th>
+                    <th class="pb-2 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="invoices-table-body" class="divide-y divide-panelborder/50 text-slate-300">
+                  <!-- Injected dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: CAUSAL SPACETIME GRAPH -->
+        <div id="tab-content-graph" class="hidden space-y-4">
+          <div class="p-4 rounded-xl glass border border-panelborder flex items-center justify-between">
+            <div>
+              <h4 class="text-sm font-bold text-white">Dynamic Causal Spacetime Substrate</h4>
+              <p class="text-xs text-slate-400">Interactive live topological view of RupeePackets, Invoices, Customer delays, and Tax Gravity wells.</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-full bg-accentcyan/10 border border-accentcyan/30 text-accentcyan text-[11px] mono">
+              Strict Conservation: ₹30.65 Lakhs
+            </span>
+          </div>
+
+          <!-- Interactive SVG Causal Graph Container -->
+          <div class="h-[460px] rounded-2xl glass border border-panelborder relative overflow-hidden flex items-center justify-center bg-black/60">
+            <svg id="causal-graph-svg" class="w-full h-full" viewBox="0 0 700 440">
+              <!-- Grid background -->
+              <defs>
+                <pattern id="graph-grid" width="30" height="30" patternUnits="userSpaceOnUse">
+                  <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(255, 255, 255, 0.03)" stroke-width="1"/>
+                </pattern>
+                <linearGradient id="edgeGradRed" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.8"/>
+                  <stop offset="100%" stop-color="#f43f5e" stop-opacity="0.2"/>
+                </linearGradient>
+                <linearGradient id="edgeGradCyan" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.8"/>
+                  <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.2"/>
+                </linearGradient>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#graph-grid)" />
+
+              <!-- Causal Edges -->
+              <g id="causal-edges-layer">
+                <!-- Customer -> Invoice -->
+                <line x1="120" y1="110" x2="280" y2="110" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4" />
+                <line x1="120" y1="210" x2="280" y2="210" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4" />
+                <!-- Invoice -> Bank (Delayed) -->
+                <line x1="280" y1="110" x2="480" y2="220" stroke="#06b6d4" stroke-width="2" stroke-opacity="0.4" />
+                <!-- DEADLY ACCRUAL EDGE: Invoice -> GST Liability (Instant) -->
+                <path d="M 280 110 Q 380 70 520 100" fill="none" stroke="#f43f5e" stroke-width="3" stroke-dasharray="6" class="animate-flow" />
+                <path d="M 280 210 Q 400 150 520 100" fill="none" stroke="#f43f5e" stroke-width="2.5" />
+                <!-- GST Liability -> Bank Drain -->
+                <line x1="520" y1="100" x2="480" y2="220" stroke="#f43f5e" stroke-width="3" />
+                <!-- Tax Vault -> GST -->
+                <line x1="480" y1="350" x2="520" y2="100" stroke="#10b981" stroke-width="2" stroke-dasharray="3" />
+                <!-- Bank -> Obligations -->
+                <line x1="480" y1="220" x2="620" y2="280" stroke="#8b5cf6" stroke-width="2" />
+              </g>
+
+              <!-- Causal Nodes -->
+              <g id="causal-nodes-layer">
+                <!-- Node 1: Customer Reliance -->
+                <g transform="translate(120, 110)">
+                  <circle r="28" fill="#111726" stroke="#f59e0b" stroke-width="2" />
+                  <text y="-6" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">Reliance</text>
+                  <text y="8" text-anchor="middle" fill="#f59e0b" font-size="8">35d delay</text>
+                </g>
+                <!-- Node 2: Customer L&T -->
+                <g transform="translate(120, 210)">
+                  <circle r="26" fill="#111726" stroke="#f59e0b" stroke-width="2" />
+                  <text y="-6" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">L&T Fab</text>
+                  <text y="8" text-anchor="middle" fill="#f59e0b" font-size="8">28d delay</text>
+                </g>
+                <!-- Node 3: Invoice BST-1042 -->
+                <g transform="translate(280, 110)">
+                  <rect x="-40" y="-20" width="80" height="40" rx="8" fill="#111726" stroke="#06b6d4" stroke-width="2" />
+                  <text y="-4" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">Inv #1042</text>
+                  <text y="10" text-anchor="middle" fill="#06b6d4" font-size="8">₹14.75 Lakhs</text>
+                </g>
+                <!-- Node 4: Invoice BST-1043 -->
+                <g transform="translate(280, 210)">
+                  <rect x="-40" y="-20" width="80" height="40" rx="8" fill="#111726" stroke="#06b6d4" stroke-width="2" />
+                  <text y="-4" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">Inv #1043</text>
+                  <text y="10" text-anchor="middle" fill="#06b6d4" font-size="8">₹9.50 Lakhs</text>
+                </g>
+                <!-- Node 5: GST Accrual Singularity Well -->
+                <g transform="translate(520, 100)">
+                  <circle r="36" fill="#111726" stroke="#f43f5e" stroke-width="3" class="animate-pulse" />
+                  <circle r="42" fill="none" stroke="#f43f5e" stroke-width="1" stroke-opacity="0.4" stroke-dasharray="3" />
+                  <text y="-8" text-anchor="middle" fill="#f43f5e" font-size="10" font-weight="extrabold">GST BLACK HOLE</text>
+                  <text y="6" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">₹2.85L (20 Nov)</text>
+                  <text y="18" text-anchor="middle" fill="#f43f5e" font-size="7">Accrual Drain</text>
+                </g>
+                <!-- Node 6: Bank Operational Reservoir -->
+                <g transform="translate(480, 220)">
+                  <circle r="34" fill="#111726" stroke="#10b981" stroke-width="2.5" />
+                  <text y="-6" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">Bank Cash</text>
+                  <text y="8" text-anchor="middle" fill="#10b981" font-size="9" font-weight="bold" id="graph-bank-val">₹1.85 Lakhs</text>
+                </g>
+                <!-- Node 7: Tax Vault -->
+                <g transform="translate(480, 350)">
+                  <circle r="26" fill="#111726" stroke="#06b6d4" stroke-width="2" />
+                  <text y="-4" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">Tax Vault</text>
+                  <text y="8" text-anchor="middle" fill="#06b6d4" font-size="8" id="graph-vault-val">₹35,000</text>
+                </g>
+                <!-- Node 8: Bank EMI Obligations -->
+                <g transform="translate(620, 280)">
+                  <circle r="25" fill="#111726" stroke="#8b5cf6" stroke-width="2" />
+                  <text y="-4" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">SBI EMI</text>
+                  <text y="8" text-anchor="middle" fill="#8b5cf6" font-size="8">₹88,000</text>
+                </g>
+              </g>
+            </svg>
+          </div>
+          <p class="text-xs text-slate-500">
+            Note the <span class="text-dangerrose font-semibold">Red Accrual Edge</span>: Even though Reliance has not paid Inv #1042, statutory GST instantly binds to the GST Black Hole, draining the central Bank Reservoir.
+          </p>
+        </div>
+
+        <!-- TAB 3: LIQUIDITY WORMHOLE FORGER -->
+        <div id="tab-content-wormhole" class="hidden space-y-6">
+          <div id="wormhole-display-container">
+            <!-- Will be populated with active wormhole or synthesis state -->
+          </div>
+        </div>
+
+        <!-- TAB 4: WHAT-IF COUNTERFACTUAL TRAJECTORY -->
+        <div id="tab-content-trajectory" class="hidden space-y-6">
+          <div class="p-5 rounded-2xl glass border border-panelborder">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h4 class="text-base font-bold text-white">Pearlian Counterfactual Forward Simulator</h4>
+                <p class="text-xs text-slate-400">Monte-Carlo cash trajectory: Status Quo (Inaction) vs Liquidity Wormhole (do-calculus intervention).</p>
+              </div>
+              <button onclick="refreshTrajectory()" class="px-3 py-1.5 rounded-lg bg-panel border border-panelborder text-xs text-slate-300 hover:text-white flex items-center gap-1.5 transition">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                <span>Re-simulate 100 Runs</span>
+              </button>
+            </div>
+
+            <!-- Canvas Chart -->
+            <div class="h-72 w-full">
+              <canvas id="trajectoryChart"></canvas>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-panelborder text-xs">
+              <div class="p-3 rounded-xl bg-dangerrose/10 border border-dangerrose/30">
+                <span class="font-bold text-dangerrose block">Path A: Status Quo (Inaction)</span>
+                <p class="text-slate-300 mt-1">Cash plunges to -₹1.53 Lakhs on 20th Nov. GST E-way bills blocked. Bank accounts frozen under Garnishee order.</p>
+              </div>
+              <div class="p-3 rounded-xl bg-brand-500/10 border border-brand-500/30">
+                <span class="font-bold text-brand-500 block">Path B: do(Liquidity Wormhole)</span>
+                <p class="text-slate-300 mt-1">Cash remains buoyant at +₹13.06 Lakhs. GST fully covered by Tax Vault. Runway extends to 40+ days.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <script>
+    let currentState = null;
+    let trajectoryChartInstance = null;
+
+    // Initialize application on load
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      fetchState();
+    });
+
+    // Fetch Full Organism State
+    async function fetchState() {
+      try {
+        const res = await fetch('/api/state');
+        const data = await res.json();
+        currentState = data.state;
+        updateUI(data.state, data.singularity);
+        // Add welcome message if chat is empty
+        if (document.getElementById('chat-messages').children.length === 0) {
+          addSystemGreeting(data.state, data.singularity);
+        }
+      } catch (err) {
+        console.error('Failed to fetch state:', err);
+      }
+    }
+
+    // Switch Archetype
+    async function switchArchetype(archId) {
+      try {
+        const res = await fetch(`/api/archetype/${archId}`, { method: 'POST' });
+        const data = await res.json();
+        currentState = data.state;
+        updateUI(data.state, data.singularity);
+
+        // Update button states
+        ['steel', 'garment', 'agency'].forEach(k => {
+          const btn = document.getElementById(`btn-arch-${k}`);
+          if (btn) {
+            btn.className = "px-3 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1.5";
+          }
+        });
+        if (archId === 'STEEL_TRADER') document.getElementById('btn-arch-steel').className = "px-3 py-1.5 rounded-lg font-medium transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1.5";
+        if (archId === 'VASTRAKALA') document.getElementById('btn-arch-garment').className = "px-3 py-1.5 rounded-lg font-medium transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1.5";
+        if (archId === 'NEXUS_PULSE') document.getElementById('btn-arch-agency').className = "px-3 py-1.5 rounded-lg font-medium transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1.5";
+
+        // Push new greeting into chat
+        addSystemGreeting(data.state, data.singularity);
+      } catch (err) {
+        console.error('Failed to switch archetype:', err);
+      }
+    }
+
+    // Update UI Elements
+    function updateUI(state, singularity) {
+      if (!state) return;
+
+      // Update Genome Badge
+      const scoreEl = document.getElementById('genome-score');
+      const badgeEl = document.getElementById('genome-badge');
+      if (scoreEl) scoreEl.textContent = `${state.genome.overall_score} / 100`;
+
+      if (state.genome.overall_score < 50) {
+        badgeEl.className = "flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border border-dangerrose/30 bg-dangerrose/10 text-dangerrose";
+      } else if (state.genome.overall_score < 75) {
+        badgeEl.className = "flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border border-warningamber/30 bg-warningamber/10 text-warningamber";
+      } else {
+        badgeEl.className = "flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border border-brand-500/30 bg-brand-500/10 text-brand-500";
+      }
+
+      document.getElementById('biz-city-label').textContent = state.business.city;
+
+      // Singularity Card
+      if (singularity) {
+        document.getElementById('singularity-severity-badge').textContent = singularity.severity === 'CRITICAL' ? 'CRITICAL BLACK HOLE' : singularity.severity;
+        document.getElementById('singularity-days-left').textContent = `${singularity.days_to_event_horizon} Days`;
+        document.getElementById('singularity-depth-display').textContent = `₹${singularity.singularity_depth.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        document.getElementById('stat-net-gst').textContent = `₹${state.gst_snapshot.net_gst_cash_payable.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        document.getElementById('stat-unpaid-gst').textContent = `₹${state.gst_snapshot.gst_on_unpaid_invoices.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        document.getElementById('stat-bank-cash').textContent = `₹${state.physics_state.bank_cash.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        document.getElementById('stat-tax-vault').textContent = `₹${state.physics_state.tax_vault_balance.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+        // Causal List
+        const causalList = document.getElementById('singularity-causal-list');
+        if (causalList && singularity.causal_root_chains) {
+          causalList.innerHTML = singularity.causal_root_chains.map(c => `<li>• ${c}</li>`).join('');
+        }
+      }
+
+      // Physics Vitals
+      document.getElementById('stat-viscosity').textContent = state.physics_state.viscosity_index.toFixed(2);
+      document.getElementById('stat-gravity').textContent = `₹${Math.round(state.physics_state.tax_gravity_well).toLocaleString('en-IN')} / day`;
+      document.getElementById('stat-runway').textContent = `${state.physics_state.estimated_runway_days.toFixed(1)} Days`;
+      document.getElementById('stat-total-receivables').textContent = `₹${state.physics_state.pending_receivables.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+      // Invoices Table
+      const tBody = document.getElementById('invoices-table-body');
+      if (tBody) {
+        tBody.innerHTML = state.invoices.map(inv => `
+          <tr class="hover:bg-panel/40 transition">
+            <td class="py-2.5 font-medium mono text-white">${inv.invoice_number}</td>
+            <td class="py-2.5">${inv.customer_name}</td>
+            <td class="py-2.5 font-bold mono">₹${inv.total_amount.toLocaleString('en-IN')}</td>
+            <td class="py-2.5 font-medium mono text-dangerrose">₹${inv.gst_amount.toLocaleString('en-IN')}</td>
+            <td class="py-2.5 mono text-warningamber">+${inv.delay_prediction_days}d</td>
+            <td class="py-2.5">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${
+                inv.status === 'PAID' ? 'bg-brand-500/20 text-brand-500' :
+                inv.status === 'OVERDUE' || inv.status === 'CRITICAL_TRAP' ? 'bg-dangerrose/20 text-dangerrose' :
+                'bg-accentcyan/20 text-accentcyan'
+              }">${inv.status}</span>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      // Update Graph SVG labels
+      const gBank = document.getElementById('graph-bank-val');
+      if (gBank) gBank.textContent = `₹${(state.physics_state.bank_cash / 100000).toFixed(2)}L`;
+      const gVault = document.getElementById('graph-vault-val');
+      if (gVault) gVault.textContent = `₹${Math.round(state.physics_state.tax_vault_balance).toLocaleString('en-IN')}`;
+
+      // Render Wormhole tab content
+      renderWormholeTab(state.active_wormholes[0] || null);
+
+      lucide.createIcons();
+    }
+
+    // Render Wormhole Tab Content
+    function renderWormholeTab(wormhole) {
+      const container = document.getElementById('wormhole-display-container');
+      if (!container) return;
+
+      if (!wormhole) {
+        container.innerHTML = `
+          <div class="p-8 rounded-2xl glass border border-panelborder text-center space-y-3">
+            <i data-lucide="shield-check" class="w-12 h-12 text-brand-500 mx-auto"></i>
+            <h4 class="text-base font-bold text-white">Organism Protected</h4>
+            <p class="text-xs text-slate-400 max-w-md mx-auto">No active liquidity singularity threatens your business right now. If a singularity forms or an invoice is delayed, the Wormhole Forger will dynamically synthesize an optimal financial bridge.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="p-5 rounded-2xl glass wormhole-glow border border-accentcyan/40 bg-accentcyan/5 space-y-4">
+          <div class="flex items-start justify-between">
+            <div>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-accentcyan/20 text-accentcyan border border-accentcyan/30">
+                ${wormhole.status}
+              </span>
+              <h3 class="text-base font-bold text-white mt-1.5">${wormhole.title}</h3>
+              <p class="text-xs text-slate-300 mt-1 max-w-xl">${wormhole.explanation_narrative}</p>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] text-slate-400 uppercase tracking-wider">Gross Liberated</span>
+              <div class="text-xl font-black text-accentcyan mono">₹${wormhole.gross_liquidity_created.toLocaleString('en-IN', {minimumFractionDigits: 2})}</div>
+              <span class="text-[11px] text-slate-400">Total Net Cost: <span class="mono text-white">₹${wormhole.total_net_cost.toLocaleString('en-IN')}</span></span>
+            </div>
+          </div>
+
+          <!-- Step Breakdown -->
+          <div class="space-y-2 pt-2 border-t border-panelborder">
+            <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Synthesized Vector Steps:</h4>
+            ${wormhole.steps.map(step => `
+              <div class="p-3 rounded-xl bg-panel/70 border border-panelborder flex items-center justify-between text-xs">
+                <div class="flex items-center gap-3">
+                  <span class="w-6 h-6 rounded-lg bg-accentcyan/20 text-accentcyan font-bold mono flex items-center justify-center text-xs">
+                    ${step.step_number}
+                  </span>
+                  <div>
+                    <span class="font-bold text-white">${step.action_type.replace(/_/g, ' ')}</span>
+                    <span class="text-slate-400 block text-[11px]">${step.causal_mechanism}</span>
+                  </div>
+                </div>
+                <div class="text-right shrink-0">
+                  <span class="font-bold mono text-brand-500 block">+₹${step.amount_unlocked.toLocaleString('en-IN')}</span>
+                  <span class="text-[10px] text-slate-400">${step.implementation_time_hours}h SLA</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Supreme Court Formal Clearance & Action Button -->
+          <div class="p-4 rounded-xl bg-brand-500/10 border border-brand-500/30 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <i data-lucide="award" class="w-8 h-8 text-brand-500 shrink-0"></i>
+              <div>
+                <span class="text-xs font-bold text-brand-500 uppercase tracking-wide">Constitutional Supreme Court Clearance</span>
+                <p class="text-[11px] text-slate-300">Passed symbolic math check • Protects 21-day minimum runway • Paper-trading sandbox</p>
+              </div>
+            </div>
+            ${wormhole.status !== 'EXECUTED' ? `
+              <button onclick="activateWormhole()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-accentcyan to-brand-600 hover:from-accentcyan/90 hover:to-brand-500 text-white font-bold text-xs shadow-lg shadow-accentcyan/20 transition flex items-center gap-1.5 shrink-0">
+                <i data-lucide="zap" class="w-4 h-4"></i>
+                <span>Authorize & Execute Wormhole</span>
+              </button>
+            ` : `
+              <span class="px-3 py-1.5 rounded-xl bg-brand-500/20 text-brand-500 font-bold text-xs flex items-center gap-1">
+                <i data-lucide="check" class="w-4 h-4"></i>
+                <span>Executed Successfully</span>
+              </span>
+            `}
+          </div>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    // Switch Tabs
+    function switchTab(tabId) {
+      ['singularity', 'graph', 'wormhole', 'trajectory'].forEach(t => {
+        document.getElementById(`tab-content-${t}`).classList.add('hidden');
+        document.getElementById(`tab-btn-${t}`).className = "px-3.5 py-1.5 rounded-lg text-xs font-medium transition text-slate-400 hover:text-white flex items-center gap-1.5";
+      });
+      document.getElementById(`tab-content-${tabId}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+      activeBtn.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition border-b-2 border-accentcyan text-white flex items-center gap-1.5";
+      if (tabId === 'trajectory') {
+        renderTrajectoryChart();
+      }
+      lucide.createIcons();
+    }
+
+    // Render Trajectory Chart
+    async function renderTrajectoryChart() {
+      try {
+        const res = await fetch('/api/counterfactual');
+        const data = await res.json();
+
+        const ctx = document.getElementById('trajectoryChart').getContext('2d');
+        if (trajectoryChartInstance) {
+          trajectoryChartInstance.destroy();
+        }
+
+        trajectoryChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: data.dates,
+            datasets: [
+              {
+                label: 'Status Quo (Inaction)',
+                data: data.baseline_median,
+                borderColor: '#f43f5e',
+                backgroundColor: 'rgba(244, 63, 94, 0.1)',
+                borderWidth: 2.5,
+                fill: false,
+                tension: 0.3
+              },
+              {
+                label: 'do(Liquidity Wormhole)',
+                data: data.wormhole_median,
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.3
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                labels: { color: '#94a3b8', font: { family: 'Plus Jakarta Sans', size: 11 } }
+              }
+            },
+            scales: {
+              x: {
+                ticks: { color: '#64748b', maxTicksLimit: 12, font: { size: 10 } },
+                grid: { color: 'rgba(255, 255, 255, 0.05)' }
+              },
+              y: {
+                ticks: {
+                  color: '#64748b',
+                  font: { size: 10 },
+                  callback: val => `₹${(val / 100000).toFixed(1)}L`
+                },
+                grid: { color: 'rgba(255, 255, 255, 0.05)' }
+              }
+            }
+          }
+        });
+      } catch (err) {
+        console.error('Trajectory chart fetch error:', err);
+      }
+    }
+
+    function refreshTrajectory() {
+      renderTrajectoryChart();
+    }
+
+    // Chat Message Rendering
+    function addSystemGreeting(state, singularity) {
+      const container = document.getElementById('chat-messages');
+      const msgDiv = document.createElement('div');
+      msgDiv.className = "p-4 rounded-2xl glass border border-panelborder space-y-3";
+      msgDiv.innerHTML = `
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 rounded-lg bg-accentcyan/20 text-accentcyan flex items-center justify-center font-bold text-xs">AP</div>
+          <span class="text-xs font-bold text-white">AetherPravah Organism Guardian</span>
+          <span class="text-[10px] text-slate-500">• Just now</span>
+        </div>
+        <p class="text-xs text-slate-200 leading-relaxed">
+          Namaste Malik! 🙏 I am tracking all <strong>₹${(state.physics_state.total_rupees_conserved / 100000).toFixed(2)} Lakhs</strong> in your business with zero mathematical leakage.
+          Aapka business profitable hai, lekin <strong>20th Nov ko GSTR-3B Singularity</strong> aa rahi hai. Unpaid invoices ka ₹${(state.gst_snapshot.gst_on_unpaid_invoices / 1000).toFixed(0)}k GST cash drain karega.
+        </p>
+        <div class="p-3 rounded-xl bg-dangerrose/10 border border-dangerrose/30 text-xs text-dangerrose font-medium">
+          ⚠️ <strong>Active Warning:</strong> ₹${singularity.singularity_depth.toLocaleString('en-IN', {minimumFractionDigits: 2})} Cash Deficit predicted in ${singularity.days_to_event_horizon} days.
+        </div>
+        <div class="flex items-center gap-2 pt-1">
+          <button onclick="sendQuickMessage('How is my money?')" class="text-xs font-medium text-accentcyan hover:underline">Check Health Status →</button>
+        </div>
+      `;
+      container.appendChild(msgDiv);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function addChatMessage(role, content) {
+      const container = document.getElementById('chat-messages');
+      const msgDiv = document.createElement('div');
+
+      if (role === 'user') {
+        msgDiv.className = "flex justify-end";
+        msgDiv.innerHTML = `
+          <div class="max-w-[80%] p-3.5 rounded-2xl bg-brand-600 text-white text-xs leading-relaxed shadow-md">
+            ${content}
+          </div>
+        `;
+      } else {
+        // AI 5-PART STRUCTURED CARD
+        msgDiv.className = "p-4 rounded-2xl glass border border-panelborder space-y-3.5 text-xs";
+        msgDiv.innerHTML = `
+          <div class="flex items-center justify-between border-b border-panelborder pb-2.5">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded-lg bg-brand-500/20 text-brand-500 flex items-center justify-center font-bold text-xs">AP</div>
+              <span class="font-bold text-white">AetherPravah Causal AI</span>
+            </div>
+            <span class="px-2 py-0.5 rounded bg-brand-500/10 text-brand-500 text-[10px] font-bold mono">94% Calibrated Confidence</span>
+          </div>
+
+          <!-- 1. Plain language summary -->
+          <div class="text-slate-200 leading-relaxed">
+            ${content.plain_language_summary}
+          </div>
+
+          <!-- 2. Exact numbers -->
+          <div class="p-3 rounded-xl bg-black/50 border border-panelborder mono text-[11px] text-slate-300 whitespace-pre-line">
+            ${content.exact_numbers}
+          </div>
+
+          <!-- 3. Causal explanation -->
+          <div class="p-3 rounded-xl bg-accentcyan/5 border border-accentcyan/20 text-slate-300">
+            <span class="font-bold text-accentcyan block text-[11px] mb-1">Causal Spacetime Driver:</span>
+            ${content.causal_explanation}
+          </div>
+
+          <!-- 4. Top Recommended Actions -->
+          <div class="space-y-1.5">
+            <span class="font-bold text-white block text-[11px]">Recommended Protections:</span>
+            ${content.top_recommended_actions.map(act => `
+              <div class="flex items-center justify-between p-2 rounded-lg bg-panel/70 border border-panelborder">
+                <span class="text-slate-300 text-[11px]">${act}</span>
+                ${act.includes('Wormhole') ? `
+                  <button onclick="activateWormhole()" class="ml-2 px-2.5 py-1 rounded-lg bg-accentcyan text-black font-bold text-[10px] shrink-0 hover:bg-white transition">
+                    Activate Now
+                  </button>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- 5. Counterfactual warning -->
+          <div class="p-3 rounded-xl bg-dangerrose/10 border border-dangerrose/30 text-dangerrose text-[11px]">
+            <span class="font-bold block mb-0.5">What if you ignore this? (Counterfactual)</span>
+            ${content.what_if_ignore}
+          </div>
+        `;
+      }
+
+      container.appendChild(msgDiv);
+      container.scrollTop = container.scrollHeight;
+      lucide.createIcons();
+    }
+
+    async function handleChatSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      addChatMessage('user', text);
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text })
+        });
+        const data = await res.json();
+        addChatMessage('ai', data);
+        if (data.state) {
+          currentState = data.state;
+          updateUI(data.state, data.singularity);
+        }
+      } catch (err) {
+        console.error('Chat error:', err);
+      }
+    }
+
+    function sendQuickMessage(text) {
+      document.getElementById('chat-input').value = text;
+      handleChatSubmit(new Event('submit'));
+    }
+
+    async function simulateDelay() {
+      sendQuickMessage('Simulate 30-day customer delay');
+    }
+
+    async function activateWormhole() {
+      sendQuickMessage('Activate Liquidity Wormhole');
+    }
+
+    // Voice Simulation
+    function startVoiceSimulation() {
+      const ind = document.getElementById('voice-indicator');
+      ind.classList.remove('hidden');
+      setTimeout(() => {
+        ind.classList.add('hidden');
+        sendQuickMessage('Paisa kaisa hai? Reliance ka bill bana do 2.5 lakh ka');
+      }, 2500);
+    }
+
+    function cancelVoice() {
+      document.getElementById('voice-indicator').classList.add('hidden');
+    }
+
+    // File Upload Simulation
+    async function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      addChatMessage('user', `📸 Uploaded invoice image: <strong>${file.name}</strong>`);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/upload-invoice', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        addChatMessage('ai', data);
+        if (data.state) {
+          currentState = data.state;
+          updateUI(data.state, data.singularity);
+        }
+      } catch (err) {
+        console.error('File upload error:', err);
+      }
+    }
+  </script>
+</body>
+</html>
