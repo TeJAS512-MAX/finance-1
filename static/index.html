@@ -4,13 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AetherPravah — AI that handles money better</title>
-  <!-- Tailwind CSS -->
+  
+  <!-- Google Fonts: Inter (Primary) & JetBrains Mono (Numbers/Code) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS with Typography System Configurations -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Roboto Mono', 'monospace'],
+          },
           colors: {
             brand: {
               50: '#ecfdf5',
@@ -50,13 +60,22 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
     body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: #080b11;
-      color: #e2e8f0;
+      color: #f1f5f9;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
-    .mono { font-family: 'JetBrains Mono', monospace; }
+    .mono {
+      font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+      font-feature-settings: 'tnum' on, 'zero' on;
+    }
+    h1, h2, h3, h4 {
+      line-height: 1.3;
+      letter-spacing: -0.02em;
+    }
     /* Custom Scrollbar */
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: #080b12; }
@@ -97,36 +116,37 @@
 <body class="h-screen flex flex-col overflow-hidden">
 
   <!-- TOP NAVIGATION HEADER -->
-  <header class="h-16 border-b border-panelborder bg-darkbg/95 px-6 flex items-center justify-between z-30 shrink-0">
+  <header class="h-18 border-b border-panelborder bg-darkbg/95 px-6 py-3 flex items-center justify-between z-30 shrink-0">
     <div class="flex items-center gap-4">
-      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-brand-600 via-accentcyan to-accentpurple p-0.5 shadow-lg shadow-brand-500/20 flex items-center justify-center">
+      <div class="h-11 w-11 rounded-xl bg-gradient-to-tr from-brand-600 via-accentcyan to-accentpurple p-0.5 shadow-lg shadow-brand-500/20 flex items-center justify-center shrink-0">
         <div class="w-full h-full bg-darkbg rounded-[10px] flex items-center justify-center">
           <i data-lucide="activity" class="w-5 h-5 text-accentcyan animate-pulse"></i>
         </div>
       </div>
       <div>
-        <div class="flex items-center gap-2">
-          <span class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-accentcyan bg-clip-text text-transparent">AetherPravah</span>
-          <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-500 border border-brand-500/20">Causal Organism v3.8</span>
+        <div class="flex items-center gap-2.5">
+          <!-- App Name / Logo: 28-32px Desktop, 24px Mobile, Bold 700, Tight letter-spacing -->
+          <span class="font-bold text-2xl md:text-[28px] tracking-tight bg-gradient-to-r from-white via-slate-100 to-accentcyan bg-clip-text text-transparent leading-none">AetherPravah</span>
+          <span class="text-[11px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-brand-500/10 text-brand-500 border border-brand-500/20">Causal Organism v3.8</span>
         </div>
-        <p class="text-xs text-slate-400 font-medium">AI that handles money better • <span class="italic text-slate-500">“Treats money like a living organism and never lets it die.”</span></p>
+        <p class="text-xs md:text-sm text-slate-400 font-medium mt-0.5">Build AI that handles money better • <span class="italic text-slate-500">“The AI that treats your money like a living organism and never lets it die.”</span></p>
       </div>
     </div>
 
     <!-- BUSINESS ARCHETYPE SELECTOR -->
     <div class="flex items-center gap-3">
-      <div class="flex items-center bg-panel rounded-xl p-1 border border-panelborder text-xs">
-        <button id="btn-arch-steel" onclick="switchArchetype('STEEL_TRADER')" class="px-3 py-1.5 rounded-lg font-medium transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1.5">
-          <i data-lucide="shield" class="w-3.5 h-3.5"></i>
-          <span>Bharat Steel Traders (Navi Mumbai)</span>
+      <div class="flex items-center bg-panel rounded-xl p-1 border border-panelborder text-xs md:text-sm">
+        <button id="btn-arch-steel" onclick="switchArchetype('STEEL_TRADER')" class="px-3.5 py-1.5 rounded-lg font-medium transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1.5">
+          <i data-lucide="shield" class="w-4 h-4"></i>
+          <span>Bharat Steel Traders</span>
         </button>
-        <button id="btn-arch-garment" onclick="switchArchetype('VASTRAKALA')" class="px-3 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1.5">
-          <i data-lucide="scissors" class="w-3.5 h-3.5"></i>
-          <span>VastraKala Textiles (Surat)</span>
+        <button id="btn-arch-garment" onclick="switchArchetype('VASTRAKALA')" class="px-3.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1.5">
+          <i data-lucide="scissors" class="w-4 h-4"></i>
+          <span>VastraKala Textiles</span>
         </button>
-        <button id="btn-arch-agency" onclick="switchArchetype('NEXUS_PULSE')" class="px-3 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1.5">
-          <i data-lucide="cpu" class="w-3.5 h-3.5"></i>
-          <span>NexusPulse Media (Bengaluru)</span>
+        <button id="btn-arch-agency" onclick="switchArchetype('NEXUS_PULSE')" class="px-3.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1.5">
+          <i data-lucide="cpu" class="w-4 h-4"></i>
+          <span>NexusPulse Media</span>
         </button>
       </div>
 
@@ -137,8 +157,8 @@
           <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-dangerrose"></span>
         </div>
         <div class="flex flex-col text-right">
-          <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Health Genome</span>
-          <span id="genome-score" class="text-sm font-black mono leading-none">38 / 100</span>
+          <span class="text-[10px] md:text-[11px] font-medium uppercase tracking-wider text-slate-400">Health Genome</span>
+          <span id="genome-score" class="text-sm md:text-base font-bold mono leading-none">38 / 100</span>
         </div>
       </div>
     </div>
@@ -150,43 +170,43 @@
     <!-- LEFT PANE: PHONE-STYLE CONVERSATIONAL AI CHAT -->
     <section class="w-1/2 flex flex-col border-r border-panelborder bg-darkbg relative">
       <!-- Chat Header -->
-      <div class="h-14 border-b border-panelborder px-4 flex items-center justify-between bg-panel/50 backdrop-blur-md">
+      <div class="h-16 border-b border-panelborder px-4 py-2 flex items-center justify-between bg-panel/50 backdrop-blur-md">
         <div class="flex items-center gap-3">
           <div class="relative">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-brand-600 to-accentcyan flex items-center justify-center font-bold text-xs text-white shadow-md">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-brand-600 to-accentcyan flex items-center justify-center font-bold text-xs text-white shadow-md">
               AP
             </div>
             <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-brand-500 border-2 border-darkbg"></span>
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <span class="text-xs font-bold text-white">AetherPravah AI</span>
-              <span class="text-[10px] px-1.5 py-0.2 rounded bg-brand-500/20 text-brand-400 font-medium">Online</span>
+              <span class="text-sm md:text-base font-semibold text-white tracking-tight">AetherPravah AI</span>
+              <span class="text-[11px] px-2 py-0.5 rounded bg-brand-500/20 text-brand-400 font-medium">Online</span>
             </div>
-            <p class="text-[10px] text-slate-400">Your 24x7 Causal Financial AI • Fluent English</p>
+            <p class="text-xs text-slate-400 font-medium">Your 24x7 Causal Financial AI • Fluent English</p>
           </div>
         </div>
         <div class="flex items-center gap-2 text-xs text-slate-400">
-          <span class="mono text-[11px] text-slate-300" id="biz-city-label">Navi Mumbai</span>
-          <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 mono text-[10px]">GST: 27AABCB1234F1Z8</span>
+          <span class="mono text-xs text-slate-300 font-medium" id="biz-city-label">Navi Mumbai</span>
+          <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 mono text-xs">GST: 27AABCB1234F1Z8</span>
         </div>
       </div>
 
       <!-- Quick Suggested Follow-up Chips -->
-      <div class="p-2 border-b border-panelborder bg-black/40 flex items-center gap-1.5 overflow-x-auto text-xs shrink-0 no-scrollbar">
-        <button onclick="sendQuickMessage('How is my money?')" class="px-3 py-1 rounded-full bg-panel hover:bg-slate-800 border border-panelborder hover:border-brand-500 text-slate-300 hover:text-white transition flex items-center gap-1.5 whitespace-nowrap">
+      <div class="p-2.5 border-b border-panelborder bg-black/40 flex items-center gap-2 overflow-x-auto text-xs md:text-sm shrink-0 no-scrollbar">
+        <button onclick="sendQuickMessage('How is my money?')" class="px-3.5 py-1.5 rounded-full bg-panel hover:bg-slate-800 border border-panelborder hover:border-brand-500 text-slate-300 hover:text-white transition flex items-center gap-1.5 whitespace-nowrap font-medium">
           <span>🩺 How is my money?</span>
         </button>
-        <button onclick="sendQuickMessage('Who owes me the most money?')" class="px-3 py-1 rounded-full bg-panel hover:bg-slate-800 border border-panelborder hover:border-accentcyan text-slate-300 hover:text-white transition flex items-center gap-1.5 whitespace-nowrap">
+        <button onclick="sendQuickMessage('Who owes me the most money?')" class="px-3.5 py-1.5 rounded-full bg-panel hover:bg-slate-800 border border-panelborder hover:border-accentcyan text-slate-300 hover:text-white transition flex items-center gap-1.5 whitespace-nowrap font-medium">
           <span>📊 Who owes me money?</span>
         </button>
-        <button onclick="sendQuickMessage('Can I afford a new machine of 5 lakhs?')" class="px-3 py-1 rounded-full bg-panel hover:bg-slate-800 border border-panelborder hover:border-warningamber text-slate-300 hover:text-white transition flex items-center gap-1.5 whitespace-nowrap">
+        <button onclick="sendQuickMessage('Can I afford a new machine of 5 lakhs?')" class="px-3.5 py-1.5 rounded-full bg-panel hover:bg-slate-800 border border-panelborder hover:border-warningamber text-slate-300 hover:text-white transition flex items-center gap-1.5 whitespace-nowrap font-medium">
           <span>🛑 Can I buy equipment?</span>
         </button>
-        <button onclick="sendQuickMessage('Create invoice for Reliance 2.5 lakh')" class="px-3 py-1 rounded-full bg-panel hover:bg-slate-800 border border-panelborder hover:border-accentcyan text-slate-300 hover:text-white transition flex items-center gap-1.5 whitespace-nowrap">
+        <button onclick="sendQuickMessage('Create invoice for Reliance 2.5 lakh')" class="px-3.5 py-1.5 rounded-full bg-panel hover:bg-slate-800 border border-panelborder hover:border-accentcyan text-slate-300 hover:text-white transition flex items-center gap-1.5 whitespace-nowrap font-medium">
           <span>📄 Create Reliance Bill</span>
         </button>
-        <button onclick="activateWormhole()" class="px-3 py-1 rounded-full bg-accentcyan/10 border border-accentcyan/40 hover:bg-accentcyan/20 text-accentcyan transition flex items-center gap-1.5 whitespace-nowrap font-medium">
+        <button onclick="activateWormhole()" class="px-3.5 py-1.5 rounded-full bg-accentcyan/10 border border-accentcyan/40 hover:bg-accentcyan/20 text-accentcyan transition flex items-center gap-1.5 whitespace-nowrap font-semibold">
           <span>⚡ Trigger Wormhole</span>
         </button>
       </div>
@@ -197,10 +217,10 @@
       </div>
 
       <!-- Typing Indicator (hidden by default) -->
-      <div id="typing-indicator" class="hidden px-4 py-2 flex items-center gap-2 text-xs text-slate-400">
-        <div class="w-6 h-6 rounded-full bg-accentcyan/20 text-accentcyan flex items-center justify-center font-bold text-[10px]">AP</div>
-        <div class="px-3 py-2 rounded-2xl bg-panel border border-panelborder flex items-center gap-1.5">
-          <span class="text-[11px] text-slate-400">AetherPravah is thinking</span>
+      <div id="typing-indicator" class="hidden px-4 py-2 flex items-center gap-2 text-xs md:text-sm text-slate-400">
+        <div class="w-7 h-7 rounded-full bg-accentcyan/20 text-accentcyan flex items-center justify-center font-bold text-xs">AP</div>
+        <div class="px-3.5 py-2 rounded-2xl bg-panel border border-panelborder flex items-center gap-1.5">
+          <span class="text-xs text-slate-300 font-medium">AetherPravah is thinking</span>
           <span class="w-1.5 h-1.5 rounded-full bg-accentcyan typing-dot"></span>
           <span class="w-1.5 h-1.5 rounded-full bg-accentcyan typing-dot"></span>
           <span class="w-1.5 h-1.5 rounded-full bg-accentcyan typing-dot"></span>
@@ -208,7 +228,7 @@
       </div>
 
       <!-- Voice Recording Simulation Indicator -->
-      <div id="voice-indicator" class="hidden px-4 py-2.5 bg-accentpurple/15 border-t border-accentpurple/30 flex items-center justify-between text-xs text-accentpurple">
+      <div id="voice-indicator" class="hidden px-4 py-2.5 bg-accentpurple/15 border-t border-accentpurple/30 flex items-center justify-between text-xs md:text-sm text-accentpurple">
         <div class="flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-accentpurple animate-ping"></span>
           <span class="font-medium">Listening to Voice Note (English)...</span>
@@ -219,41 +239,41 @@
             <span class="w-1 h-4 bg-accentpurple animate-pulse"></span>
           </div>
         </div>
-        <button onclick="cancelVoice()" class="text-slate-400 hover:text-white text-xs">Cancel</button>
+        <button onclick="cancelVoice()" class="text-slate-400 hover:text-white text-xs font-medium">Cancel</button>
       </div>
 
       <!-- Chat Input Area (Phone / Mobile AI App Style) -->
       <div class="p-3 border-t border-panelborder bg-darkbg flex flex-col gap-2 shrink-0">
         <form id="chat-form" onsubmit="handleChatSubmit(event)" class="flex items-center gap-2">
           <!-- Photo Upload Button -->
-          <label class="cursor-pointer p-2.5 rounded-xl bg-panel hover:bg-slate-800 text-slate-400 hover:text-white border border-panelborder transition flex items-center justify-center shrink-0" title="Upload Invoice Photo (Vision OCR)">
+          <label class="cursor-pointer p-3 rounded-xl bg-panel hover:bg-slate-800 text-slate-400 hover:text-white border border-panelborder transition flex items-center justify-center shrink-0" title="Upload Invoice Photo (Vision OCR)">
             <input type="file" id="invoice-file-input" onchange="handleFileUpload(event)" accept="image/*,.pdf" class="hidden" />
-            <i data-lucide="camera" class="w-4 h-4"></i>
+            <i data-lucide="camera" class="w-5 h-5"></i>
           </label>
 
           <!-- Voice Mic Button -->
-          <button type="button" onclick="startVoiceSimulation()" class="p-2.5 rounded-xl bg-panel hover:bg-slate-800 text-slate-400 hover:text-accentpurple border border-panelborder transition flex items-center justify-center shrink-0" title="Simulate Voice Note">
-            <i data-lucide="mic" class="w-4 h-4"></i>
+          <button type="button" onclick="startVoiceSimulation()" class="p-3 rounded-xl bg-panel hover:bg-slate-800 text-slate-400 hover:text-accentpurple border border-panelborder transition flex items-center justify-center shrink-0" title="Simulate Voice Note">
+            <i data-lucide="mic" class="w-5 h-5"></i>
           </button>
 
-          <!-- Text Input: Type anything you want! -->
+          <!-- Text Input: Type anything you want! (16px text-base) -->
           <input 
             type="text" 
             id="chat-input" 
-            placeholder="Type anything (e.g. 'who owes me money?', 'can I afford 5L?', 'how is my money?')..." 
-            class="flex-1 bg-panel border border-panelborder focus:border-brand-500 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none transition shadow-inner" 
+            placeholder="Type anything (e.g. 'How is my money?', 'Who owes me money?', 'Can I spend 5 Lakhs?')..." 
+            class="flex-1 bg-panel border border-panelborder focus:border-brand-500 rounded-xl px-4 py-2.5 text-base font-normal text-white placeholder-slate-500 focus:outline-none transition shadow-inner" 
             autocomplete="off"
           />
 
-          <!-- Send Button -->
-          <button type="submit" class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-medium text-sm transition flex items-center gap-1.5 shadow-md shadow-brand-600/20 shrink-0">
+          <!-- Send Button: Primary Button 15-16px, Semi-bold 600 -->
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm md:text-base transition flex items-center gap-2 shadow-md shadow-brand-600/20 shrink-0">
             <span>Send</span>
-            <i data-lucide="send" class="w-3.5 h-3.5"></i>
+            <i data-lucide="send" class="w-4 h-4"></i>
           </button>
         </form>
-        <div class="flex items-center justify-between text-[11px] text-slate-500 px-1">
-          <span>Type any financial inquiry or action in clear English.</span>
-          <span class="text-brand-500 flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3"></i> Strict Money Conservation Active</span>
+        <div class="flex items-center justify-between text-xs text-slate-400 px-1 font-normal">
+          <span>Type any financial inquiry or action in clear, natural English.</span>
+          <span class="text-brand-500 flex items-center gap-1 font-medium"><i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Strict Money Conservation Active</span>
         </div>
       </div>
     </section>
@@ -261,27 +281,27 @@
     <!-- RIGHT PANE: ORGANISM VITALS, SINGULARITY RADAR & CAUSAL GRAPH -->
     <section class="w-1/2 flex flex-col bg-darkbg overflow-hidden">
       <!-- Tabs Header -->
-      <div class="h-14 border-b border-panelborder px-6 flex items-center justify-between bg-panel/30 shrink-0">
-        <div class="flex items-center gap-1">
-          <button onclick="switchTab('singularity')" id="tab-btn-singularity" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition border-b-2 border-dangerrose text-white flex items-center gap-1.5">
-            <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-dangerrose"></i>
+      <div class="h-16 border-b border-panelborder px-6 flex items-center justify-between bg-panel/30 shrink-0">
+        <div class="flex items-center gap-1.5">
+          <button onclick="switchTab('singularity')" id="tab-btn-singularity" class="px-3.5 py-2 rounded-lg text-xs md:text-sm font-semibold transition border-b-2 border-dangerrose text-white flex items-center gap-2">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-dangerrose"></i>
             <span>GST Singularity Radar</span>
           </button>
-          <button onclick="switchTab('graph')" id="tab-btn-graph" class="px-3.5 py-1.5 rounded-lg text-xs font-medium transition text-slate-400 hover:text-white flex items-center gap-1.5">
-            <i data-lucide="git-fork" class="w-3.5 h-3.5"></i>
+          <button onclick="switchTab('graph')" id="tab-btn-graph" class="px-3.5 py-2 rounded-lg text-xs md:text-sm font-medium transition text-slate-400 hover:text-white flex items-center gap-2">
+            <i data-lucide="git-fork" class="w-4 h-4"></i>
             <span>Causal Spacetime Graph</span>
           </button>
-          <button onclick="switchTab('wormhole')" id="tab-btn-wormhole" class="px-3.5 py-1.5 rounded-lg text-xs font-medium transition text-slate-400 hover:text-white flex items-center gap-1.5">
-            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-accentcyan"></i>
+          <button onclick="switchTab('wormhole')" id="tab-btn-wormhole" class="px-3.5 py-2 rounded-lg text-xs md:text-sm font-medium transition text-slate-400 hover:text-white flex items-center gap-2">
+            <i data-lucide="sparkles" class="w-4 h-4 text-accentcyan"></i>
             <span>Liquidity Wormhole Forger</span>
           </button>
-          <button onclick="switchTab('trajectory')" id="tab-btn-trajectory" class="px-3.5 py-1.5 rounded-lg text-xs font-medium transition text-slate-400 hover:text-white flex items-center gap-1.5">
-            <i data-lucide="trending-up" class="w-3.5 h-3.5 text-brand-500"></i>
+          <button onclick="switchTab('trajectory')" id="tab-btn-trajectory" class="px-3.5 py-2 rounded-lg text-xs md:text-sm font-medium transition text-slate-400 hover:text-white flex items-center gap-2">
+            <i data-lucide="trending-up" class="w-4 h-4 text-brand-500"></i>
             <span>What-If Trajectory</span>
           </button>
         </div>
-        <div class="text-[11px] mono text-slate-400 flex items-center gap-1">
-          <i data-lucide="clock" class="w-3 h-3 text-slate-500"></i>
+        <div class="text-xs mono text-slate-400 flex items-center gap-1.5 font-medium">
+          <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-500"></i>
           <span>Sim Date: 16 Nov 2026</span>
         </div>
       </div>
@@ -292,52 +312,54 @@
         <!-- TAB 1: GST SINGULARITY RADAR -->
         <div id="tab-content-singularity" class="space-y-6">
           <!-- Singularity Alert Card -->
-          <div id="singularity-card" class="p-5 rounded-2xl glass singularity-glow border border-dangerrose/30 bg-dangerrose/5 relative overflow-hidden">
+          <div id="singularity-card" class="p-6 rounded-2xl glass singularity-glow border border-dangerrose/30 bg-dangerrose/5 relative overflow-hidden">
             <div class="absolute -right-8 -top-8 w-32 h-32 bg-dangerrose/10 rounded-full blur-2xl pointer-events-none"></div>
             <div class="flex items-start justify-between">
               <div>
-                <div class="flex items-center gap-2">
-                  <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-dangerrose/20 text-dangerrose border border-dangerrose/30" id="singularity-severity-badge">CRITICAL BLACK HOLE</span>
-                  <span class="text-xs text-slate-400">Event Horizon in <span class="text-white font-bold mono" id="singularity-days-left">4 Days</span> (20 Nov 2026)</span>
+                <div class="flex items-center gap-2.5">
+                  <span class="px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-dangerrose/20 text-dangerrose border border-dangerrose/30" id="singularity-severity-badge">CRITICAL BLACK HOLE</span>
+                  <span class="text-xs md:text-sm text-slate-400 font-medium">Event Horizon in <span class="text-white font-bold mono" id="singularity-days-left">4 Days</span> (20 Nov 2026)</span>
                 </div>
-                <h3 class="text-lg font-bold text-white mt-1">GST Accrual Singularity Detected</h3>
-                <p class="text-xs text-slate-300 mt-1 max-w-xl">
-                  Accrual law mandates paying tax on issued invoices even though buyers haven't paid. The sovereign tax deadline will drain liquid reserves below zero!
+                <!-- Section Headings: 20px desktop, 18px mobile, Semi-bold 600 / Bold 700 -->
+                <h3 class="text-lg md:text-xl font-bold text-white tracking-tight mt-1.5 leading-snug">GST Accrual Singularity Detected</h3>
+                <p class="text-xs md:text-sm text-slate-300 font-normal mt-1 max-w-xl leading-relaxed">
+                  Section 39 CGST Act mandates paying tax on issued invoices even though buyers haven't paid. The sovereign tax deadline will drain liquid bank reserves below zero!
                 </p>
               </div>
               <div class="text-right">
-                <span class="text-[10px] text-slate-400 uppercase tracking-wider">Deficit at Horizon</span>
-                <div class="text-2xl font-black text-dangerrose mono" id="singularity-depth-display">₹1,52,915.00</div>
+                <span class="text-xs text-slate-400 font-medium uppercase tracking-wider block mb-1">Deficit at Horizon</span>
+                <!-- Large Key Numbers: 36-48px desktop, 32-40px mobile, Bold 700, line-height 1.1 -->
+                <div class="text-3xl md:text-4xl font-bold text-dangerrose mono tracking-tighter leading-none" id="singularity-depth-display">₹1,52,915.00</div>
               </div>
             </div>
 
             <!-- Accrual Trap Breakdown Grid -->
-            <div class="grid grid-cols-4 gap-3 mt-5 pt-4 border-t border-panelborder text-xs">
-              <div class="p-3 rounded-xl bg-panel/70 border border-panelborder">
-                <span class="text-slate-400 block text-[10px] uppercase">Net GST Cash Due (20th)</span>
-                <span class="text-white font-bold mono text-sm" id="stat-net-gst">₹2,84,915.00</span>
+            <div class="grid grid-cols-4 gap-3.5 mt-5 pt-4 border-t border-panelborder text-xs">
+              <div class="p-3.5 rounded-xl bg-panel/70 border border-panelborder">
+                <span class="text-slate-400 block text-[11px] md:text-xs font-medium uppercase tracking-wider">Net GST Cash Due (20th)</span>
+                <span class="text-white font-bold mono text-base md:text-lg block mt-0.5" id="stat-net-gst">₹2,84,915.00</span>
               </div>
-              <div class="p-3 rounded-xl bg-panel/70 border border-dangerrose/20">
-                <span class="text-dangerrose block text-[10px] uppercase font-semibold">GST on Unpaid Bills (Trap)</span>
-                <span class="text-dangerrose font-bold mono text-sm" id="stat-unpaid-gst">₹3,69,915.00</span>
+              <div class="p-3.5 rounded-xl bg-panel/70 border border-dangerrose/30">
+                <span class="text-dangerrose block text-[11px] md:text-xs font-semibold uppercase tracking-wider">GST on Unpaid Bills (Trap)</span>
+                <span class="text-dangerrose font-bold mono text-base md:text-lg block mt-0.5" id="stat-unpaid-gst">₹3,69,915.00</span>
               </div>
-              <div class="p-3 rounded-xl bg-panel/70 border border-panelborder">
-                <span class="text-slate-400 block text-[10px] uppercase">Available Bank Cash</span>
-                <span class="text-white font-bold mono text-sm" id="stat-bank-cash">₹1,85,000.00</span>
+              <div class="p-3.5 rounded-xl bg-panel/70 border border-panelborder">
+                <span class="text-slate-400 block text-[11px] md:text-xs font-medium uppercase tracking-wider">Available Bank Cash</span>
+                <span class="text-white font-bold mono text-base md:text-lg block mt-0.5" id="stat-bank-cash">₹1,85,000.00</span>
               </div>
-              <div class="p-3 rounded-xl bg-panel/70 border border-panelborder">
-                <span class="text-slate-400 block text-[10px] uppercase">Tax Vault Reserved</span>
-                <span class="text-accentcyan font-bold mono text-sm" id="stat-tax-vault">₹35,000.00</span>
+              <div class="p-3.5 rounded-xl bg-panel/70 border border-panelborder">
+                <span class="text-slate-400 block text-[11px] md:text-xs font-medium uppercase tracking-wider">Tax Vault Reserved</span>
+                <span class="text-accentcyan font-bold mono text-base md:text-lg block mt-0.5" id="stat-tax-vault">₹35,000.00</span>
               </div>
             </div>
 
             <!-- Causal Propagation Chain -->
-            <div class="mt-4 p-3 rounded-xl bg-black/40 border border-panelborder text-xs">
-              <span class="font-semibold text-slate-300 block mb-1.5 flex items-center gap-1.5">
-                <i data-lucide="git-commit" class="w-3.5 h-3.5 text-accentcyan"></i>
-                <span>Causal Propagation Pathway</span>
+            <div class="mt-4 p-4 rounded-xl bg-black/50 border border-panelborder text-xs md:text-sm">
+              <span class="font-semibold text-slate-200 block mb-2 flex items-center gap-2">
+                <i data-lucide="git-commit" class="w-4 h-4 text-accentcyan"></i>
+                <span class="text-xs md:text-sm uppercase tracking-wide">Causal Propagation Pathway</span>
               </span>
-              <ul class="space-y-1 text-slate-400 text-[11px]" id="singularity-causal-list">
+              <ul class="space-y-1.5 text-slate-300 text-xs md:text-sm font-normal leading-relaxed" id="singularity-causal-list">
                 <li>• Invoice BST/2026/1042 (₹14.75L) issued to Reliance with ₹2.25L GST accrued</li>
                 <li>• Reliance payment cycle is 35 days; cash will not land until Dec 21</li>
                 <li>• On Nov 20th GSTR-3B filing, bank balance drops below zero, triggering statutory freeze</li>
@@ -347,53 +369,56 @@
 
           <!-- Organism Macroscopic Physics Vitals -->
           <div class="grid grid-cols-3 gap-4">
-            <div class="p-4 rounded-xl glass border border-panelborder">
-              <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+            <div class="p-5 rounded-xl glass border border-panelborder">
+              <div class="flex items-center justify-between text-xs md:text-sm font-medium text-slate-400 mb-2">
                 <span>Fluid Viscosity Index</span>
                 <i data-lucide="droplet" class="w-4 h-4 text-warningamber"></i>
               </div>
-              <div class="text-xl font-bold mono text-warningamber" id="stat-viscosity">3.85</div>
-              <p class="text-[10px] text-slate-500 mt-1">1.0 = Laminar, 3.0+ = Sluggish receivable delay</p>
+              <!-- Large Key Number: 36-48px Desktop, Bold 700 -->
+              <div class="text-3xl md:text-4xl font-bold mono tracking-tighter text-warningamber leading-none" id="stat-viscosity">3.85</div>
+              <p class="text-xs text-slate-400 font-normal mt-2 leading-relaxed">1.0 = Laminar, 3.0+ = Sluggish receivable delay</p>
             </div>
 
-            <div class="p-4 rounded-xl glass border border-panelborder">
-              <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+            <div class="p-5 rounded-xl glass border border-panelborder">
+              <div class="flex items-center justify-between text-xs md:text-sm font-medium text-slate-400 mb-2">
                 <span>Tax Gravity Force</span>
                 <i data-lucide="anchor" class="w-4 h-4 text-accentpurple"></i>
               </div>
-              <div class="text-xl font-bold mono text-accentpurple" id="stat-gravity">₹62,478 / day</div>
-              <p class="text-[10px] text-slate-500 mt-1">Downward pull toward 20th Nov statutory cut-off</p>
+              <!-- Medium/Large Numbers -->
+              <div class="text-2xl md:text-3xl font-bold mono tracking-tighter text-accentpurple leading-none" id="stat-gravity">₹62,478 / day</div>
+              <p class="text-xs text-slate-400 font-normal mt-2 leading-relaxed">Downward pull toward 20th Nov statutory cut-off</p>
             </div>
 
-            <div class="p-4 rounded-xl glass border border-panelborder">
-              <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+            <div class="p-5 rounded-xl glass border border-panelborder">
+              <div class="flex items-center justify-between text-xs md:text-sm font-medium text-slate-400 mb-2">
                 <span>Operating Runway</span>
                 <i data-lucide="clock" class="w-4 h-4 text-brand-500"></i>
               </div>
-              <div class="text-xl font-bold mono text-brand-500" id="stat-runway">11.4 Days</div>
-              <p class="text-[10px] text-slate-500 mt-1">Conformal 90% Bound: [8.2 - 15.4 days]</p>
+              <!-- Large Key Number: 36-48px Desktop, Bold 700 -->
+              <div class="text-3xl md:text-4xl font-bold mono tracking-tighter text-brand-500 leading-none" id="stat-runway">11.4 Days</div>
+              <p class="text-xs text-slate-400 font-normal mt-2 leading-relaxed">Conformal 90% Bound: [8.2 - 15.4 days]</p>
             </div>
           </div>
 
           <!-- Pending Invoices Breakdown Table -->
-          <div class="p-4 rounded-xl glass border border-panelborder">
-            <div class="flex items-center justify-between mb-3">
-              <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Unsettled Receivables & Accrual Matrix</h4>
-              <span class="text-[11px] text-slate-400 mono">Total Pending: <span id="stat-total-receivables" class="text-white font-bold">₹28,45,000.00</span></span>
+          <div class="p-5 rounded-xl glass border border-panelborder">
+            <div class="flex items-center justify-between mb-3.5">
+              <h4 class="text-xs md:text-sm font-bold text-slate-200 uppercase tracking-wider">Unsettled Receivables & Accrual Matrix</h4>
+              <span class="text-xs md:text-sm text-slate-400 mono">Total Pending: <span id="stat-total-receivables" class="text-white font-bold">₹28,45,000.00</span></span>
             </div>
             <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs">
+              <table class="w-full text-left text-xs md:text-sm">
                 <thead>
-                  <tr class="text-slate-400 border-b border-panelborder">
-                    <th class="pb-2 font-medium">Invoice #</th>
-                    <th class="pb-2 font-medium">Customer</th>
-                    <th class="pb-2 font-medium">Total (₹)</th>
-                    <th class="pb-2 font-medium">GST Accrued</th>
-                    <th class="pb-2 font-medium">Delay Pred</th>
-                    <th class="pb-2 font-medium">Status</th>
+                  <tr class="text-slate-400 border-b border-panelborder font-medium text-xs uppercase tracking-wider">
+                    <th class="pb-2.5">Invoice #</th>
+                    <th class="pb-2.5">Customer</th>
+                    <th class="pb-2.5">Total (₹)</th>
+                    <th class="pb-2.5">GST Accrued</th>
+                    <th class="pb-2.5">Delay Pred</th>
+                    <th class="pb-2.5">Status</th>
                   </tr>
                 </thead>
-                <tbody id="invoices-table-body" class="divide-y divide-panelborder/50 text-slate-300">
+                <tbody id="invoices-table-body" class="divide-y divide-panelborder/50 text-slate-300 font-normal">
                   <!-- Injected dynamically -->
                 </tbody>
               </table>
@@ -405,8 +430,8 @@
         <div id="tab-content-graph" class="hidden space-y-4">
           <div class="p-4 rounded-xl glass border border-panelborder flex items-center justify-between">
             <div>
-              <h4 class="text-sm font-bold text-white">Dynamic Causal Spacetime Substrate</h4>
-              <p class="text-xs text-slate-400">Interactive live topological view of RupeePackets, Invoices, Customer delays, and Tax Gravity wells.</p>
+              <h4 class="text-base md:text-lg font-bold text-white tracking-tight">Dynamic Causal Spacetime Substrate</h4>
+              <p class="text-xs md:text-sm text-slate-400 font-normal">Interactive live topological view of RupeePackets, Invoices, Customer delays, and Tax Gravity wells.</p>
             </div>
             <span class="px-2.5 py-1 rounded-full bg-accentcyan/10 border border-accentcyan/30 text-accentcyan text-[11px] mono">
               Strict Conservation: ₹30.65 Lakhs
@@ -493,15 +518,16 @@
         </div>
 
         <!-- TAB 4: WHAT-IF COUNTERFACTUAL TRAJECTORY -->
-        <div id="tab-content-trajectory" class="hidden space-y-6">
-          <div class="p-5 rounded-2xl glass border border-panelborder">
+        <div id="tab-content-trajectory" class="space-y-6">
+          <div class="p-6 rounded-2xl glass border border-panelborder">
             <div class="flex items-center justify-between mb-4">
               <div>
-                <h4 class="text-base font-bold text-white">Pearlian Counterfactual Forward Simulator</h4>
-                <p class="text-xs text-slate-400">Monte-Carlo cash trajectory: Status Quo (Inaction) vs Liquidity Wormhole (do-calculus intervention).</p>
+                <!-- Section Headings: 20px desktop, 18px mobile, Semi-bold 600 / Bold 700 -->
+                <h4 class="text-lg md:text-xl font-bold text-white tracking-tight leading-snug">Pearlian Counterfactual Forward Simulator</h4>
+                <p class="text-xs md:text-sm text-slate-400 font-normal mt-0.5">Monte-Carlo cash trajectory: Status Quo (Inaction) vs Liquidity Wormhole (do-calculus intervention).</p>
               </div>
-              <button onclick="refreshTrajectory()" class="px-3 py-1.5 rounded-lg bg-panel border border-panelborder text-xs text-slate-300 hover:text-white flex items-center gap-1.5 transition">
-                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+              <button onclick="refreshTrajectory()" class="px-4 py-2 rounded-xl bg-panel border border-panelborder text-xs md:text-sm text-slate-200 hover:text-white font-medium flex items-center gap-2 transition hover:border-slate-500">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                 <span>Re-simulate 100 Runs</span>
               </button>
             </div>
@@ -511,14 +537,14 @@
               <canvas id="trajectoryChart"></canvas>
             </div>
 
-            <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-panelborder text-xs">
-              <div class="p-3 rounded-xl bg-dangerrose/10 border border-dangerrose/30">
-                <span class="font-bold text-dangerrose block">Path A: Status Quo (Inaction)</span>
-                <p class="text-slate-300 mt-1">Cash plunges to -₹1.53 Lakhs on 20th Nov. GST E-way bills blocked. Bank accounts frozen under Garnishee order.</p>
+            <div class="grid grid-cols-2 gap-4 mt-5 pt-4 border-t border-panelborder text-xs md:text-sm">
+              <div class="p-4 rounded-xl bg-dangerrose/10 border border-dangerrose/30">
+                <span class="font-semibold text-dangerrose block text-sm md:text-base mb-1">Path A: Status Quo (Inaction)</span>
+                <p class="text-slate-300 font-normal leading-relaxed">Liquid cash plunges to -₹1.53 Lakhs on 20th Nov. GST E-way bills blocked. Bank accounts frozen under Garnishee statutory order.</p>
               </div>
-              <div class="p-3 rounded-xl bg-brand-500/10 border border-brand-500/30">
-                <span class="font-bold text-brand-500 block">Path B: do(Liquidity Wormhole)</span>
-                <p class="text-slate-300 mt-1">Cash remains buoyant at +₹13.06 Lakhs. GST fully covered by Tax Vault. Runway extends to 40+ days.</p>
+              <div class="p-4 rounded-xl bg-brand-500/10 border border-brand-500/30">
+                <span class="font-semibold text-brand-500 block text-sm md:text-base mb-1">Path B: do(Liquidity Wormhole)</span>
+                <p class="text-slate-300 font-normal leading-relaxed">Cash remains buoyant at +₹13.06 Lakhs. Statutory GST fully covered by Tax Vault. Operating runway safely extends to 40+ days.</p>
               </div>
             </div>
           </div>
@@ -528,6 +554,19 @@
     </section>
 
   </main>
+
+  <!-- FOOTER / STATUTORY DISCLAIMER (Typography Guide: 12px desktop, 11px mobile, Regular 400, muted color) -->
+  <footer class="h-9 border-t border-panelborder bg-darkbg/95 px-6 flex items-center justify-between text-xs text-slate-500 shrink-0 font-normal">
+    <div class="flex items-center gap-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
+      <span class="text-slate-400 font-medium">AetherPravah Causal Financial Organism</span>
+      <span class="text-slate-600">•</span>
+      <span>Active Spacetime Graph Engine</span>
+    </div>
+    <div class="text-[11px] md:text-xs text-slate-500">
+      Paper-trading simulation sandbox • Strict rupee conservation active • Not statutory financial advice
+    </div>
+  </footer>
 
   <!-- JAVASCRIPT APPLICATION LOGIC -->
   <script>
@@ -720,70 +759,72 @@
         <div class="space-y-4">
           <!-- Pareto Candidate Selector Tabs -->
           ${wormholeCandidates.length > 1 && !isExecuted ? `
-            <div class="p-2 rounded-xl bg-panel/70 border border-panelborder flex items-center gap-2 overflow-x-auto text-xs">
-              <span class="text-slate-400 font-semibold uppercase tracking-wider text-[10px] pl-1 shrink-0">Pareto Strategies:</span>
+            <div class="p-2.5 rounded-xl bg-panel/70 border border-panelborder flex items-center gap-2 overflow-x-auto text-xs md:text-sm">
+              <span class="text-slate-400 font-semibold uppercase tracking-wider text-xs pl-1 shrink-0">Pareto Strategies:</span>
               ${wormholeCandidates.map((c, idx) => `
-                <button onclick="selectWormholeCandidate(${idx})" class="px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 shrink-0 ${idx === selectedCandidateIndex ? 'bg-accentcyan text-black font-bold shadow-md shadow-accentcyan/30' : 'bg-panel border border-panelborder text-slate-300 hover:text-white'}">
+                <button onclick="selectWormholeCandidate(${idx})" class="px-3.5 py-2 rounded-lg font-medium transition flex items-center gap-1.5 shrink-0 ${idx === selectedCandidateIndex ? 'bg-accentcyan text-black font-bold shadow-md shadow-accentcyan/30' : 'bg-panel border border-panelborder text-slate-300 hover:text-white'}">
                   <span>${c.title.includes(':') ? c.title.split(':')[1].trim() : c.title}</span>
                 </button>
               `).join('')}
             </div>
           ` : ''}
 
-          <div class="p-5 rounded-2xl glass wormhole-glow border border-accentcyan/40 bg-accentcyan/5 space-y-4">
+          <div class="p-6 rounded-2xl glass wormhole-glow border border-accentcyan/40 bg-accentcyan/5 space-y-5">
             <div class="flex items-start justify-between">
               <div>
-                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${isExecuted ? 'bg-brand-500/20 text-brand-500 border border-brand-500/30' : 'bg-accentcyan/20 text-accentcyan border border-accentcyan/30'}">
+                <span class="px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${isExecuted ? 'bg-brand-500/20 text-brand-500 border border-brand-500/30' : 'bg-accentcyan/20 text-accentcyan border border-accentcyan/30'}">
                   ${isExecuted ? 'EXECUTED' : w.status}
                 </span>
-                <h3 class="text-base font-bold text-white mt-1.5">${w.title}</h3>
-                <p class="text-xs text-slate-300 mt-1 max-w-xl">${w.explanation_narrative}</p>
+                <!-- Section Headings: 20px desktop, 18px mobile, Semi-bold 600 / Bold 700 -->
+                <h3 class="text-lg md:text-xl font-bold text-white tracking-tight mt-2 leading-snug">${w.title}</h3>
+                <p class="text-xs md:text-sm text-slate-300 font-normal mt-1 max-w-xl leading-relaxed">${w.explanation_narrative}</p>
               </div>
               <div class="text-right">
-                <span class="text-[10px] text-slate-400 uppercase tracking-wider">Gross Liberated</span>
-                <div class="text-xl font-black text-accentcyan mono">₹${w.gross_liquidity_created.toLocaleString('en-IN', {minimumFractionDigits: 2})}</div>
-                <span class="text-[11px] text-slate-400">Total Net Cost: <span class="mono text-white">₹${w.total_net_cost.toLocaleString('en-IN')}</span></span>
+                <span class="text-xs text-slate-400 uppercase tracking-wider font-medium block mb-1">Gross Liberated</span>
+                <!-- Large Key Numbers: 36-48px desktop, 32-40px mobile, Bold 700 -->
+                <div class="text-3xl md:text-4xl font-bold text-accentcyan mono tracking-tighter leading-none">₹${w.gross_liquidity_created.toLocaleString('en-IN', {minimumFractionDigits: 2})}</div>
+                <span class="text-xs md:text-sm text-slate-400 font-medium block mt-1">Total Net Cost: <span class="mono text-white font-semibold">₹${w.total_net_cost.toLocaleString('en-IN')}</span></span>
               </div>
             </div>
 
             <!-- Step Breakdown -->
-            <div class="space-y-2 pt-2 border-t border-panelborder">
-              <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Synthesized Vector Steps:</h4>
+            <div class="space-y-2.5 pt-3 border-t border-panelborder">
+              <h4 class="text-xs md:text-sm font-bold text-slate-200 uppercase tracking-wider">Synthesized Vector Steps:</h4>
               ${w.steps.map(step => `
-                <div class="p-3 rounded-xl bg-panel/70 border border-panelborder flex items-center justify-between text-xs">
-                  <div class="flex items-center gap-3">
-                    <span class="w-6 h-6 rounded-lg bg-accentcyan/20 text-accentcyan font-bold mono flex items-center justify-center text-xs">
+                <div class="p-3.5 rounded-xl bg-panel/70 border border-panelborder flex items-center justify-between text-xs md:text-sm">
+                  <div class="flex items-center gap-3.5">
+                    <span class="w-7 h-7 rounded-lg bg-accentcyan/20 text-accentcyan font-bold mono flex items-center justify-center text-xs shrink-0">
                       ${step.step_number}
                     </span>
                     <div>
-                      <span class="font-bold text-white">${step.action_type.replace(/_/g, ' ')}</span>
-                      <span class="text-slate-400 block text-[11px]">${step.causal_mechanism}</span>
+                      <span class="font-semibold text-white text-sm md:text-base">${step.action_type.replace(/_/g, ' ')}</span>
+                      <span class="text-slate-400 block text-xs md:text-sm font-normal mt-0.5 leading-relaxed">${step.causal_mechanism}</span>
                     </div>
                   </div>
-                  <div class="text-right shrink-0">
-                    <span class="font-bold mono text-brand-500 block">+₹${step.amount_unlocked.toLocaleString('en-IN')}</span>
-                    <span class="text-[10px] text-slate-400">${step.implementation_time_hours}h SLA</span>
+                  <div class="text-right shrink-0 ml-4">
+                    <span class="font-bold mono text-brand-500 block text-sm md:text-base">+₹${step.amount_unlocked.toLocaleString('en-IN')}</span>
+                    <span class="text-xs text-slate-400 font-medium">${step.implementation_time_hours}h SLA</span>
                   </div>
                 </div>
               `).join('')}
             </div>
 
             <!-- Supreme Court Formal Clearance & Action Button -->
-            <div class="p-4 rounded-xl bg-brand-500/10 border border-brand-500/30 flex items-center justify-between">
-              <div class="flex items-center gap-3">
+            <div class="p-5 rounded-xl bg-brand-500/10 border border-brand-500/30 flex items-center justify-between">
+              <div class="flex items-center gap-3.5">
                 <i data-lucide="award" class="w-8 h-8 text-brand-500 shrink-0"></i>
                 <div>
-                  <span class="text-xs font-bold text-brand-500 uppercase tracking-wide">Constitutional Supreme Court Clearance</span>
-                  <p class="text-[11px] text-slate-300">Passed symbolic math check • Protects 21-day minimum runway • Paper-trading sandbox</p>
+                  <span class="text-xs md:text-sm font-bold text-brand-500 uppercase tracking-wide">Constitutional Supreme Court Clearance</span>
+                  <p class="text-xs md:text-[13px] text-slate-300 font-normal mt-0.5">Passed symbolic math check • Protects 21-day minimum runway • Paper-trading sandbox</p>
                 </div>
               </div>
               ${!isExecuted ? `
-                <button onclick="activateWormhole()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-accentcyan to-brand-600 hover:from-accentcyan/90 hover:to-brand-500 text-white font-bold text-xs shadow-lg shadow-accentcyan/20 transition flex items-center gap-1.5 shrink-0">
+                <button onclick="activateWormhole()" class="px-6 py-3 rounded-xl bg-gradient-to-r from-accentcyan to-brand-600 hover:from-accentcyan/90 hover:to-brand-500 text-white font-semibold text-sm md:text-base shadow-lg shadow-accentcyan/20 transition flex items-center gap-2 shrink-0">
                   <i data-lucide="zap" class="w-4 h-4"></i>
                   <span>Authorize & Execute Wormhole</span>
                 </button>
               ` : `
-                <span class="px-3 py-1.5 rounded-xl bg-brand-500/20 text-brand-500 font-bold text-xs flex items-center gap-1">
+                <span class="px-4 py-2 rounded-xl bg-brand-500/20 text-brand-500 font-bold text-xs md:text-sm flex items-center gap-1.5">
                   <i data-lucide="check" class="w-4 h-4"></i>
                   <span>Executed Successfully</span>
                 </span>
@@ -794,18 +835,16 @@
       `;
       lucide.createIcons();
     }
-      lucide.createIcons();
-    }
 
     // Switch Tabs
     function switchTab(tabId) {
       ['singularity', 'graph', 'wormhole', 'trajectory'].forEach(t => {
         document.getElementById(`tab-content-${t}`).classList.add('hidden');
-        document.getElementById(`tab-btn-${t}`).className = "px-3.5 py-1.5 rounded-lg text-xs font-medium transition text-slate-400 hover:text-white flex items-center gap-1.5";
+        document.getElementById(`tab-btn-${t}`).className = "px-3.5 py-2 rounded-lg text-xs md:text-sm font-medium transition text-slate-400 hover:text-white flex items-center gap-2";
       });
       document.getElementById(`tab-content-${tabId}`).classList.remove('hidden');
       const activeBtn = document.getElementById(`tab-btn-${tabId}`);
-      activeBtn.className = "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition border-b-2 border-accentcyan text-white flex items-center gap-1.5";
+      activeBtn.className = "px-3.5 py-2 rounded-lg text-xs md:text-sm font-semibold transition border-b-2 border-accentcyan text-white flex items-center gap-2";
       if (tabId === 'trajectory') {
         renderTrajectoryChart();
       }
@@ -853,18 +892,18 @@
             maintainAspectRatio: false,
             plugins: {
               legend: {
-                labels: { color: '#94a3b8', font: { family: 'Plus Jakarta Sans', size: 11 } }
+                labels: { color: '#94a3b8', font: { family: 'Inter', size: 12, weight: 500 } }
               }
             },
             scales: {
               x: {
-                ticks: { color: '#64748b', maxTicksLimit: 12, font: { size: 10 } },
+                ticks: { color: '#64748b', maxTicksLimit: 12, font: { family: 'Inter', size: 11 } },
                 grid: { color: 'rgba(255, 255, 255, 0.05)' }
               },
               y: {
                 ticks: {
                   color: '#64748b',
-                  font: { size: 10 },
+                  font: { family: 'JetBrains Mono', size: 11 },
                   callback: val => `₹${(val / 100000).toFixed(1)}L`
                 },
                 grid: { color: 'rgba(255, 255, 255, 0.05)' }
@@ -881,36 +920,37 @@
       renderTrajectoryChart();
     }
 
-    // System Greeting message
+    // System Greeting message (Typography Guide: 16px Regular, line-height 1.65)
     function addSystemGreeting(state, singularity) {
       const container = document.getElementById('chat-messages');
       const msgDiv = document.createElement('div');
-      msgDiv.className = "flex gap-3 text-xs";
+      msgDiv.className = "flex gap-3 text-sm md:text-base";
       msgDiv.innerHTML = `
-        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-brand-600 to-accentcyan flex items-center justify-center font-bold text-white shrink-0 shadow">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-brand-600 to-accentcyan flex items-center justify-center font-bold text-white text-xs shrink-0 shadow mt-0.5">
           AP
         </div>
-        <div class="max-w-[90%] chat-bubble-ai p-4 rounded-2xl space-y-3">
-          <div class="flex items-center justify-between border-b border-panelborder/60 pb-2">
-            <span class="font-bold text-white text-xs">AetherPravah AI Organism</span>
-            <span class="text-[10px] text-slate-500">${getCurrentTimeString()}</span>
+        <div class="max-w-[92%] chat-bubble-ai p-5 rounded-2xl space-y-3.5">
+          <div class="flex items-center justify-between border-b border-panelborder/60 pb-2.5">
+            <span class="font-bold text-white text-sm md:text-[15px] tracking-tight">AetherPravah AI Organism</span>
+            <span class="text-xs text-slate-400 font-medium">${getCurrentTimeString()}</span>
           </div>
-          <p class="text-xs text-slate-200 leading-relaxed">
-            Hello! I am actively tracking all <strong>₹${(state.physics_state.total_rupees_conserved / 100000).toFixed(2)} Lakhs</strong> across <strong>${state.business.name}</strong> in real time with zero mathematical leakage.
-            While your business operations are profitable, an acute <strong>GSTR-3B GST Accrual Singularity</strong> converges on Nov 20th. Unpaid customer bills hold ₹${(state.gst_snapshot.gst_on_unpaid_invoices / 1000).toFixed(0)}k in accrued GST liability that must be settled in cash.
+          <!-- Chat AI Messages (body): 16px, Regular 400, Line height 1.65 -->
+          <p class="text-base text-slate-200 font-normal leading-[1.65]">
+            Hello! I am actively tracking all <strong class="text-white font-semibold">₹${(state.physics_state.total_rupees_conserved / 100000).toFixed(2)} Lakhs</strong> across <strong class="text-white font-semibold">${state.business.name}</strong> in real time with zero mathematical leakage.
+            While your business operations are profitable, an acute <strong class="text-dangerrose font-semibold">GSTR-3B GST Accrual Singularity</strong> converges on Nov 20th. Unpaid customer bills hold ₹${(state.gst_snapshot.gst_on_unpaid_invoices / 1000).toFixed(0)}k in accrued GST liability that must be settled in cash.
           </p>
-          <div class="p-2.5 rounded-xl bg-dangerrose/10 border border-dangerrose/30 text-xs text-dangerrose font-medium">
+          <div class="p-3.5 rounded-xl bg-dangerrose/10 border border-dangerrose/30 text-sm md:text-[15px] text-dangerrose font-medium leading-relaxed">
             ⚠️ <strong>Singularity Warning:</strong> ₹${singularity.singularity_depth.toLocaleString('en-IN', {minimumFractionDigits: 2})} cash deficit in ${singularity.days_to_event_horizon} days.
           </div>
-          <!-- Interactive Quick Followup Chips -->
-          <div class="flex flex-wrap gap-1.5 pt-1">
-            <button onclick="sendQuickMessage('Who owes me the most money?')" class="px-2.5 py-1 rounded-lg bg-panel hover:bg-slate-800 text-[11px] text-accentcyan border border-panelborder hover:border-accentcyan transition">
+          <!-- Interactive Quick Followup Chips: 14-15px Medium 500 -->
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button onclick="sendQuickMessage('Who owes me the most money?')" class="px-3.5 py-1.5 rounded-full bg-panel hover:bg-slate-800 text-xs md:text-sm font-medium text-accentcyan border border-panelborder hover:border-accentcyan transition">
               📊 Who owes me money?
             </button>
-            <button onclick="sendQuickMessage('Can I afford a new machine of 5 lakhs?')" class="px-2.5 py-1 rounded-lg bg-panel hover:bg-slate-800 text-[11px] text-warningamber border border-panelborder hover:border-warningamber transition">
+            <button onclick="sendQuickMessage('Can I afford a new machine of 5 lakhs?')" class="px-3.5 py-1.5 rounded-full bg-panel hover:bg-slate-800 text-xs md:text-sm font-medium text-warningamber border border-panelborder hover:border-warningamber transition">
               🛑 Can I spend 5 Lakhs?
             </button>
-            <button onclick="sendQuickMessage('How is my money?')" class="px-2.5 py-1 rounded-lg bg-panel hover:bg-slate-800 text-[11px] text-brand-400 border border-panelborder hover:border-brand-400 transition">
+            <button onclick="sendQuickMessage('How is my money?')" class="px-3.5 py-1.5 rounded-full bg-panel hover:bg-slate-800 text-xs md:text-sm font-medium text-brand-400 border border-panelborder hover:border-brand-400 transition">
               🩺 Full Health Check
             </button>
           </div>
@@ -921,52 +961,53 @@
       lucide.createIcons();
     }
 
-    // Phone / AI App Style Chat Rendering
+    // Phone / AI App Style Chat Rendering (Typography Guide: 16px Regular, line-height 1.65)
     function addChatMessage(role, content) {
       const container = document.getElementById('chat-messages');
       const msgDiv = document.createElement('div');
 
       if (role === 'user') {
-        msgDiv.className = "flex justify-end items-end gap-2 text-xs";
+        msgDiv.className = "flex justify-end items-end gap-2";
         msgDiv.innerHTML = `
           <div class="flex flex-col items-end max-w-[82%]">
-            <div class="chat-bubble-user text-white p-3.5 rounded-2xl rounded-br-sm leading-relaxed shadow-md text-xs">
+            <!-- User Chat Messages: 16px, Regular 400 -->
+            <div class="chat-bubble-user text-white p-4 rounded-2xl rounded-br-sm text-base font-normal leading-relaxed shadow-md">
               ${content}
             </div>
-            <span class="text-[10px] text-slate-500 mt-1 mr-1">${getCurrentTimeString()}</span>
+            <span class="text-xs text-slate-400 mt-1 mr-1 font-normal">${getCurrentTimeString()}</span>
           </div>
         `;
       } else {
         // AI Phone App Message Bubble
         const cardId = 'details-' + Math.random().toString(36).substring(2, 9);
-        msgDiv.className = "flex items-start gap-3 text-xs";
+        msgDiv.className = "flex items-start gap-3";
         msgDiv.innerHTML = `
-          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-brand-600 to-accentcyan flex items-center justify-center font-bold text-white shrink-0 shadow mt-0.5">
+          <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-brand-600 to-accentcyan flex items-center justify-center font-bold text-white text-xs shrink-0 shadow mt-0.5">
             AP
           </div>
-          <div class="max-w-[90%] chat-bubble-ai p-4 rounded-2xl rounded-tl-sm space-y-3">
-            <div class="flex items-center justify-between border-b border-panelborder/60 pb-2">
-              <div class="flex items-center gap-1.5">
-                <span class="font-bold text-white text-xs">AetherPravah AI</span>
-                <span class="px-1.5 py-0.2 rounded bg-brand-500/10 text-brand-400 text-[10px] font-bold mono">94% Confidence</span>
+          <div class="max-w-[92%] chat-bubble-ai p-5 rounded-2xl rounded-tl-sm space-y-3.5">
+            <div class="flex items-center justify-between border-b border-panelborder/60 pb-2.5">
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-white text-sm md:text-[15px] tracking-tight">AetherPravah AI</span>
+                <span class="px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 text-xs font-semibold mono">94% Confidence</span>
               </div>
-              <span class="text-[10px] text-slate-500">${getCurrentTimeString()}</span>
+              <span class="text-xs text-slate-400 font-medium">${getCurrentTimeString()}</span>
             </div>
 
-            <!-- Plain Language Conversational Body (Markdown parsed) -->
-            <div class="text-slate-200 leading-relaxed text-xs">
+            <!-- Plain Language Conversational Body (Markdown parsed): 16px Regular 400, line-height 1.65 -->
+            <div class="text-slate-200 text-base font-normal leading-[1.65]">
               ${formatMessageText(content.plain_language_summary)}
             </div>
 
             <!-- Actionable Recommendations -->
             ${content.top_recommended_actions && content.top_recommended_actions.length > 0 ? `
-              <div class="space-y-1.5 pt-1">
-                <span class="font-bold text-slate-300 block text-[11px]">Recommended Protections:</span>
+              <div class="space-y-2 pt-1">
+                <span class="font-semibold text-slate-200 block text-xs md:text-sm uppercase tracking-wide">Recommended Protections:</span>
                 ${content.top_recommended_actions.map(act => `
-                  <div class="flex items-center justify-between p-2 rounded-xl bg-panel/70 border border-panelborder">
-                    <span class="text-slate-300 text-[11px] leading-snug">${act}</span>
+                  <div class="flex items-center justify-between p-3 rounded-xl bg-panel/80 border border-panelborder">
+                    <span class="text-slate-200 text-sm font-medium leading-relaxed">${act}</span>
                     ${act.includes('Wormhole') ? `
-                      <button onclick="activateWormhole()" class="ml-2 px-2.5 py-1 rounded-lg bg-accentcyan text-black font-bold text-[10px] shrink-0 hover:bg-white transition shadow-sm">
+                      <button onclick="activateWormhole()" class="ml-3 px-3.5 py-1.5 rounded-lg bg-accentcyan hover:bg-white text-black font-semibold text-xs md:text-sm shrink-0 transition shadow-sm">
                         Activate Now
                       </button>
                     ` : ''}
@@ -977,42 +1018,42 @@
 
             <!-- Collapsible Technical Math & Causal Chain Details -->
             <div class="pt-2 border-t border-panelborder/60">
-              <button onclick="toggleDetails('${cardId}')" class="text-[11px] font-medium text-accentcyan hover:underline flex items-center gap-1">
+              <button onclick="toggleDetails('${cardId}')" class="text-xs md:text-sm font-medium text-accentcyan hover:underline flex items-center gap-1.5">
                 <span>View Exact Financial Vitals & Counterfactual</span>
-                <i data-lucide="chevron-down" id="icon-${cardId}" class="w-3.5 h-3.5 transition-transform"></i>
+                <i data-lucide="chevron-down" id="icon-${cardId}" class="w-4 h-4 transition-transform"></i>
               </button>
 
-              <div id="${cardId}" class="hidden mt-2.5 space-y-2.5">
-                <!-- Exact Numbers -->
-                <div class="p-2.5 rounded-xl bg-black/60 border border-panelborder mono text-[11px] text-slate-300 whitespace-pre-line leading-relaxed">
+              <div id="${cardId}" class="hidden mt-3 space-y-3">
+                <!-- Exact Numbers: JetBrains Mono -->
+                <div class="p-3.5 rounded-xl bg-black/60 border border-panelborder mono text-xs md:text-sm text-slate-300 whitespace-pre-line leading-relaxed">
                   ${content.exact_numbers}
                 </div>
                 <!-- Causal Explanation -->
-                <div class="p-2.5 rounded-xl bg-accentcyan/5 border border-accentcyan/20 text-slate-300 text-[11px] leading-snug">
-                  <span class="font-bold text-accentcyan block mb-0.5">Causal Spacetime Driver:</span>
+                <div class="p-3.5 rounded-xl bg-accentcyan/5 border border-accentcyan/20 text-slate-300 text-xs md:text-sm leading-relaxed">
+                  <span class="font-semibold text-accentcyan block mb-1">Causal Spacetime Driver:</span>
                   ${content.causal_explanation}
                 </div>
                 <!-- Counterfactual Inaction Warning -->
-                <div class="p-2.5 rounded-xl bg-dangerrose/10 border border-dangerrose/30 text-dangerrose text-[11px] leading-snug">
-                  <span class="font-bold block mb-0.5">What if you ignore this? (Counterfactual)</span>
+                <div class="p-3.5 rounded-xl bg-dangerrose/10 border border-dangerrose/30 text-dangerrose text-xs md:text-sm leading-relaxed">
+                  <span class="font-semibold block mb-1">What if you ignore this? (Counterfactual)</span>
                   ${content.what_if_ignore}
                 </div>
               </div>
             </div>
 
             <!-- Smart Suggested Follow-up Chips like Phone AI Apps -->
-            <div class="flex flex-wrap gap-1.5 pt-2 border-t border-panelborder/40">
-              <span class="text-[10px] text-slate-500 w-full mb-0.5">Suggested next questions:</span>
-              <button onclick="sendQuickMessage('Who owes me the most money?')" class="px-2 py-0.5 rounded-md bg-panel hover:bg-slate-800 text-[10px] text-slate-300 border border-panelborder hover:border-slate-400 transition">
+            <div class="flex flex-wrap gap-2 pt-2.5 border-t border-panelborder/40">
+              <span class="text-xs text-slate-400 w-full mb-0.5 font-medium">Suggested next questions:</span>
+              <button onclick="sendQuickMessage('Who owes me the most money?')" class="px-3 py-1.5 rounded-lg bg-panel hover:bg-slate-800 text-xs text-slate-300 border border-panelborder hover:border-slate-400 transition font-medium">
                 Who owes me money?
               </button>
-              <button onclick="sendQuickMessage('Can I afford a 5 lakh expense?')" class="px-2 py-0.5 rounded-md bg-panel hover:bg-slate-800 text-[10px] text-slate-300 border border-panelborder hover:border-slate-400 transition">
+              <button onclick="sendQuickMessage('Can I afford a 5 lakh expense?')" class="px-3 py-1.5 rounded-lg bg-panel hover:bg-slate-800 text-xs text-slate-300 border border-panelborder hover:border-slate-400 transition font-medium">
                 Can I afford 5L?
               </button>
-              <button onclick="sendQuickMessage('What is GST accrual trap?')" class="px-2 py-0.5 rounded-md bg-panel hover:bg-slate-800 text-[10px] text-slate-300 border border-panelborder hover:border-slate-400 transition">
+              <button onclick="sendQuickMessage('What is GST accrual trap?')" class="px-3 py-1.5 rounded-lg bg-panel hover:bg-slate-800 text-xs text-slate-300 border border-panelborder hover:border-slate-400 transition font-medium">
                 Explain GST Trap
               </button>
-              <button onclick="activateWormhole()" class="px-2 py-0.5 rounded-md bg-accentcyan/10 hover:bg-accentcyan/20 text-[10px] text-accentcyan border border-accentcyan/30 transition font-medium">
+              <button onclick="activateWormhole()" class="px-3 py-1.5 rounded-lg bg-accentcyan/10 hover:bg-accentcyan/20 text-xs text-accentcyan border border-accentcyan/30 transition font-semibold">
                 ⚡ Activate Wormhole
               </button>
             </div>
