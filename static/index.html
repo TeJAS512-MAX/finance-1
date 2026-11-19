@@ -533,6 +533,30 @@
   <script>
     let currentState = null;
     let trajectoryChartInstance = null;
+    let wormholeCandidates = [];
+    let selectedCandidateIndex = 0;
+
+    async function fetchWormholeCandidates() {
+      try {
+        const res = await fetch('/api/wormholes/candidates');
+        const data = await res.json();
+        if (data && data.candidates && data.candidates.length > 0) {
+          wormholeCandidates = data.candidates;
+          if (currentState && (!currentState.active_wormholes || currentState.active_wormholes.length === 0 || currentState.active_wormholes[0].status !== 'EXECUTED')) {
+            renderWormholeTab(wormholeCandidates[selectedCandidateIndex]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load candidate wormholes:', err);
+      }
+    }
+
+    function selectWormholeCandidate(idx) {
+      selectedCandidateIndex = idx;
+      if (wormholeCandidates[idx]) {
+        renderWormholeTab(wormholeCandidates[idx]);
+      }
+    }
 
     // Helper: Simple Markdown formatting for phone-style bubble
     function formatMessageText(text) {
@@ -565,6 +589,7 @@
         const data = await res.json();
         currentState = data.state;
         updateUI(data.state, data.singularity);
+        fetchWormholeCandidates();
         if (document.getElementById('chat-messages').children.length === 0) {
           addSystemGreeting(data.state, data.singularity);
         }
@@ -579,7 +604,9 @@
         const res = await fetch(`/api/archetype/${archId}`, { method: 'POST' });
         const data = await res.json();
         currentState = data.state;
+        selectedCandidateIndex = 0;
         updateUI(data.state, data.singularity);
+        fetchWormholeCandidates();
 
         ['steel', 'garment', 'agency'].forEach(k => {
           const btn = document.getElementById(`btn-arch-${k}`);
@@ -669,7 +696,13 @@
       const container = document.getElementById('wormhole-display-container');
       if (!container) return;
 
-      if (!wormhole) {
+      const isExecuted = (currentState && currentState.active_wormholes && currentState.active_wormholes[0] && currentState.active_wormholes[0].status === 'EXECUTED');
+      
+      const activeCandidate = (!isExecuted && wormholeCandidates.length > 0)
+        ? (wormholeCandidates[selectedCandidateIndex] || wormhole)
+        : (wormhole || (currentState && currentState.active_wormholes && currentState.active_wormholes[0]));
+
+      if (!activeCandidate) {
         container.innerHTML = `
           <div class="p-8 rounded-2xl glass border border-panelborder text-center space-y-3">
             <i data-lucide="shield-check" class="w-12 h-12 text-brand-500 mx-auto"></i>
@@ -681,68 +714,86 @@
         return;
       }
 
-      container.innerHTML = `
-        <div class="p-5 rounded-2xl glass wormhole-glow border border-accentcyan/40 bg-accentcyan/5 space-y-4">
-          <div class="flex items-start justify-between">
-            <div>
-              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-accentcyan/20 text-accentcyan border border-accentcyan/30">
-                ${wormhole.status}
-              </span>
-              <h3 class="text-base font-bold text-white mt-1.5">${wormhole.title}</h3>
-              <p class="text-xs text-slate-300 mt-1 max-w-xl">${wormhole.explanation_narrative}</p>
-            </div>
-            <div class="text-right">
-              <span class="text-[10px] text-slate-400 uppercase tracking-wider">Gross Liberated</span>
-              <div class="text-xl font-black text-accentcyan mono">₹${wormhole.gross_liquidity_created.toLocaleString('en-IN', {minimumFractionDigits: 2})}</div>
-              <span class="text-[11px] text-slate-400">Total Net Cost: <span class="mono text-white">₹${wormhole.total_net_cost.toLocaleString('en-IN')}</span></span>
-            </div>
-          </div>
+      const w = isExecuted ? currentState.active_wormholes[0] : activeCandidate;
 
-          <!-- Step Breakdown -->
-          <div class="space-y-2 pt-2 border-t border-panelborder">
-            <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Synthesized Vector Steps:</h4>
-            ${wormhole.steps.map(step => `
-              <div class="p-3 rounded-xl bg-panel/70 border border-panelborder flex items-center justify-between text-xs">
-                <div class="flex items-center gap-3">
-                  <span class="w-6 h-6 rounded-lg bg-accentcyan/20 text-accentcyan font-bold mono flex items-center justify-center text-xs">
-                    ${step.step_number}
-                  </span>
-                  <div>
-                    <span class="font-bold text-white">${step.action_type.replace(/_/g, ' ')}</span>
-                    <span class="text-slate-400 block text-[11px]">${step.causal_mechanism}</span>
+      container.innerHTML = `
+        <div class="space-y-4">
+          <!-- Pareto Candidate Selector Tabs -->
+          ${wormholeCandidates.length > 1 && !isExecuted ? `
+            <div class="p-2 rounded-xl bg-panel/70 border border-panelborder flex items-center gap-2 overflow-x-auto text-xs">
+              <span class="text-slate-400 font-semibold uppercase tracking-wider text-[10px] pl-1 shrink-0">Pareto Strategies:</span>
+              ${wormholeCandidates.map((c, idx) => `
+                <button onclick="selectWormholeCandidate(${idx})" class="px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 shrink-0 ${idx === selectedCandidateIndex ? 'bg-accentcyan text-black font-bold shadow-md shadow-accentcyan/30' : 'bg-panel border border-panelborder text-slate-300 hover:text-white'}">
+                  <span>${c.title.includes(':') ? c.title.split(':')[1].trim() : c.title}</span>
+                </button>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          <div class="p-5 rounded-2xl glass wormhole-glow border border-accentcyan/40 bg-accentcyan/5 space-y-4">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${isExecuted ? 'bg-brand-500/20 text-brand-500 border border-brand-500/30' : 'bg-accentcyan/20 text-accentcyan border border-accentcyan/30'}">
+                  ${isExecuted ? 'EXECUTED' : w.status}
+                </span>
+                <h3 class="text-base font-bold text-white mt-1.5">${w.title}</h3>
+                <p class="text-xs text-slate-300 mt-1 max-w-xl">${w.explanation_narrative}</p>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-slate-400 uppercase tracking-wider">Gross Liberated</span>
+                <div class="text-xl font-black text-accentcyan mono">₹${w.gross_liquidity_created.toLocaleString('en-IN', {minimumFractionDigits: 2})}</div>
+                <span class="text-[11px] text-slate-400">Total Net Cost: <span class="mono text-white">₹${w.total_net_cost.toLocaleString('en-IN')}</span></span>
+              </div>
+            </div>
+
+            <!-- Step Breakdown -->
+            <div class="space-y-2 pt-2 border-t border-panelborder">
+              <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Synthesized Vector Steps:</h4>
+              ${w.steps.map(step => `
+                <div class="p-3 rounded-xl bg-panel/70 border border-panelborder flex items-center justify-between text-xs">
+                  <div class="flex items-center gap-3">
+                    <span class="w-6 h-6 rounded-lg bg-accentcyan/20 text-accentcyan font-bold mono flex items-center justify-center text-xs">
+                      ${step.step_number}
+                    </span>
+                    <div>
+                      <span class="font-bold text-white">${step.action_type.replace(/_/g, ' ')}</span>
+                      <span class="text-slate-400 block text-[11px]">${step.causal_mechanism}</span>
+                    </div>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <span class="font-bold mono text-brand-500 block">+₹${step.amount_unlocked.toLocaleString('en-IN')}</span>
+                    <span class="text-[10px] text-slate-400">${step.implementation_time_hours}h SLA</span>
                   </div>
                 </div>
-                <div class="text-right shrink-0">
-                  <span class="font-bold mono text-brand-500 block">+₹${step.amount_unlocked.toLocaleString('en-IN')}</span>
-                  <span class="text-[10px] text-slate-400">${step.implementation_time_hours}h SLA</span>
+              `).join('')}
+            </div>
+
+            <!-- Supreme Court Formal Clearance & Action Button -->
+            <div class="p-4 rounded-xl bg-brand-500/10 border border-brand-500/30 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <i data-lucide="award" class="w-8 h-8 text-brand-500 shrink-0"></i>
+                <div>
+                  <span class="text-xs font-bold text-brand-500 uppercase tracking-wide">Constitutional Supreme Court Clearance</span>
+                  <p class="text-[11px] text-slate-300">Passed symbolic math check • Protects 21-day minimum runway • Paper-trading sandbox</p>
                 </div>
               </div>
-            `).join('')}
-          </div>
-
-          <!-- Supreme Court Formal Clearance & Action Button -->
-          <div class="p-4 rounded-xl bg-brand-500/10 border border-brand-500/30 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <i data-lucide="award" class="w-8 h-8 text-brand-500 shrink-0"></i>
-              <div>
-                <span class="text-xs font-bold text-brand-500 uppercase tracking-wide">Constitutional Supreme Court Clearance</span>
-                <p class="text-[11px] text-slate-300">Passed symbolic math check • Protects 21-day minimum runway • Paper-trading sandbox</p>
-              </div>
+              ${!isExecuted ? `
+                <button onclick="activateWormhole()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-accentcyan to-brand-600 hover:from-accentcyan/90 hover:to-brand-500 text-white font-bold text-xs shadow-lg shadow-accentcyan/20 transition flex items-center gap-1.5 shrink-0">
+                  <i data-lucide="zap" class="w-4 h-4"></i>
+                  <span>Authorize & Execute Wormhole</span>
+                </button>
+              ` : `
+                <span class="px-3 py-1.5 rounded-xl bg-brand-500/20 text-brand-500 font-bold text-xs flex items-center gap-1">
+                  <i data-lucide="check" class="w-4 h-4"></i>
+                  <span>Executed Successfully</span>
+                </span>
+              `}
             </div>
-            ${wormhole.status !== 'EXECUTED' ? `
-              <button onclick="activateWormhole()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-accentcyan to-brand-600 hover:from-accentcyan/90 hover:to-brand-500 text-white font-bold text-xs shadow-lg shadow-accentcyan/20 transition flex items-center gap-1.5 shrink-0">
-                <i data-lucide="zap" class="w-4 h-4"></i>
-                <span>Authorize & Execute Wormhole</span>
-              </button>
-            ` : `
-              <span class="px-3 py-1.5 rounded-xl bg-brand-500/20 text-brand-500 font-bold text-xs flex items-center gap-1">
-                <i data-lucide="check" class="w-4 h-4"></i>
-                <span>Executed Successfully</span>
-              </span>
-            `}
           </div>
         </div>
       `;
+      lucide.createIcons();
+    }
       lucide.createIcons();
     }
 
@@ -1024,10 +1075,10 @@
         console.error('Chat error:', err);
         if (typingEl) typingEl.classList.add('hidden');
         addChatMessage('ai', {
-          plain_language_summary: "⚠️ **Connection Error**: Server se contact nahi ho pa raha hai. Please make sure the backend is running on `http://localhost:8000`.",
+          plain_language_summary: "⚠️ **Connection Error**: Unable to connect to the backend server. Please verify that the engine is active at `http://localhost:8000`.",
           exact_numbers: "Network Error: Failed to fetch /api/chat",
           causal_explanation: "The connection to the local Python engine was momentarily lost.",
-          top_recommended_actions: ["Ensure server is running", "Refresh browser (F5)"],
+          top_recommended_actions: ["Verify server is running on port 8000", "Refresh browser (F5)"],
           what_if_ignore: "AI cannot process real-time calculations while disconnected."
         });
       }

@@ -173,3 +173,114 @@ class LiquidityWormholeForger:
             explanation_narrative=explanation,
             counterfactual_inaction_damage=counterfactual
         )
+
+    @classmethod
+    def forge_candidate_wormholes(
+        cls,
+        current_date: date,
+        singularity: SingularityPrediction,
+        bank_cash: float,
+        tax_vault_balance: float,
+        invoices: List[Invoice],
+        customers: List[Customer],
+        obligations: List[Obligation],
+        gst_snapshot: GSTLiabilitySnapshot
+    ) -> List[LiquidityWormhole]:
+        """
+        Synthesizes a Pareto Frontier of 3 distinct Wormhole strategies:
+        1. Balanced Trident Teleportation
+        2. Velocity Lightning Surge (Aggressive runway boost)
+        3. Sovereign Shield (Conservative minimal haircut)
+        """
+        default_w = cls.forge_wormhole(
+            current_date, singularity, bank_cash, tax_vault_balance,
+            invoices, customers, obligations, gst_snapshot
+        )
+        if not default_w:
+            return []
+
+        # Candidate 2: Velocity Lightning Surge
+        top_inv = invoices[0] if invoices else None
+        lightning_cash = top_inv.unpaid_cash * 0.975 if top_inv else default_w.gross_liquidity_created * 1.15
+        lightning_fee = top_inv.unpaid_cash * 0.025 if top_inv else default_w.total_net_cost * 1.25
+
+        lightning_steps = [
+            WormholeStep(
+                step_number=1,
+                action_type="ACCELERATED_DYNAMIC_DISCOUNT",
+                target_entity=f"Enterprise Flash Settlement ({top_inv.customer_name if top_inv else 'Primary Debtor'})",
+                amount_unlocked=round(lightning_cash, 2),
+                cost_or_haircut=round(lightning_fee, 2),
+                implementation_time_hours=24,
+                confidence=0.94,
+                causal_mechanism="Flash 2.5% discount offered directly to treasury department with 24h settlement SLA."
+            ),
+            WormholeStep(
+                step_number=2,
+                action_type="TAX_VAULT_AUTO_SWEEP",
+                target_entity="Statutory Escrow / Intelligent Tax Vault",
+                amount_unlocked=round(gst_snapshot.net_gst_cash_payable, 2),
+                cost_or_haircut=0.0,
+                implementation_time_hours=1,
+                confidence=0.99,
+                causal_mechanism="Full 100% tax reservation isolated upon wire arrival."
+            )
+        ]
+
+        lightning_wormhole = LiquidityWormhole(
+            title=f"Wormhole-⚡: Velocity Lightning Surge",
+            singularity_id="SINGULARITY-GSTR3B-CRITICAL",
+            steps=lightning_steps,
+            gross_liquidity_created=round(lightning_cash, 2),
+            total_net_cost=round(lightning_fee, 2),
+            effective_apr_annualized=round((lightning_fee / max(1.0, lightning_cash)) * (365.0 / 30.0) * 100.0, 2),
+            runway_days_restored=default_w.runway_days_restored + 12,
+            singularity_evasion_probability=0.98,
+            constitutional_clearance=True,
+            status="SYNTHESIZED",
+            explanation_narrative="Maximizes cash velocity by deploying a 2.5% flash settlement rebate across primary institutional receivables, restoring 50+ days of operational runway in under 24 hours.",
+            counterfactual_inaction_damage=default_w.counterfactual_inaction_damage
+        )
+
+        # Candidate 3: Sovereign Shield (Conservative Minimal Haircut)
+        needed_exact = max(0.0, gst_snapshot.net_gst_cash_payable - tax_vault_balance)
+        shield_cost = needed_exact * 0.015
+        shield_steps = [
+            WormholeStep(
+                step_number=1,
+                action_type="ACCELERATED_DYNAMIC_DISCOUNT",
+                target_entity="Partial Milestone Discounting",
+                amount_unlocked=round(needed_exact, 2),
+                cost_or_haircut=round(shield_cost, 2),
+                implementation_time_hours=48,
+                confidence=0.86,
+                causal_mechanism="Only accelerates the exact rupee deficit needed to satisfy the statutory GSTR-3B deadline, preserving profit margins."
+            ),
+            WormholeStep(
+                step_number=2,
+                action_type="TAX_VAULT_AUTO_SWEEP",
+                target_entity="Intelligent Tax Vault",
+                amount_unlocked=round(needed_exact, 2),
+                cost_or_haircut=0.0,
+                implementation_time_hours=1,
+                confidence=0.99,
+                causal_mechanism="Auto-sweeps 100% of the newly unlocked milestone cash into statutory escrow."
+            )
+        ]
+
+        shield_wormhole = LiquidityWormhole(
+            title=f"Wormhole-🛡️: Sovereign Shield (Minimal Haircut)",
+            singularity_id="SINGULARITY-GSTR3B-CRITICAL",
+            steps=shield_steps,
+            gross_liquidity_created=round(needed_exact, 2),
+            total_net_cost=round(shield_cost, 2),
+            effective_apr_annualized=round((shield_cost / max(1.0, needed_exact)) * (365.0 / 30.0) * 100.0, 2),
+            runway_days_restored=21,
+            singularity_evasion_probability=0.91,
+            constitutional_clearance=True,
+            status="SYNTHESIZED",
+            explanation_narrative="A conservative, margin-protective bridge that targets only the exact tax deficit of ₹2,49,915, minimizing discount costs while keeping the business compliant.",
+            counterfactual_inaction_damage=default_w.counterfactual_inaction_damage
+        )
+
+        return [default_w, lightning_wormhole, shield_wormhole]

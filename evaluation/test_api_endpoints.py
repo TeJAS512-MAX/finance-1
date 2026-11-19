@@ -53,6 +53,20 @@ def test_api_counterfactual():
     assert len(data["baseline_median"]) == 40
     print(f"✅ /api/counterfactual passed: 40 simulated future days generated")
 
+def test_api_wormhole_candidates():
+    # Reset to baseline archetype to test candidate generation in pre-execution singularity state
+    client.post("/api/archetype/STEEL_TRADER")
+    res = client.get("/api/wormholes/candidates")
+    assert res.status_code == 200
+    data = res.json()
+    assert "candidates" in data
+    assert len(data["candidates"]) >= 3
+    titles = [c["title"] for c in data["candidates"]]
+    assert any("Trident" in t for t in titles)
+    assert any("Velocity" in t for t in titles)
+    assert any("Sovereign" in t for t in titles)
+    print(f"✅ /api/wormholes/candidates passed: {len(data['candidates'])} Pareto strategies generated ({', '.join(titles)})")
+
 def test_static_frontend_mount():
     res = client.get("/")
     assert res.status_code == 200
@@ -63,6 +77,7 @@ if __name__ == "__main__":
     test_api_health()
     test_api_state()
     test_api_chat_flow()
+    test_api_wormhole_candidates()
     test_api_counterfactual()
     test_static_frontend_mount()
     print("\n🎉 ALL API ENDPOINTS & FRONTEND TESTS PASSED PERFECTLY!")

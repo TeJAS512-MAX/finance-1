@@ -200,16 +200,50 @@ class CausalSpacetimeGraph:
 
     def export_graph_visualization(self) -> Dict[str, Any]:
         """
-        Returns JSON-serializable node and edge list for interactive UI charts.
+        Returns JSON-serializable node and edge list for interactive UI charts
+        with dynamic topological coordinates and physics field charges.
         """
         nodes = []
+        cust_idx = 0
+        inv_idx = 0
+        obl_idx = 0
+
         for n_id, n in self.nodes_data.items():
+            # Calculate dynamic coordinate layout based on node type
+            if n.node_type == "CUSTOMER":
+                x, y = 120, 90 + (cust_idx * 90)
+                charge = -0.5
+                cust_idx += 1
+            elif n.node_type == "INVOICE":
+                x, y = 280, 90 + (inv_idx * 90)
+                charge = 0.8
+                inv_idx += 1
+            elif n.node_type == "BANK_ACCOUNT":
+                x, y = 480, 220
+                charge = 1.0
+            elif n.node_type == "TAX_VAULT":
+                x, y = 480, 350
+                charge = 0.9
+            elif n.node_type == "TAX_LIABILITY":
+                x, y = 520, 100
+                charge = -1.0  # Gravitational drain
+            elif n.node_type == "LOAN_OBLIGATION":
+                x, y = 620, 220 + (obl_idx * 75)
+                charge = -0.7
+                obl_idx += 1
+            else:
+                x, y = 350, 200
+                charge = 0.0
+
             nodes.append({
                 "id": n.id,
                 "label": n.label,
                 "type": n.node_type,
                 "value": n.value,
-                "properties": n.properties
+                "properties": n.properties,
+                "x": x,
+                "y": y,
+                "charge": charge
             })
         
         edges = []

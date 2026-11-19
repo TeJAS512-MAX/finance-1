@@ -83,6 +83,22 @@ def activate_wormhole():
     response_payload = cns.process_user_message("activate wormhole")
     return response_payload
 
+@app.get("/api/wormholes/candidates")
+def get_wormhole_candidates():
+    singularity = cns.predict_current_singularity()
+    from backend.causal.wormhole_forger import LiquidityWormholeForger
+    candidates = LiquidityWormholeForger.forge_candidate_wormholes(
+        current_date=cns.current_date,
+        singularity=singularity,
+        bank_cash=cns.state.physics_state.bank_cash,
+        tax_vault_balance=cns.state.physics_state.tax_vault_balance,
+        invoices=cns.state.invoices,
+        customers=cns.state.customers,
+        obligations=cns.state.obligations,
+        gst_snapshot=cns.state.gst_snapshot
+    )
+    return {"candidates": [c.model_dump() for c in candidates]}
+
 @app.post("/api/simulate-delay")
 def simulate_customer_delay():
     response_payload = cns.process_user_message("simulate customer delay")
