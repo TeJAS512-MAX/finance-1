@@ -3,7 +3,6 @@ import re
 from datetime import date, timedelta
 from typing import Dict, Any, Optional
 from pydantic import BaseModel
-from backend.models.schemas import Invoice
 
 class SensorExtractionResult(BaseModel):
     intent: str
@@ -26,7 +25,7 @@ class ActiveSensorSwarm:
         """
         q = query.lower().strip()
 
-        # Invoice creation intent
+        # 1. Invoice creation intent
         # e.g., "Create invoice for Reliance 2.5 lakh" or "Reliance ko 2.5 lakh ka bill banao"
         inv_match = re.search(r"(?:invoice|bill|banao|create invoice|bana do)\s+(?:for\s+|ka\s+)?([a-zA-Z\s]+?)\s+(\d+(?:\.\d+)?)\s*(lakh|lac|cr|k|crore)?", q)
         if inv_match or "create invoice" in q or "bill banao" in q:
@@ -34,7 +33,7 @@ class ActiveSensorSwarm:
             amount = 250000.0
             if inv_match:
                 extracted_name = inv_match.group(1).strip()
-                if extracted_name and len(extracted_name) > 2:
+                if extracted_name and len(extracted_name) > 2 and not extracted_name.lower().startswith("invoice"):
                     client_name = extracted_name.title()
                 raw_amt = float(inv_match.group(2))
                 unit = inv_match.group(3) or "lakh"
@@ -61,18 +60,8 @@ class ActiveSensorSwarm:
                 raw_input=query
             )
 
-        # Health query intent
-        # e.g., "How is my money?", "Paisa kaisa hai?", "Health check", "GST status"
-        if any(term in q for term in ["how is my money", "kaisa hai", "health", "singularity", "gst", "status", "runway", "overview"]):
-            return SensorExtractionResult(
-                intent="QUERY_HEALTH",
-                extracted_data={"focus": "ORGANISM_HEALTH"},
-                confidence=0.98,
-                raw_input=query
-            )
-
-        # Wormhole activation
-        if any(term in q for term in ["wormhole", "activate", "execute", "apply solution", "fix this"]):
+        # 2. Wormhole activation
+        if any(term in q for term in ["wormhole", "activate wormhole", "execute wormhole", "trigger wormhole", "apply solution", "bridge liquidity", "fix this"]):
             return SensorExtractionResult(
                 intent="ACTIVATE_WORMHOLE",
                 extracted_data={"action": "EXECUTE_CURRENT_WORMHOLE"},
@@ -80,8 +69,8 @@ class ActiveSensorSwarm:
                 raw_input=query
             )
 
-        # Simulate delay
-        if any(term in q for term in ["delay", "simulate delay", "agar delay hua", "reliance late kare"]):
+        # 3. Simulate delay
+        if any(term in q for term in ["simulate delay", "agar delay hua", "reliance late kare", "payment delay", "late payment"]):
             return SensorExtractionResult(
                 intent="SIMULATE_DELAY",
                 extracted_data={"additional_delay_days": 30},
@@ -89,11 +78,66 @@ class ActiveSensorSwarm:
                 raw_input=query
             )
 
-        # General inquiry fallback
+        # 4. Debtor / Receivables inquiry ("who owes me money", "sabse zyada kiska baaki hai")
+        if any(term in q for term in ["who owes", "kiska paisa", "kiske paas", "receivable", "udhari", "debtor", "unpaid", "pending payment", "baki hai", "baaki hai"]):
+            return SensorExtractionResult(
+                intent="QUERY_RECEIVABLES",
+                extracted_data={"focus": "DEBTORS"},
+                confidence=0.94,
+                raw_input=query
+            )
+
+        # 5. Payables / Creditors / Suppliers inquiry ("kisko dena hai", "suppliers", "vendor")
+        if any(term in q for term in ["vendor", "supplier", "kisko dena", "payable", "creditor", "jindal", "raw material"]):
+            return SensorExtractionResult(
+                intent="QUERY_PAYABLES",
+                extracted_data={"focus": "CREDITORS"},
+                confidence=0.94,
+                raw_input=query
+            )
+
+        # 6. Affordability / Capex inquiry ("can I afford", "kya main khareed sakta hoon", "can I buy")
+        if any(term in q for term in ["can i afford", "can i buy", "khareed sakta", "le sakta hoon", "kharcha karu", "spend"]):
+            return SensorExtractionResult(
+                intent="QUERY_AFFORDABILITY",
+                extracted_data={"query": query},
+                confidence=0.91,
+                raw_input=query
+            )
+
+        # 7. Concept explanation ("what is gst accrual", "singularity kya hai", "wormhole kya hai")
+        if any(term in q for term in ["what is gst accrual", "explain gst", "accrual kya", "singularity kya", "wormhole kya", "samjhao", "explain", "meaning"]):
+            return SensorExtractionResult(
+                intent="QUERY_EXPLANATION",
+                extracted_data={"topic": query},
+                confidence=0.93,
+                raw_input=query
+            )
+
+        # 8. Greetings / Casual Chit-Chat
+        if re.search(r"^(hi|hello|hey|namaste|pranam|good morning|good evening|kaise ho|kya haal hai|help)\b", q):
+            return SensorExtractionResult(
+                intent="GREETING",
+                extracted_data={"greeting": query},
+                confidence=0.95,
+                raw_input=query
+            )
+
+        # 9. Health query intent
+        # e.g., "How is my money?", "Paisa kaisa hai?", "Health check", "GST status"
+        if any(term in q for term in ["how is my money", "paisa kaisa", "kaisa chal raha", "health", "singularity", "gst", "status", "runway", "overview"]):
+            return SensorExtractionResult(
+                intent="QUERY_HEALTH",
+                extracted_data={"focus": "ORGANISM_HEALTH"},
+                confidence=0.98,
+                raw_input=query
+            )
+
+        # 10. General conversational inquiry (user typing whatever they want)
         return SensorExtractionResult(
             intent="CONVERSATIONAL_INQUIRY",
             extracted_data={"query": query},
-            confidence=0.85,
+            confidence=0.88,
             raw_input=query
         )
 
@@ -103,7 +147,6 @@ class ActiveSensorSwarm:
         Multimodal Vision OCR extractor for physical invoices.
         Simulates state-of-the-art vision extraction with exact GST breakdown.
         """
-        # Realistic OCR simulation based on uploaded document
         return SensorExtractionResult(
             intent="CREATE_INVOICE",
             extracted_data={
