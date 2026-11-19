@@ -5,12 +5,21 @@ import { motion } from "framer-motion";
 import { ArrowRight, ShieldCheck, Zap, Sparkles } from "lucide-react";
 import FinancialOrganismCanvas from "../3d/FinancialOrganism3D";
 import { playUiSound } from "./AudioController";
+import { useAetherStore } from "@/lib/store";
 
 export default function HeroSection({
   onEnterOrganism,
 }: {
   onEnterOrganism: () => void;
 }) {
+  const state = useAetherStore((s) => s.state);
+  const singularity = useAetherStore((s) => s.singularity);
+  const candidates = useAetherStore((s) => s.candidates);
+  const wormholePhase = useAetherStore((s) => s.wormholePhase);
+
+  const healthScore = state.genome.overall_score;
+  const rupeesLakhs = (state.physics_state.total_rupees_conserved / 100000).toFixed(2);
+
   return (
     <section className="relative min-h-[92vh] flex items-center justify-center overflow-hidden px-6 pt-12 pb-16">
       {/* Background Subtle Gradient Glows */}
@@ -103,18 +112,24 @@ export default function HeroSection({
           >
             <div>
               <span className="text-slate-400 block text-xs uppercase tracking-wider">Rupee Conservation</span>
-              <span className="text-white font-bold mono text-base">₹30.65 Lakhs</span>
+              <span className="text-white font-bold mono text-base">₹{rupeesLakhs} Lakhs</span>
               <span className="text-brand-400 block text-[11px] font-normal">Zero Mathematical Leakage</span>
             </div>
             <div>
               <span className="text-slate-400 block text-xs uppercase tracking-wider">GST Singularity</span>
-              <span className="text-dangerrose font-bold mono text-base">20 Nov 2026</span>
-              <span className="text-dangerrose/90 block text-[11px] font-normal">Accrual Event Horizon</span>
+              <span className={`font-bold mono text-base ${singularity.severity === "LOW" ? "text-brand-400" : "text-dangerrose"}`}>
+                {singularity.severity === "LOW" ? "Neutralized" : `${singularity.days_to_event_horizon} Days Left`}
+              </span>
+              <span className="text-slate-400 block text-[11px] font-normal">20 Nov Cut-off Horizon</span>
             </div>
             <div>
               <span className="text-slate-400 block text-xs uppercase tracking-wider">Wormhole Bridge</span>
-              <span className="text-accentcyan font-bold mono text-base">3 Pareto Paths</span>
-              <span className="text-slate-400 block text-[11px] font-normal">Instant 24-36h Teleport</span>
+              <span className="text-accentcyan font-bold mono text-base">
+                {wormholePhase === "EXECUTED" ? "Active Transmit" : `${candidates.length} Pareto Paths`}
+              </span>
+              <span className="text-slate-400 block text-[11px] font-normal">
+                {wormholePhase === "EXECUTED" ? "100% Ring-Fenced" : "Instant 24-36h Teleport"}
+              </span>
             </div>
           </motion.div>
 
@@ -124,7 +139,8 @@ export default function HeroSection({
         <div className="lg:col-span-5 h-[480px] lg:h-[580px] w-full relative flex items-center justify-center">
           <div className="absolute inset-0 wormhole-tunnel rounded-full pointer-events-none" />
           
-          <FinancialOrganismCanvas healthScore={38} interactive={true} />
+          {/* Reacts live to health score: Emerald when healthy (96), Amber/Rose when stressed (38) */}
+          <FinancialOrganismCanvas healthScore={healthScore} interactive={true} />
 
           {/* Floating Micro Highlights */}
           <motion.div
@@ -137,7 +153,9 @@ export default function HeroSection({
               <Sparkles className="w-4 h-4" />
               <span>Living Fluid Physics</span>
             </div>
-            <p className="text-slate-400 text-[11px]">Viscosity index 3.85 tracking invoice collection friction.</p>
+            <p className="text-slate-400 text-[11px]">
+              Viscosity index {state.physics_state.viscosity_index.toFixed(2)} tracking collection friction.
+            </p>
           </motion.div>
 
           <motion.div

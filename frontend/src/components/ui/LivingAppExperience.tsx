@@ -22,72 +22,39 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { BusinessState, GSTSingularity, LiquidityWormhole } from "@/lib/types";
-import { ARCHETYPES } from "@/lib/mockData";
-import { sendChatMessage } from "@/lib/api";
 import { playUiSound } from "./AudioController";
+import { useAetherStore } from "@/lib/store";
 import CausalGraphCanvas from "../3d/CausalGraph3D";
 import WormholePortalCanvas from "../3d/WormholePortal3D";
 import GenomeDoubleHelixCanvas from "../3d/GenomeDoubleHelix3D";
 
-interface ChatMessage {
-  id: string;
-  sender: "user" | "ai";
-  timestamp: string;
-  text: string;
-  numbers?: string;
-  causalExplanation?: string;
-  recommendations?: string[];
-  whatIf?: string;
-}
-
 export default function LivingAppExperience() {
-  const [currentArchetypeKey, setCurrentArchetypeKey] = useState<string>("STEEL_TRADER");
-  const [state, setState] = useState<BusinessState>(ARCHETYPES["STEEL_TRADER"].state);
-  const [singularity, setSingularity] = useState<GSTSingularity>(ARCHETYPES["STEEL_TRADER"].singularity);
-  const [candidates, setCandidates] = useState<LiquidityWormhole[]>(ARCHETYPES["STEEL_TRADER"].candidates);
-  const [selectedCandidateIdx, setSelectedCandidateIdx] = useState<number>(0);
+  // Global Live Store
+  const businessKey = useAetherStore((s) => s.businessKey);
+  const state = useAetherStore((s) => s.state);
+  const singularity = useAetherStore((s) => s.singularity);
+  const candidates = useAetherStore((s) => s.candidates);
+  const selectedCandidateIdx = useAetherStore((s) => s.selectedCandidateIdx);
+  const setSelectedCandidateIdx = useAetherStore((s) => s.setSelectedCandidateIdx);
+  const wormholePhase = useAetherStore((s) => s.wormholePhase);
+  const messages = useAetherStore((s) => s.messages);
+  const isAiThinking = useAetherStore((s) => s.isAiThinking);
+
+  const switchBusiness = useAetherStore((s) => s.switchBusiness);
+  const createInvoiceLive = useAetherStore((s) => s.createInvoiceLive);
+  const simulateDelayLive = useAetherStore((s) => s.simulateDelayLive);
+  const executeWormholeLive = useAetherStore((s) => s.executeWormholeLive);
+  const sendMessageLive = useAetherStore((s) => s.sendMessageLive);
+
+  // Local UI state
   const [activeTab, setActiveTab] = useState<"singularity" | "graph" | "wormhole" | "trajectory">("singularity");
-  
-  // Chat state
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
-  const [isAiThinking, setIsAiThinking] = useState(false);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const [openDetailsCardId, setOpenDetailsCardId] = useState<string | null>(null);
-  const [isWormholeActivating, setIsWormholeActivating] = useState(false);
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  // Initialize greeting on load / archetype switch
-  useEffect(() => {
-    const arch = ARCHETYPES[currentArchetypeKey];
-    setState(arch.state);
-    setSingularity(arch.singularity);
-    setCandidates(arch.candidates);
-    setSelectedCandidateIdx(0);
-
-    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const initialGreeting: ChatMessage = {
-      id: "initial-greet",
-      sender: "ai",
-      timestamp: now,
-      text: `Hello! I am actively tracking all **₹${(
-        arch.state.physics_state.total_rupees_conserved / 100000
-      ).toFixed(2)} Lakhs** across **${
-        arch.state.business.name
-      }** in real time with zero mathematical leakage.\n\nWhile operations are profitable, an acute **GSTR-3B GST Accrual Singularity** converges on Nov 20th. Unpaid customer bills hold ₹${(
-        arch.state.gst_snapshot.gst_on_unpaid_invoices / 1000
-      ).toFixed(0)}k in accrued GST liability that must be settled in cash.`,
-      numbers: `• Net GST Due: ₹${arch.state.gst_snapshot.net_gst_cash_payable.toLocaleString("en-IN")}\n• Bank Cash: ₹${arch.state.physics_state.bank_cash.toLocaleString("en-IN")}\n• Immediate Cash Deficit: ₹${arch.singularity.singularity_depth.toLocaleString("en-IN")}`,
-      causalExplanation: "Statutory accrual tax rules demand payment before client collection cycles clear.",
-      recommendations: ["Review and authorize synthesized Liquidity Wormhole", "Simulate customer settlement delay"],
-      whatIf: "Liquidity black hole results in negative bank balances on Nov 20th cut-off.",
-    };
-    setMessages([initialGreeting]);
-  }, [currentArchetypeKey]);
-
-  // Auto-scroll chat
+  // Auto-scroll chat on new messages or thinking status
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
@@ -95,9 +62,9 @@ export default function LivingAppExperience() {
   }, [messages, isAiThinking]);
 
   // Handle switching business archetype
-  const switchArchetype = (key: string) => {
+  const handleSwitchArchetype = (key: string) => {
     playUiSound("click");
-    setCurrentArchetypeKey(key);
+    switchBusiness(key);
   };
 
   // Submit chat message
@@ -105,59 +72,19 @@ export default function LivingAppExperience() {
     const textToSend = customText || inputText;
     if (!textToSend.trim()) return;
 
-    playUiSound("click");
-    const userMsg: ChatMessage = {
-      id: Math.random().toString(),
-      sender: "user",
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      text: textToSend,
-    };
-    setMessages((prev) => [...prev, userMsg]);
     if (!customText) setInputText("");
-    setIsAiThinking(true);
-
-    try {
-      const response = await sendChatMessage(textToSend, state, singularity);
-      setIsAiThinking(false);
-
-      if (response.state) setState(response.state);
-      if (response.singularity) setSingularity(response.singularity);
-
-      const aiMsg: ChatMessage = {
-        id: Math.random().toString(),
-        sender: "ai",
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        text: response.plain_language_summary,
-        numbers: response.exact_numbers,
-        causalExplanation: response.causal_explanation,
-        recommendations: response.top_recommended_actions,
-        whatIf: response.what_if_ignore,
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-      playUiSound("click");
-    } catch {
-      setIsAiThinking(false);
-    }
+    await sendMessageLive(textToSend);
   };
 
   // Trigger wormhole execution
   const executeWormhole = async () => {
-    playUiSound("wormhole");
-    setIsWormholeActivating(true);
-
-    // Confetti celebration
     confetti({
-      particleCount: 120,
-      spread: 70,
+      particleCount: 140,
+      spread: 80,
       origin: { y: 0.6 },
       colors: ["#10b981", "#22d3ee", "#f59e0b"],
     });
-
-    setTimeout(async () => {
-      setIsWormholeActivating(false);
-      await handleSendMessage("Activate Liquidity Wormhole");
-      playUiSound("success");
-    }, 1200);
+    await executeWormholeLive();
   };
 
   // Voice note simulation
@@ -178,8 +105,8 @@ export default function LivingAppExperience() {
     handleSendMessage(`Uploaded invoice photo: ${file.name}. Run Vision OCR and check GST liability.`);
   };
 
-  const activeWormhole = state.active_wormholes[0] || candidates[selectedCandidateIdx];
-  const isWormholeExecuted = state.active_wormholes.length > 0 && state.active_wormholes[0].status === "EXECUTED";
+  const activeWormhole = candidates[selectedCandidateIdx] || candidates[0];
+  const isWormholeExecuted = wormholePhase === "EXECUTED" || (state.active_wormholes.length > 0 && state.active_wormholes[0].status === "EXECUTED");
 
   return (
     <section id="living-organism" className="min-h-screen py-10 px-4 sm:px-6 max-w-[1550px] mx-auto">
@@ -193,9 +120,9 @@ export default function LivingAppExperience() {
           </span>
           <div className="flex items-center bg-black/50 rounded-xl p-1 border border-panelborder text-xs md:text-sm">
             <button
-              onClick={() => switchArchetype("STEEL_TRADER")}
+              onClick={() => handleSwitchArchetype("STEEL_TRADER")}
               className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
-                currentArchetypeKey === "STEEL_TRADER"
+                businessKey === "STEEL_TRADER"
                   ? "bg-brand-600 text-white shadow-md shadow-brand-600/30 font-semibold"
                   : "text-slate-400 hover:text-white"
               }`}
@@ -204,9 +131,9 @@ export default function LivingAppExperience() {
               <span>Bharat Steel (Navi Mumbai)</span>
             </button>
             <button
-              onClick={() => switchArchetype("VASTRAKALA")}
+              onClick={() => handleSwitchArchetype("VASTRAKALA")}
               className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
-                currentArchetypeKey === "VASTRAKALA"
+                businessKey === "VASTRAKALA"
                   ? "bg-brand-600 text-white shadow-md shadow-brand-600/30 font-semibold"
                   : "text-slate-400 hover:text-white"
               }`}
@@ -215,9 +142,9 @@ export default function LivingAppExperience() {
               <span>VastraKala (Surat)</span>
             </button>
             <button
-              onClick={() => switchArchetype("NEXUS_PULSE")}
+              onClick={() => handleSwitchArchetype("NEXUS_PULSE")}
               className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
-                currentArchetypeKey === "NEXUS_PULSE"
+                businessKey === "NEXUS_PULSE"
                   ? "bg-brand-600 text-white shadow-md shadow-brand-600/30 font-semibold"
                   : "text-slate-400 hover:text-white"
               }`}
@@ -266,7 +193,7 @@ export default function LivingAppExperience() {
       {/* Main Dual-Pane Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start h-[780px]">
         
-        {/* LEFT PANE: Phone-Style Conversational AI Twin (5 cols) */}
+        {/* LEFT PANE: Conversational AI Twin (5 cols) */}
         <div className="lg:col-span-5 h-full rounded-2xl glass-panel border border-panelborder flex flex-col overflow-hidden bg-darkerbg shadow-2xl relative">
           
           {/* Chat Header */}
@@ -317,10 +244,16 @@ export default function LivingAppExperience() {
               🛑 Can I spend 5 Lakhs?
             </button>
             <button
-              onClick={() => handleSendMessage("Create invoice for Reliance 2.5 lakh")}
-              className="px-3.5 py-1.5 rounded-full bg-panel hover:bg-slate-800 border border-panelborder text-slate-300 hover:text-white transition whitespace-nowrap font-medium"
+              onClick={() => createInvoiceLive("Reliance Infra", 250000)}
+              className="px-3.5 py-1.5 rounded-full bg-panel hover:bg-slate-800 border border-panelborder text-accentcyan hover:text-white transition whitespace-nowrap font-medium"
             >
-              📄 Create Reliance Bill
+              📄 Create Reliance Bill (Live 3D)
+            </button>
+            <button
+              onClick={() => simulateDelayLive()}
+              className="px-3.5 py-1.5 rounded-full bg-dangerrose/10 border border-dangerrose/40 hover:bg-dangerrose/20 text-dangerrose transition whitespace-nowrap font-medium"
+            >
+              ⚠️ Simulate 30d Delay
             </button>
             <button
               onClick={executeWormhole}
@@ -593,7 +526,11 @@ export default function LivingAppExperience() {
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="flex items-center gap-2.5">
-                      <span className="px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-dangerrose/20 text-dangerrose border border-dangerrose/30">
+                      <span className={`px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                        singularity.severity === "LOW"
+                          ? "bg-brand-500/20 text-brand-400 border border-brand-500/30"
+                          : "bg-dangerrose/20 text-dangerrose border border-dangerrose/30"
+                      }`}>
                         {singularity.severity === "LOW" ? "SINGULARITY NEUTRALIZED" : "CRITICAL BLACK HOLE"}
                       </span>
                       <span className="text-xs md:text-sm text-slate-400 font-medium">
@@ -615,7 +552,9 @@ export default function LivingAppExperience() {
                     <span className="text-xs text-slate-400 uppercase tracking-wider font-medium block mb-1">
                       Deficit at Horizon
                     </span>
-                    <div className="text-3xl md:text-4xl font-bold text-dangerrose mono tracking-tighter leading-none">
+                    <div className={`text-3xl md:text-4xl font-bold mono tracking-tighter leading-none ${
+                      singularity.severity === "LOW" ? "text-brand-400" : "text-dangerrose"
+                    }`}>
                       ₹{singularity.singularity_depth.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </div>
                   </div>
@@ -758,10 +697,10 @@ export default function LivingAppExperience() {
               <div className="flex items-center justify-between text-xs">
                 <div>
                   <h4 className="text-base font-bold text-white tracking-tight">
-                    3D Causal Spacetime Graph
+                    3D Causal Spacetime Graph (Live Reactive)
                   </h4>
                   <p className="text-slate-400">
-                    Topological view of RupeePackets, Invoice accrual vectors, and Black Hole gravitational wells.
+                    Interactive topology of RupeePackets, Invoice accrual vectors, and Black Hole gravitational wells.
                   </p>
                 </div>
                 <span className="px-3 py-1 rounded-full bg-accentcyan/10 border border-accentcyan/30 text-accentcyan font-mono text-xs">
@@ -842,7 +781,7 @@ export default function LivingAppExperience() {
 
                 {/* 3D Wormhole Portal Mini Preview */}
                 <div className="h-44 w-full rounded-xl overflow-hidden border border-accentcyan/30 bg-black/60 relative">
-                  <WormholePortalCanvas isActivating={isWormholeActivating} />
+                  <WormholePortalCanvas isActivating={wormholePhase === "WARPING" || wormholePhase === "SYNTHESIZED"} />
                 </div>
 
                 {/* Step Breakdown */}
