@@ -163,7 +163,7 @@
               <span class="text-xs font-bold text-white">AetherPravah AI</span>
               <span class="text-[10px] px-1.5 py-0.2 rounded bg-brand-500/20 text-brand-400 font-medium">Online</span>
             </div>
-            <p class="text-[10px] text-slate-400">Your 24x7 Causal Financial AI • English / Hinglish</p>
+            <p class="text-[10px] text-slate-400">Your 24x7 Causal Financial AI • Fluent English</p>
           </div>
         </div>
         <div class="flex items-center gap-2 text-xs text-slate-400">
@@ -211,7 +211,7 @@
       <div id="voice-indicator" class="hidden px-4 py-2.5 bg-accentpurple/15 border-t border-accentpurple/30 flex items-center justify-between text-xs text-accentpurple">
         <div class="flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-accentpurple animate-ping"></span>
-          <span class="font-medium">Listening to Voice Note (Hinglish/English)...</span>
+          <span class="font-medium">Listening to Voice Note (English)...</span>
           <div class="flex items-center gap-1">
             <span class="w-1 h-3 bg-accentpurple animate-pulse"></span>
             <span class="w-1 h-5 bg-accentpurple animate-pulse"></span>
@@ -252,8 +252,8 @@
           </button>
         </form>
         <div class="flex items-center justify-between text-[11px] text-slate-500 px-1">
-          <span>Type any custom question in plain Hindi, Hinglish, or English.</span>
-          <span class="text-brand-500 flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3"></i> Money Conservation Active</span>
+          <span>Type any financial inquiry or action in clear English.</span>
+          <span class="text-brand-500 flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3"></i> Strict Money Conservation Active</span>
         </div>
       </div>
     </section>
@@ -845,8 +845,8 @@
             <span class="text-[10px] text-slate-500">${getCurrentTimeString()}</span>
           </div>
           <p class="text-xs text-slate-200 leading-relaxed">
-            Namaste Malik! 🙏 Main <strong>${state.business.name}</strong> ke sabhi <strong>₹${(state.physics_state.total_rupees_conserved / 100000).toFixed(2)} Lakhs</strong> ko real-time track kar raha hoon.
-            Aapka business profitable hai, lekin <strong>20th Nov GSTR-3B Singularity</strong> aa rahi hai. Unpaid bills ka ₹${(state.gst_snapshot.gst_on_unpaid_invoices / 1000).toFixed(0)}k GST cash drain karega.
+            Hello! I am actively tracking all <strong>₹${(state.physics_state.total_rupees_conserved / 100000).toFixed(2)} Lakhs</strong> across <strong>${state.business.name}</strong> in real time with zero mathematical leakage.
+            While your business operations are profitable, an acute <strong>GSTR-3B GST Accrual Singularity</strong> converges on Nov 20th. Unpaid customer bills hold ₹${(state.gst_snapshot.gst_on_unpaid_invoices / 1000).toFixed(0)}k in accrued GST liability that must be settled in cash.
           </p>
           <div class="p-2.5 rounded-xl bg-dangerrose/10 border border-dangerrose/30 text-xs text-dangerrose font-medium">
             ⚠️ <strong>Singularity Warning:</strong> ₹${singularity.singularity_depth.toLocaleString('en-IN', {minimumFractionDigits: 2})} cash deficit in ${singularity.days_to_event_horizon} days.
@@ -1052,7 +1052,7 @@
       ind.classList.remove('hidden');
       setTimeout(() => {
         ind.classList.add('hidden');
-        sendQuickMessage('Paisa kaisa chal raha hai? Reliance ka bill bana do 2.5 lakh ka');
+        sendQuickMessage('What is my cash runway status? Create invoice for Reliance 2.5 lakh');
       }, 2500);
     }
 

@@ -109,9 +109,9 @@ class CollectionPsychologist:
         elif profile == "SEASONAL_SLACKER":
             channel = "WHATSAPP_GENTLE"
             message = (
-                f"Namaste Ji! 🙏 {customer.name} team, hope business is great this season! "
-                f"Invoice #{inv_no} ({amt}) is due. We need to clear statutory GST by the 20th to keep e-way bills running smooth. "
-                f"Can we count on your RTGS transfer today? Warm regards!"
+                f"Greetings team {customer.name}! Hope your business operations are running smoothly this season. "
+                f"Invoice #{inv_no} ({amt}) is due for settlement. To comply with statutory GST deadlines by the 20th and maintain seamless transit clearances, "
+                f"can we confirm your RTGS transfer today? Warm regards!"
             )
         elif profile == "CHRONIC_DEFENDER":
             channel = "FORMAL_LEGAL_NOTICE"

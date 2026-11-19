@@ -178,8 +178,8 @@ class CentralNervousSystem:
 
             # 5-Part Response
             summary = (
-                f"✅ **Invoice #{new_inv.invoice_number} forged perfectly for {new_inv.customer_name}** (₹{new_inv.total_amount:,.2f} total, ₹{new_inv.gst_amount:,.2f} GST). "
-                f"Lekin dhyan dijiye Malik: GST accrual law ke mutabiq, yeh ₹{new_inv.gst_amount:,.2f} tax abhi se accrue ho chuka hai jo 20th ko government ko cash mein dena padega, chahe Reliance 60 din baad pay kare!"
+                f"✅ **Invoice #{new_inv.invoice_number} created successfully for {new_inv.customer_name}** (₹{new_inv.total_amount:,.2f} total, ₹{new_inv.gst_amount:,.2f} GST). "
+                f"Important statutory note: Under Indian GST accrual regulations, this ₹{new_inv.gst_amount:,.2f} tax liability accrues immediately and must be paid in cash by the 20th, even if the buyer settles the invoice 60 days later!"
             )
             numbers = (
                 f"- Base: ₹{new_inv.base_amount:,.2f} | GST (18%): ₹{new_inv.gst_amount:,.2f}\n"
@@ -196,11 +196,11 @@ class CentralNervousSystem:
             actions = [
                 "✨ **Activate Synthesized Liquidity Wormhole** (bridges the deficit via 2% prompt discount + paper factoring)",
                 f"Auto-reserve 18% (₹{new_inv.gst_amount:,.2f}) into Intelligent Tax Vault upon receipt",
-                f"Dispatch psychometrically targeted WhatsApp note to {cust.name}'s finance director"
+                f"Dispatch psychometrically targeted reminder to {cust.name}'s finance director"
             ]
             counterfactual = (
-                f"Agar aapne kuch nahi kiya: 20th Nov ko bank account se ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f} GST debit fail hoga. "
-                f"GST portal will block E-way bill generation for steel consignments, and 18% p.a. Section 50 interest penalty will start compounding daily."
+                f"If unaddressed: On the 20th of the month, your bank account will fail to honor the statutory GST debit of ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f}. "
+                f"The GST portal will block E-way bill generation for consignments, and daily compounding interest penalties of 18% p.a. under Section 50 will be enforced."
             )
 
             return {
@@ -272,9 +272,9 @@ class CentralNervousSystem:
 
                     summary = (
                         f"🚀 **Liquidity Wormhole Successfully Activated!** "
-                        f"Financial Organism is now fully protected! We liberated ₹{active_w.gross_liquidity_created:,.2f} "
-                        f"(net ₹{net_inflow:,.2f} after ₹{active_w.total_net_cost:,.2f} discount cost). "
-                        f"Aapki Tax Vault ab 100% full ho chuki hai, aur GST Accrual Singularity successfully collapse ho gayi hai!"
+                        f"Your Financial Organism is now fully secured. We liberated ₹{active_w.gross_liquidity_created:,.2f} "
+                        f"(net ₹{net_inflow:,.2f} after discount costs of ₹{active_w.total_net_cost:,.2f}). "
+                        f"Your Tax Vault is now 100% funded, and the GST Accrual Singularity has been successfully resolved!"
                     )
                     numbers = (
                         f"- Cash Liberated: ₹{active_w.gross_liquidity_created:,.2f} (Effective APR: {active_w.effective_apr_annualized}%)\n"
@@ -371,9 +371,11 @@ class CentralNervousSystem:
             total_unpaid = sum(inv.unpaid_cash for inv in unpaid_invoices)
             
             summary = (
-                f"📊 **Aapke paas total ₹{total_unpaid:,.2f} ke receivables pending hain** across {len(unpaid_invoices)} invoices.\n\n"
-                f"Sabse bada amount **Reliance Infra Projects Ltd** ka hai (₹14.75 Lakhs), jinki expected payment date 35 din delayed hai. "
-                f"Iske baad Larsen & Toubro (₹9.50 Lakhs) aur Shree Ram Fabrication (₹4.20 Lakhs, already OVERDUE)."
+                f"📊 **You have a total of ₹{total_unpaid:,.2f} in outstanding receivables** across {len(unpaid_invoices)} unpaid invoices.\n\n"
+                f"• **Reliance Infra Projects Ltd**: ₹14.75 Lakhs (Estimated delay: 35 days, Due: {self.state.invoices[0].due_date.strftime('%d %b')})\n"
+                f"• **Larsen & Toubro Heavy Fab**: ₹9.50 Lakhs (Estimated delay: 28 days)\n"
+                f"• **Shree Ram Fabrication Works**: ₹4.20 Lakhs (Currently OVERDUE by 25+ days)\n\n"
+                f"Crucially, ₹{self.state.gst_snapshot.gst_on_unpaid_invoices:,.2f} in statutory GST has already accrued on these unpaid invoices and must be paid by Nov 20th."
             )
             breakdown_lines = "\n".join([
                 f"- **{inv.customer_name}**: ₹{inv.unpaid_cash:,.2f} (Due: {inv.due_date.strftime('%d %b')}, Delay: +{inv.delay_prediction_days}d, Status: {inv.status})"
@@ -381,20 +383,20 @@ class CentralNervousSystem:
             ])
             numbers = (
                 f"- Total Unpaid Receivables: ₹{total_unpaid:,.2f}\n"
-                f"- GST Locked on these Unpaid Invoices: ₹{self.state.gst_snapshot.gst_on_unpaid_invoices:,.2f}\n"
-                f"- High-Risk Customer: Reliance Infra Projects (₹14.75L) & Shree Ram (₹4.20L Overdue)"
+                f"- GST Accrued on Unpaid Invoices: ₹{self.state.gst_snapshot.gst_on_unpaid_invoices:,.2f}\n"
+                f"- Primary Risk Customers: Reliance Infra Projects (₹14.75L) & Shree Ram (₹4.20L Overdue)"
             )
             causal = (
-                "These customer delays increase your Fluid Viscosity to "
-                f"{self.state.physics_state.viscosity_index:.2f}, while statutory GST accrues immediately upon bill creation."
+                "These customer payment delays increase your Fluid Viscosity to "
+                f"{self.state.physics_state.viscosity_index:.2f}, while sovereign GST accrues strictly upon bill generation."
             )
             actions = [
                 "Deploy a 2% prompt settlement discount for Reliance to unlock ₹14.45L within 36 hours",
-                "Issue Section 16 MSMED formal reminder to Shree Ram Fabrication",
-                "Lock incoming collections into Tax Vault"
+                "Issue a formal statutory Section 16 MSMED reminder to Shree Ram Fabrication",
+                "Ring-fence incoming settlements into the Intelligent Tax Vault"
             ]
             counterfactual = (
-                "If not followed up, Reliance will clear this only in late December, after your Nov 20th GST Singularity hits."
+                "If unaddressed, Reliance will settle only in late December, long after your Nov 20th GST Singularity arrives."
             )
             return {
                 "plain_language_summary": summary,
@@ -407,32 +409,33 @@ class CentralNervousSystem:
                 "state": self.state.model_dump()
             }
 
-        # Query: Payables / Suppliers / Creditors ("kisko dena hai?")
+        # Query: Payables / Suppliers / Creditors ("who do I owe money to?")
         if sensor_res.intent == "QUERY_PAYABLES":
             total_supp = sum(s.total_payable for s in self.state.suppliers)
             total_obls = sum(o.amount for o in self.state.obligations)
             
             summary = (
-                f"💼 **Aapki total statutory aur vendor liabilities agle 30 din mein ₹{total_supp + total_obls:,.2f} hain.**\n\n"
-                f"1. **Raw Material Suppliers**: Jindal Steel & Power Ltd ko ₹{self.state.suppliers[0].total_payable:,.2f} dena hai (ITC compliance score: 98%).\n"
-                f"2. **Bank EMI & Fixed Costs**: SBI MSME Term Loan EMI of ₹88,000 (Due Nov 18) aur Stockyard Rent of ₹65,000."
+                f"💼 **Your upcoming liabilities over the next 30 days total ₹{total_supp + total_obls:,.2f}.**\n\n"
+                f"1. **Raw Material Suppliers**: ₹{self.state.suppliers[0].total_payable:,.2f} payable to Jindal Steel & Power Ltd (GSTR-2B ITC compliance score: 98%).\n"
+                f"2. **Bank Loans & Facilities**: SBI MSME Term Loan EMI of ₹88,000 (Due Nov 18) and Stockyard Lease rent of ₹65,000.\n"
+                f"3. **Statutory Taxes**: Net GST cash liability of ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f} due on Nov 20."
             )
             numbers = (
                 f"- Supplier Payables: ₹{total_supp:,.2f}\n"
-                f"- Upcoming EMIs & Rent: ₹{total_obls:,.2f}\n"
-                f"- Net GST Cash Payable (Nov 20): ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f}\n"
-                f"- Bank Cash Available: ₹{self.state.physics_state.bank_cash:,.2f}"
+                f"- Senior EMIs & Rent: ₹{total_obls:,.2f}\n"
+                f"- Net GST Cash Due (Nov 20): ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f}\n"
+                f"- Current Bank Cash: ₹{self.state.physics_state.bank_cash:,.2f}"
             )
             causal = (
-                "Prioritize the SBI EMI on Nov 18 (priority 1) to protect bank CIBIL rating, but negotiate the stockyard rent to stay resilient."
+                "Prioritize the SBI EMI on Nov 18 (priority 1) to protect your credit rating, while renegotiating the stockyard lease to preserve liquidity."
             )
             actions = [
-                "Honor SBI EMI of ₹88,000 to maintain working capital overdraft limits",
-                "Reconcile Jindal Steel invoices against GSTR-2B to maximize available ITC (₹85,000 booked)",
-                "Activate Liquidity Wormhole to bridge the payment mismatch"
+                "Honor SBI EMI of ₹88,000 to maintain working capital credit limits",
+                "Reconcile Jindal Steel invoices against GSTR-2B to claim ₹85,000 in booked ITC",
+                "Activate Liquidity Wormhole to bridge the timing mismatch"
             ]
             counterfactual = (
-                "Defaulting on the SBI EMI will incur 24% bounce penalties and downgrade your MSME loan health."
+                "Defaulting on the SBI EMI will incur 24% default penalties and downgrade your banking limits."
             )
             return {
                 "plain_language_summary": summary,
@@ -448,10 +451,11 @@ class CentralNervousSystem:
         # Query: Affordability / Capex ("can I afford a new machine / 5 lakh expense?")
         if sensor_res.intent == "QUERY_AFFORDABILITY":
             summary = (
-                f"🛑 **Recommendation: DO NOT SPEND on new Capex right now!**\n\n"
-                f"Aapke paas bank mein ₹{self.state.physics_state.bank_cash:,.2f} liquid cash hai, "
-                f"lekin 20th Nov ko GSTR-3B tax payment ke liye ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f} cash required hai. "
-                f"Aap already **₹{singularity.singularity_depth:,.2f} ke deficit** par chal rahe hain. Naya kharcha aapke organism ko seedha default mein daal dega!"
+                f"🛑 **Recommendation: PAUSE DISCRETIONARY CAPEX & EXPENSES.**\n\n"
+                f"Your operational bank account currently holds ₹{self.state.physics_state.bank_cash:,.2f} in liquid cash, "
+                f"while your mandatory GSTR-3B tax payment due on the 20th requires ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f}. "
+                f"You are facing an active **statutory deficit of ₹{singularity.singularity_depth:,.2f}**. "
+                f"Committing to new capital expenditures right now will precipitate an immediate liquidity default on Nov 20th!"
             )
             numbers = (
                 f"- Current Bank Cash: ₹{self.state.physics_state.bank_cash:,.2f}\n"
@@ -460,15 +464,15 @@ class CentralNervousSystem:
                 f"- Liquidity Deficit: ₹{singularity.singularity_depth:,.2f}"
             )
             causal = (
-                "Every rupee spent on discretionary capex right now directly reduces the funds needed to satisfy sovereign GST gravity."
+                "Every rupee spent on discretionary capex right now directly reduces the funds needed to satisfy sovereign GST obligations."
             )
             actions = [
-                "Postpone all non-essential equipment purchases until Nov 20 tax is filed",
+                "Postpone all non-essential equipment purchases until Nov 20 tax is remitted",
                 "Activate Liquidity Wormhole to rebuild bank cushion above ₹10 Lakhs",
                 "Once customer collections from Reliance arrive, reassess capex viability"
             ]
             counterfactual = (
-                "If you spend additional cash now, bank cheques will bounce on Nov 18/20th."
+                "If you incur additional capex now, senior bank cheques and statutory tax debits will bounce on Nov 18/20th."
             )
             return {
                 "plain_language_summary": summary,
@@ -484,10 +488,10 @@ class CentralNervousSystem:
         # Query: Explanation / Concept ("what is gst accrual / wormhole?")
         if sensor_res.intent == "QUERY_EXPLANATION":
             summary = (
-                f"💡 **GST Accrual Trap & Liquidity Wormhole explained simply:**\n\n"
-                f"• **GST Accrual Trap**: Indian GST law mein tax *bill issue karne ki taareekh* par banta hai, na ki jab buyer paisa de. "
-                f"Agar aapne Reliance ko ₹14.75 Lakh ka bill diya (jisme ₹2.25L GST hai), toh Reliance chahe 90 din baad paisa de, government ko 20th tareekh ko ₹2.25L cash DIL SE DENA HI PADEGA! Isse bank khali ho jaata hai.\n\n"
-                f"• **Liquidity Wormhole**: Yeh AetherPravah ka world-first feature hai jo collections, prompt 2% rebates, paper invoice discounting, aur Tax Vault ko ek sath jod kar legal short-cut banata hai taaki 24 ghante mein cash teleport ho sake!"
+                f"💡 **GST Accrual Trap & Liquidity Wormholes Explained:**\n\n"
+                f"• **The GST Accrual Trap**: Under the Indian GST regime, tax liability is legally recognized on the *date of invoice issuance*, not when cash is collected. "
+                f"When you issue an invoice of ₹14.75 Lakhs to an enterprise buyer (which includes ₹2.25 Lakhs of GST), you are legally required to remit ₹2.25 Lakhs in cash to the government on the 20th of the following month, even if the buyer takes 90 days to settle.\n\n"
+                f"• **Liquidity Wormholes**: AetherPravah's proprietary mechanism that dynamically coordinates prompt settlement incentives (e.g. 2% cash discount), verified paper invoice factoring, and automatic tax vault sweeps to accelerate liquidity arrival from weeks to 24–48 hours."
             )
             numbers = (
                 f"- GST Accrual on Unpaid Bills: ₹{self.state.gst_snapshot.gst_on_unpaid_invoices:,.2f}\n"
@@ -495,14 +499,14 @@ class CentralNervousSystem:
                 f"- Statutory Due Date: 20th of every month (GSTR-3B)"
             )
             causal = (
-                "The temporal mismatch between legal tax accrual and commercial buyer delays is the #1 killer of Indian MSMEs."
+                "The temporal mismatch between legal tax accrual and commercial buyer delays is the primary systemic cause of MSME insolvency."
             )
             actions = [
-                "Use Intelligent Tax Vault to auto-reserve 18% of every incoming rupee",
-                "Trigger Wormhole whenever deficit > ₹1 Lakh"
+                "Use the Intelligent Tax Vault to auto-reserve 18% of every incoming rupee",
+                "Trigger Liquidity Wormholes whenever projected deficit exceeds ₹1 Lakh"
             ]
             counterfactual = (
-                "Understanding this protects you from sudden bank freezes."
+                "Understanding this dynamic protects your enterprise from surprise bank account attachments."
             )
             return {
                 "plain_language_summary": summary,
@@ -515,13 +519,13 @@ class CentralNervousSystem:
                 "state": self.state.model_dump()
             }
 
-        # Query: Greeting ("Hi, hello, namaste")
+        # Query: Greeting ("Hi, hello, hey")
         if sensor_res.intent == "GREETING":
             summary = (
-                f"Namaste Malik! 🙏 Kaise hain aap? Main **AetherPravah** hoon — aapka Causal Financial AI.\n\n"
-                f"Main aapke business **{self.state.business.name}** ke ek-ek rupee ko real-time track kar raha hoon. "
-                f"Aap mujhse kuch bhi pooch sakte hain: kisi bhi customer ka payment status, naya GST bill banana, "
-                f"cash runway ka hisaab, ya 20th Nov ki tax planning. Boliye, aaj kya check karein?"
+                f"Hello! Welcome to **AetherPravah** — your 24/7 Causal Financial AI.\n\n"
+                f"I am actively tracking every single rupee of **{self.state.business.name}** in real time. "
+                f"You can ask me anything: customer payment statuses, invoice creation, cash runway forecasts, "
+                f"vendor liabilities, or statutory GST compliance. How can I assist you with your business finances today?"
             )
             numbers = (
                 f"- Business: {self.state.business.name} ({self.state.business.city})\n"
@@ -530,7 +534,7 @@ class CentralNervousSystem:
                 f"- Health Genome: {self.state.genome.overall_score}/100"
             )
             causal = (
-                "Your organism is active and continuously running probabilistic state estimation."
+                "Your financial organism is active and continuously running probabilistic state estimation."
             )
             actions = [
                 "Ask 'Who owes me the most money?'",
@@ -538,7 +542,7 @@ class CentralNervousSystem:
                 "Check 'How is my money?' for a full health audit"
             ]
             counterfactual = (
-                "Regular conversational check-ins ensure no cash black hole forms undetected."
+                "Regular conversational monitoring ensures no cash black hole forms undetected."
             )
             return {
                 "plain_language_summary": summary,
@@ -552,24 +556,23 @@ class CentralNervousSystem:
             }
 
         # Arbitrary Free-form Conversational Inquiry
-        # Synthesize a tailored conversational reply addressing the user's specific text
         if sensor_res.intent == "CONVERSATIONAL_INQUIRY":
             summary = (
-                f"Bilkul Malik, regarding: *\"{q_raw}\"*\n\n"
-                f"Aapke business **{self.state.business.name}** ka current financial status yeh hai: "
-                f"Humaare paas bank mein ₹{self.state.physics_state.bank_cash:,.2f} liquid cash hai aur customers ke paas ₹{self.state.physics_state.pending_receivables:,.2f} atka hua hai. "
-                f"Sabse critical baat yeh hai ki **20th Nov ko GSTR-3B tax payment of ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f}** aane wala hai. "
-                f"Aapka sawal causally evaluated hai: humare paas abhi {self.state.physics_state.estimated_runway_days:.1f} din ki operating runway bachi hai."
+                f"Regarding your query: *\"{q_raw}\"*\n\n"
+                f"Here is the financial status for **{self.state.business.name}**: "
+                f"Your operational bank account has ₹{self.state.physics_state.bank_cash:,.2f} in liquid reserves, while customers currently hold ₹{self.state.physics_state.pending_receivables:,.2f} in pending receivables. "
+                f"Most crucially, an upcoming **GSTR-3B tax liability of ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f}** is due on Nov 20th. "
+                f"Based on your cash velocity, your business has {self.state.physics_state.estimated_runway_days:.1f} days of operating runway."
             )
             numbers = (
                 f"- Query Evaluated: \"{q_raw}\"\n"
                 f"- Bank Available Cash: ₹{self.state.physics_state.bank_cash:,.2f}\n"
-                f"- Tax Liability (20th Nov): ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f}\n"
+                f"- Tax Liability (Nov 20): ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f}\n"
                 f"- Operating Runway: {self.state.physics_state.estimated_runway_days:.1f} Days\n"
                 f"- Health Genome Score: {self.state.genome.overall_score}/100 ({self.state.genome.trajectory})"
             )
             causal = (
-                f"Based on your Causal Spacetime Graph, resolving payment timing on your {len(self.state.invoices)} active invoices "
+                f"Based on your Causal Spacetime Graph, accelerating payment timing across your {len(self.state.invoices)} active invoices "
                 f"will optimize your overall liquidity velocity."
             )
             actions = [
@@ -609,13 +612,13 @@ class CentralNervousSystem:
         w_active = self.state.active_wormholes[0] if self.state.active_wormholes else None
 
         summary = (
-            f"Namaste Malik! 🙏 Your Financial Organism for **{self.state.business.name}** is currently at a **Money Health Genome of {self.state.genome.overall_score}/100** ({self.state.genome.trajectory}). "
-            f"Aapka business profitable hai, lekin **20th Nov ko aane wala GST Accrual Singularity** aapke working capital ko freeze kar sakta hai!"
+            f"Welcome! The Financial Organism for **{self.state.business.name}** currently holds a **Money Health Genome score of {self.state.genome.overall_score}/100** ({self.state.genome.trajectory}). "
+            f"While top-line sales remain profitable, an impending **GST Accrual Singularity on Nov 20th** threatens to strain your working capital if left unmanaged."
         )
         numbers = (
             f"- Liquid Bank Balance: ₹{self.state.physics_state.bank_cash:,.2f}\n"
             f"- Pending Receivables (Delayed): ₹{self.state.physics_state.pending_receivables:,.2f}\n"
-            f"- Statutory GST Due (20th Nov): ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f}\n"
+            f"- Statutory GST Due (Nov 20): ₹{self.state.gst_snapshot.net_gst_cash_payable:,.2f}\n"
             f"- GST Accrual Trap (GST on Unpaid Bills): ₹{self.state.gst_snapshot.gst_on_unpaid_invoices:,.2f}\n"
             f"- Immediate Cash Deficit at Horizon: ₹{singularity.singularity_depth:,.2f}\n"
             f"- Estimated Runway: {self.state.physics_state.estimated_runway_days:.1f} Days (90% Conf: {self.state.physics_state.confidence_interval_runway[0]} - {self.state.physics_state.confidence_interval_runway[1]} days)"
@@ -627,7 +630,7 @@ class CentralNervousSystem:
         )
         actions = [
             f"🚀 **Authorize Liquidity Wormhole**: Teleports ₹{w_active.gross_liquidity_created:,.2f} via 2% prompt discount & paper factoring" if w_active else "Tax Vault Auto-Sweep",
-            "Send AI-crafted psychometric WhatsApp reminder to Reliance Accounts Team",
+            "Send AI-crafted psychometric reminder to Reliance Accounts Team",
             "Maintain 21-day runway minimum by shielding the Tax Vault"
         ]
         counterfactual = (
