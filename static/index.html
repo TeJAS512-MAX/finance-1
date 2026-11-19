@@ -1023,6 +1023,13 @@
       } catch (err) {
         console.error('Chat error:', err);
         if (typingEl) typingEl.classList.add('hidden');
+        addChatMessage('ai', {
+          plain_language_summary: "⚠️ **Connection Error**: Server se contact nahi ho pa raha hai. Please make sure the backend is running on `http://localhost:8000`.",
+          exact_numbers: "Network Error: Failed to fetch /api/chat",
+          causal_explanation: "The connection to the local Python engine was momentarily lost.",
+          top_recommended_actions: ["Ensure server is running", "Refresh browser (F5)"],
+          what_if_ignore: "AI cannot process real-time calculations while disconnected."
+        });
       }
     }
 
