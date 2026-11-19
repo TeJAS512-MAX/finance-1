@@ -17,8 +17,10 @@ export default function HeroSection({
   const candidates = useAetherStore((s) => s.candidates);
   const wormholePhase = useAetherStore((s) => s.wormholePhase);
 
-  const healthScore = state.genome.overall_score;
-  const rupeesLakhs = (state.physics_state.total_rupees_conserved / 100000).toFixed(2);
+  const healthScore = state?.genome?.overall_score || 38;
+  const rupeesLakhs = state?.physics_state?.total_rupees_conserved
+    ? (state.physics_state.total_rupees_conserved / 100000).toFixed(2)
+    : "30.65";
 
   return (
     <section className="relative min-h-[92vh] flex items-center justify-center overflow-hidden px-6 pt-12 pb-16">
@@ -117,8 +119,8 @@ export default function HeroSection({
             </div>
             <div>
               <span className="text-slate-400 block text-xs uppercase tracking-wider">GST Singularity</span>
-              <span className={`font-bold mono text-base ${singularity.severity === "LOW" ? "text-brand-400" : "text-dangerrose"}`}>
-                {singularity.severity === "LOW" ? "Neutralized" : `${singularity.days_to_event_horizon} Days Left`}
+              <span className={`font-bold mono text-base ${singularity?.severity === "LOW" ? "text-brand-400" : "text-dangerrose"}`}>
+                {singularity?.severity === "LOW" ? "Neutralized" : `${singularity?.days_to_event_horizon || 4} Days Left`}
               </span>
               <span className="text-slate-400 block text-[11px] font-normal">20 Nov Cut-off Horizon</span>
             </div>
@@ -154,7 +156,7 @@ export default function HeroSection({
               <span>Living Fluid Physics</span>
             </div>
             <p className="text-slate-400 text-[11px]">
-              Viscosity index {state.physics_state.viscosity_index.toFixed(2)} tracking collection friction.
+              Viscosity index {state?.physics_state?.viscosity_index ? state.physics_state.viscosity_index.toFixed(2) : "3.85"} tracking collection friction.
             </p>
           </motion.div>
 

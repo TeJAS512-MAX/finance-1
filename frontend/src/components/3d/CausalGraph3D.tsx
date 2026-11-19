@@ -19,10 +19,13 @@ function CausalNodeMesh({
   const meshRef = useRef<THREE.Mesh>(null!);
   const [hovered, setHovered] = useState(false);
 
+  const isBlackHole = node.type === "BLACKHOLE" || node.type === "TAX_LIABILITY";
+  const isInvoice = node.type === "INVOICE";
+
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
     if (meshRef.current) {
-      if (node.type === "BLACKHOLE") {
+      if (isBlackHole) {
         const pulse = (node.scale || 1.3) * (1 + Math.sin(t * 3.5) * 0.12);
         meshRef.current.scale.set(pulse, pulse, pulse);
       } else {
@@ -48,10 +51,10 @@ function CausalNodeMesh({
         }}
         onPointerOut={() => setHovered(false)}
       >
-        {node.type === "INVOICE" ? (
+        {isInvoice ? (
           <boxGeometry args={[0.7, 0.42, 0.22]} />
         ) : (
-          <sphereGeometry args={[node.type === "BLACKHOLE" ? 0.55 : 0.4, 32, 32]} />
+          <sphereGeometry args={[isBlackHole ? 0.55 : 0.4, 32, 32]} />
         )}
         <meshStandardMaterial
           color={node.color}
