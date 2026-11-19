@@ -7,3 +7,9 @@ venv/
 .pytest_cache/
 .DS_Store
 *.log
+
+# Frontend Next.js build artifacts
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.vercel/

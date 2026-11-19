@@ -1,28 +1,24 @@
-#!/usr/bin/env bash
-set -e
-
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$DIR"
-
+#!/bin/bash
 echo "========================================================"
 echo "      AetherPravah: AI that handles money better        "
+echo "      Full Attractive 3D Web Experience + Causal Engine "
 echo "========================================================"
 
-if [ ! -f ".venv/bin/python" ]; then
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+cd "$DIR"
+
+if [ ! -d ".venv" ]; then
     echo "[*] Creating virtual environment..."
     python3 -m venv .venv
-    echo "[*] Installing dependencies..."
+    echo "[*] Installing backend dependencies..."
     .venv/bin/pip install -r requirements.txt
 fi
 
-export PYTHONPATH="."
+export PYTHONPATH=.
 
-echo "[*] Opening http://localhost:8000 ..."
-if which xdg-open > /dev/null; then
-    xdg-open "http://localhost:8000" &
-elif which open > /dev/null; then
-    open "http://localhost:8000" &
-fi
+echo "[*] Starting Python Causal Engine (port 8000)..."
+.venv/bin/python3 -m uvicorn backend.api.server:app --host 0.0.0.0 --port 8000 &
 
-echo "[*] Starting Uvicorn Server..."
-.venv/bin/python -m uvicorn backend.api.server:app --host 0.0.0.0 --port 8000 --reload
+echo "[*] Starting Next.js 3D Web Experience (port 3000)..."
+cd frontend
+npm run dev

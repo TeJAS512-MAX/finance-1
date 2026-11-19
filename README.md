@@ -4,6 +4,9 @@
 > *The World’s First Causal Financial Organism for Indian MSMEs & Small Businesses.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](https://opensource.org/licenses/MIT)
+[![Next.js 14](https://img.shields.io/badge/Next.js-14.2+-black.svg)](https://nextjs.org/)
+[![React Three Fiber](https://img.shields.io/badge/Three.js-R3F%20%2B%20Drei-cyan.svg)](https://docs.pmnd.rs/react-three-fiber/)
+[![Framer Motion](https://img.shields.io/badge/Framer%20Motion-11.0+-purple.svg)](https://www.framer.com/motion/)
 [![Python 3.11](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-teal.svg)](https://fastapi.tiangolo.com/)
 [![Accuracy](https://img.shields.io/badge/Accuracy-Formal%20Verification-green.svg)](evaluation/ACCURACY_EVALUATION.md)
@@ -137,15 +140,30 @@ uv pip install -r requirements.txt
 # Verify Rupee Conservation, GST Singularity detection, and Wormhole synthesis:
 $env:PYTHONPATH="." ; pytest evaluation/ -s
 ```
-*(All 9 tests pass with 100% formal mathematical clearance)*
+*(All 10 tests pass with 100% formal mathematical clearance)*
 
-### 3. Launch AetherPravah Server & Web Dashboard
-```bash
-$env:PYTHONPATH="." ; python -m uvicorn backend.api.server:app --host 0.0.0.0 --port 8000 --reload
-```
+### 3. Launch AetherPravah Full 3D Web Experience (One Click)
+- **Windows**: Double-click `launch.bat` or run:
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File launch.ps1
+  ```
+- **Linux / macOS**:
+  ```bash
+  chmod +x launch.sh && ./launch.sh
+  ```
 
-### 4. Open in Browser
-Visit **`http://localhost:8000`** in your browser.
+### 4. Manual Launch (Development)
+- **Frontend (Next.js 14 + Three.js 3D Experience)**:
+  ```bash
+  cd frontend
+  npm run dev
+  # Accessible at http://localhost:3000
+  ```
+- **Backend (Python Causal Engine & API)**:
+  ```bash
+  $env:PYTHONPATH="." ; python -m uvicorn backend.api.server:app --host 0.0.0.0 --port 8000 --reload
+  # Accessible at http://localhost:8000
+  ```
 
 ---
 
