@@ -9,6 +9,11 @@ from typing import Optional, Dict, Any, List
 
 from backend.orchestrator.cns import CentralNervousSystem
 from backend.causal.simulator import CounterfactualSimulator
+from backend.finance import ledger
+from backend.finance.calculators import calculate_emi, loan_summary, amortization_by_year, debt_service_verdict, gst_split, profit_model
+from backend.finance.forecast import run_forecast, Scenario
+from backend.finance.gst_plan import build_gst_plan
+from backend.finance.defaults import finance_defaults
 
 app = FastAPI(
     title="AetherPravah - Causal Financial Organism",
@@ -129,6 +134,74 @@ def get_meta_evolution():
         "learning_rate": "Dynamic Bayesian Adaption",
         "conformal_calibration_coverage": 0.94
     }
+
+@app.get("/api/forecast")
+def get_cash_forecast(
+    horizon: int = 45,
+    delay: int = 0,
+    discount: float = 0.0,
+    cost_cut: float = 0.0,
+    spend: float = 0.0,
+    spend_day: int = 0
+):
+    scen = Scenario(
+        horizon=horizon,
+        delay_days=delay,
+        prompt_discount_pct=discount,
+        cost_cut_pct=cost_cut,
+        planned_spend=spend,
+        spend_day=spend_day
+    )
+    return run_forecast(cns.state, cns.current_date, scen)
+
+@app.get("/api/gst-plan")
+def get_gst_plan():
+    return build_gst_plan(cns.state, cns.current_date)
+
+@app.get("/api/ledger")
+def get_financial_ledger():
+    return {
+        "receivables": ledger.receivables_view(cns.state, cns.current_date),
+        "payables": ledger.payables_view(cns.state, cns.current_date)
+    }
+
+class ReminderRequest(BaseModel):
+    invoice_id: str
+
+@app.post("/api/reminder")
+def generate_reminder_for_invoice(req: ReminderRequest):
+    inv = next((i for i in cns.state.invoices if i.id == req.invoice_id), None)
+    if not inv:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    days_overdue = max(0, (cns.current_date - inv.due_date).days)
+    draft = ledger.generate_reminder_draft(inv.invoice_number, inv.customer_name, float(inv.unpaid_cash), days_overdue, inv.due_date)
+    return {"reminder": draft}
+
+@app.get("/api/defaults")
+def get_defaults():
+    return finance_defaults(cns.state.business.archetype)
+
+@app.get("/api/emi")
+def get_emi_calc(principal: float = 1000000.0, rate: float = 11.0, months: int = 60):
+    summary = loan_summary(principal, rate, months)
+    amort = amortization_by_year(principal, rate, months)
+    defs = finance_defaults(cns.state.business.archetype)
+    p_data = defs["profit"]
+    pm = profit_model(p_data["monthly_sales"], p_data["cogs_pct"], p_data["running_costs"], p_data["emis"])
+    verdict = debt_service_verdict(p_data["emis"] + summary["emi"], pm["operating_profit"])
+    return {
+        "loan": summary,
+        "by_year": amort,
+        "debt_service": verdict
+    }
+
+@app.get("/api/gst-calc")
+def get_gst_calc(amount: float = 100000.0, rate: float = 18.0, inclusive: bool = True):
+    return gst_split(amount, rate, inclusive)
+
+@app.get("/api/profit-model")
+def get_profit_calc(monthly_sales: float = 7000000.0, cogs_pct: float = 90.0, running_costs: float = 152000.0, emis: float = 88000.0):
+    return profit_model(monthly_sales, cogs_pct, running_costs, emis)
 
 # Mount static frontend build
 base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

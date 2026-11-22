@@ -9,6 +9,7 @@ import {
   uploadInvoiceApi,
   BackendStateResponse,
   ChatResponse,
+  ChatCardItem,
 } from "./api";
 import { BusinessState, GSTSingularity, LiquidityWormhole } from "./types";
 import { playUiSound } from "@/components/ui/AudioController";
@@ -45,6 +46,8 @@ export interface ChatMessageItem {
   causalExplanation?: string;
   recommendations?: string[];
   whatIf?: string;
+  cards?: ChatCardItem[];
+  suggestions?: string[];
 }
 
 interface AetherStoreState {
@@ -323,6 +326,8 @@ export const useAetherStore = create<AetherStoreState>((set, get) => ({
         causalExplanation: resp.causal_explanation,
         recommendations: resp.top_recommended_actions,
         whatIf: resp.what_if_ignore,
+        cards: resp.cards,
+        suggestions: resp.suggestions,
       };
 
       const partialUpdates: Partial<AetherStoreState> = {
@@ -383,6 +388,8 @@ export const useAetherStore = create<AetherStoreState>((set, get) => ({
         causalExplanation: resp.causal_explanation,
         recommendations: resp.top_recommended_actions,
         whatIf: resp.what_if_ignore,
+        cards: resp.cards,
+        suggestions: resp.suggestions,
       };
 
       const freshState = await fetchStateApi();
@@ -417,6 +424,8 @@ export const useAetherStore = create<AetherStoreState>((set, get) => ({
         causalExplanation: resp.causal_explanation,
         recommendations: resp.top_recommended_actions,
         whatIf: resp.what_if_ignore,
+        cards: resp.cards,
+        suggestions: resp.suggestions,
       };
 
       const freshState = await fetchStateApi();
@@ -451,6 +460,8 @@ export const useAetherStore = create<AetherStoreState>((set, get) => ({
         causalExplanation: resp.causal_explanation,
         recommendations: resp.top_recommended_actions,
         whatIf: resp.what_if_ignore,
+        cards: resp.cards,
+        suggestions: resp.suggestions,
       };
 
       const freshState = await fetchStateApi();

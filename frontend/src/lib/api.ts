@@ -1,4 +1,14 @@
-import { BusinessState, GSTSingularity, LiquidityWormhole } from "./types";
+import {
+  BusinessState,
+  GSTSingularity,
+  LiquidityWormhole,
+  ForecastResponse,
+  GstPlanResponse,
+  LedgerResponse,
+  EmiResponse,
+  GstCalcResponse,
+  ProfitModelResponse,
+} from "./types";
 
 const BACKEND_URL = "http://localhost:8000";
 
@@ -28,12 +38,32 @@ export interface BackendStateResponse {
   candidates?: LiquidityWormhole[];
 }
 
+export interface ChatCardItem {
+  type: "kpis" | "verdict" | "table" | "draft" | string;
+  tone?: "good" | "bad" | "warning" | "neutral";
+  title?: string;
+  text?: string;
+  items?: Array<{ label: string; value: string; tone?: string }>;
+  headers?: string[];
+  rows?: string[][];
+  customer?: string;
+  invoice?: string;
+  amount?: string;
+  subject?: string;
+  message?: string;
+  whatsapp_text?: string;
+}
+
 export interface ChatResponse {
   plain_language_summary: string;
   exact_numbers: string;
   causal_explanation: string;
   top_recommended_actions: string[];
   what_if_ignore: string;
+  cards?: ChatCardItem[];
+  kpis?: Record<string, string>;
+  open_tool?: { tab: string; params?: Record<string, unknown> };
+  suggestions?: string[];
   state?: BusinessState;
   singularity?: GSTSingularity;
   wormhole?: LiquidityWormhole;
@@ -138,5 +168,69 @@ export async function fetchCounterfactualApi(): Promise<unknown> {
   if (!res.ok) {
     throw new Error(`Counterfactual error: ${res.statusText}`);
   }
+  return await res.json();
+}
+
+// 8. Fetch 45-day Cash Flow Forecast & What-If
+export async function fetchForecastApi(params?: {
+  delay_days?: number;
+  discount_pct?: number;
+  expense_cut_pct?: number;
+  planned_spend?: number;
+  spend_day?: number;
+}): Promise<ForecastResponse> {
+  const q = new URLSearchParams();
+  if (params?.delay_days !== undefined) q.set("delay_days", String(params.delay_days));
+  if (params?.discount_pct !== undefined) q.set("discount_pct", String(params.discount_pct));
+  if (params?.expense_cut_pct !== undefined) q.set("expense_cut_pct", String(params.expense_cut_pct));
+  if (params?.planned_spend !== undefined) q.set("planned_spend", String(params.planned_spend));
+  if (params?.spend_day !== undefined) q.set("spend_day", String(params.spend_day));
+
+  const res = await fetch(`${BACKEND_URL}/api/forecast?${q.toString()}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Forecast error: ${res.statusText}`);
+  return await res.json();
+}
+
+// 9. Fetch GST & Tax Planner
+export async function fetchGstPlanApi(): Promise<GstPlanResponse> {
+  const res = await fetch(`${BACKEND_URL}/api/gst-plan`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`GST Plan error: ${res.statusText}`);
+  return await res.json();
+}
+
+// 10. Fetch Debtors & Creditors Ledger
+export async function fetchLedgerApi(): Promise<LedgerResponse> {
+  const res = await fetch(`${BACKEND_URL}/api/ledger`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Ledger error: ${res.statusText}`);
+  return await res.json();
+}
+
+// 11. Fetch Loan EMI Calculation
+export async function fetchEmiApi(principal: number, rateAnnual: number, tenureMonths: number): Promise<EmiResponse> {
+  const res = await fetch(
+    `${BACKEND_URL}/api/emi?principal=${principal}&rate_annual=${rateAnnual}&tenure_months=${tenureMonths}`,
+    { cache: "no-store" }
+  );
+  if (!res.ok) throw new Error(`EMI error: ${res.statusText}`);
+  return await res.json();
+}
+
+// 12. Fetch GST Calculator
+export async function fetchGstCalcApi(amount: number, rate: number, mode: "gross" | "net"): Promise<GstCalcResponse> {
+  const res = await fetch(
+    `${BACKEND_URL}/api/gst-calc?amount=${amount}&rate=${rate}&mode=${mode}`,
+    { cache: "no-store" }
+  );
+  if (!res.ok) throw new Error(`GST calc error: ${res.statusText}`);
+  return await res.json();
+}
+
+// 13. Fetch Profit & Business Model
+export async function fetchProfitModelApi(sales: number, cogsPct: number, fixedCosts: number, emi: number): Promise<ProfitModelResponse> {
+  const res = await fetch(
+    `${BACKEND_URL}/api/profit-model?sales=${sales}&cogs_pct=${cogsPct}&fixed_costs=${fixedCosts}&emi=${emi}`,
+    { cache: "no-store" }
+  );
+  if (!res.ok) throw new Error(`Profit model error: ${res.statusText}`);
   return await res.json();
 }

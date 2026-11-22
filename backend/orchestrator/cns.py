@@ -22,6 +22,7 @@ from backend.agents.specialists import (
 from backend.agents.parliament import AdversarialDebateParliament, DebateTranscript
 from backend.agents.supreme_court import ConstitutionalSupremeCourt, ConstitutionalVerificationResult
 from backend.agents.meta_evolution import MetaEvolutionChamber
+from backend.finance.assistant import FinanceAssistant
 from backend.data.archetypes import (
     generate_bharat_steel_data,
     generate_vastrakala_data,
@@ -40,6 +41,7 @@ class CentralNervousSystem:
         self.state: AetherPravahState = generate_bharat_steel_data(self.current_date)
         self.graph = CausalSpacetimeGraph()
         self.meta_evolution = MetaEvolutionChamber()
+        self.assistant = FinanceAssistant(self)
         self.sync_graph()
 
     def set_archetype(self, archetype_id: str) -> AetherPravahState:
@@ -120,6 +122,11 @@ class CentralNervousSystem:
 
         singularity = self.predict_current_singularity()
         q_raw = message.strip()
+
+        # Check AI Finance Assistant first for rich multi-card financial advisory
+        routed = self.assistant.try_answer(message)
+        if routed is not None:
+            return routed
 
         # Handle Invoice Creation
         if sensor_res.intent == "CREATE_INVOICE":

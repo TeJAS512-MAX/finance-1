@@ -131,3 +131,153 @@ export interface BusinessState {
   obligations: Obligation[];
   active_wormholes: LiquidityWormhole[];
 }
+
+export interface ForecastDayItem {
+  day: number;
+  date: string;
+  balance: number;
+  inflow: number;
+  outflow: number;
+  is_negative: boolean;
+}
+
+export interface ForecastEventItem {
+  day: number;
+  date: string;
+  inflow: number;
+  outflow: number;
+  balance: number;
+  description: string;
+  is_negative: boolean;
+}
+
+export interface ForecastResponse {
+  dates: string[];
+  balances: number[];
+  summary: {
+    starting_cash: number;
+    ending_cash: number;
+    lowest_balance: number;
+    lowest_date: string;
+    lowest_date_label: string;
+    lowest_day_offset: number;
+    is_deficit: boolean;
+    max_deficit: number;
+    estimated_runway_days: number;
+    daily_burn_rate: number;
+    total_inflows: number;
+    total_outflows: number;
+  };
+  events: ForecastEventItem[];
+  daily: ForecastDayItem[];
+  assumptions: string[];
+}
+
+export interface GstStepItem {
+  title: string;
+  detail: string;
+  amount: number;
+  tone: string;
+}
+
+export interface GstPlanResponse {
+  period: string;
+  due_date: string;
+  due_label: string;
+  days_left: number;
+  output_gst: number;
+  itc_claimed: number;
+  itc_at_risk: number;
+  net_payable: number;
+  in_vault: number;
+  still_to_arrange: number;
+  vault_coverage_pct: number;
+  bank_cash: number;
+  gst_on_unpaid: number;
+  steps: GstStepItem[];
+}
+
+export interface LedgerDebtorItem {
+  id: string;
+  invoice_number: string;
+  customer_name: string;
+  amount: number;
+  gst_amount: number;
+  due_date: string;
+  due_label: string;
+  days_overdue: number;
+  delay_prediction_days: number;
+  expected_label: string;
+  status: string;
+}
+
+export interface LedgerCreditorItem {
+  id: string;
+  name: string;
+  category: string;
+  amount: number;
+  due_date: string;
+  due_label: string;
+  days_left: number;
+  priority: number;
+  priority_label: string;
+  status: string;
+}
+
+export interface LedgerResponse {
+  debtors: {
+    invoices: LedgerDebtorItem[];
+    summary: {
+      total_pending: number;
+      overdue_amount: number;
+      expected_30_days: number;
+      gst_inside: number;
+      count: number;
+    };
+  };
+  creditors: {
+    liabilities: LedgerCreditorItem[];
+    summary: {
+      total_payables: number;
+      bank_cash: number;
+      coverage_deficit: number;
+      count: number;
+    };
+  };
+}
+
+export interface EmiResponse {
+  principal: number;
+  rate_annual: number;
+  tenure_months: number;
+  monthly_emi: number;
+  total_interest: number;
+  total_payment: number;
+  verdict: {
+    ratio_pct?: number | null;
+    verdict: "comfortable" | "stretched" | "heavy";
+    text: string;
+  };
+}
+
+export interface GstCalcResponse {
+  base: number;
+  gst: number;
+  cgst: number;
+  sgst: number;
+  total: number;
+}
+
+export interface ProfitModelResponse {
+  monthly_sales: number;
+  cogs_percentage: number;
+  cost_of_goods_sold: number;
+  gross_profit: number;
+  gross_margin_pct: number;
+  operating_expenses: number;
+  operating_profit: number;
+  existing_emis: number;
+  net_profit: number;
+  net_margin_pct: number;
+  break_even_sales: number;
+}

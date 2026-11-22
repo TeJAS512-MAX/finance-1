@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AetherPravah — AI that handles money better</title>
+  <title>AetherPravah — AI Finance Assistant & Executive Suite</title>
   
-  <!-- Google Fonts: Inter (Primary) & JetBrains Mono (Numbers/Code) -->
+  <!-- Inter & JetBrains Mono Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- Tailwind CSS with Typography System Configurations -->
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -18,1067 +18,998 @@
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
-            mono: ['JetBrains Mono', 'Roboto Mono', 'monospace'],
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
           },
           colors: {
-            brand: {
-              50: '#ecfdf5',
-              500: '#10b981',
-              600: '#059669',
-              900: '#064e3b',
-            },
+            brand: { 500: '#10b981', 600: '#059669' },
             darkbg: '#080b12',
-            panel: '#111726',
-            panelborder: '#1f293d',
+            cardbg: '#0f172a',
+            panel: '#111827',
+            panelborder: '#1e293b',
             accentcyan: '#06b6d4',
-            accentpurple: '#8b5cf6',
             warningamber: '#f59e0b',
             dangerrose: '#f43f5e',
-          },
-          animation: {
-            'pulse-glow': 'pulseGlow 2s infinite',
-            'flow': 'flowPulse 3s linear infinite',
-            'bounce-slow': 'bounce 1.4s infinite ease-in-out',
-          },
-          keyframes: {
-            pulseGlow: {
-              '0%, 100%': { opacity: '0.9', transform: 'scale(1)' },
-              '50%': { opacity: '0.4', transform: 'scale(1.05)' },
-            },
-            flowPulse: {
-              '0%': { strokeDashoffset: '24' },
-              '100%': { strokeDashoffset: '0' },
-            }
           }
         }
       }
     }
   </script>
-  <!-- Chart.js for Trajectory & Genome Charts -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
   <style>
     body {
-      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: #080b11;
+      font-family: 'Inter', sans-serif;
+      background-color: #080b12;
       color: #f1f5f9;
       line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
     }
-    .mono {
-      font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
-      font-feature-settings: 'tnum' on, 'zero' on;
-    }
-    h1, h2, h3, h4 {
-      line-height: 1.3;
-      letter-spacing: -0.02em;
-    }
-    /* Custom Scrollbar */
+    .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' on; }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: #080b12; }
     ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #334155; }
-    .glass {
-      background: rgba(17, 23, 38, 0.75);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-    }
-    .singularity-glow {
-      box-shadow: 0 0 25px -5px rgba(244, 63, 94, 0.35);
-    }
-    .wormhole-glow {
-      box-shadow: 0 0 30px -5px rgba(6, 182, 212, 0.4);
-    }
-    .chat-bubble-user {
-      background: linear-gradient(135deg, #059669 0%, #047857 100%);
-      box-shadow: 0 4px 15px rgba(5, 150, 105, 0.2);
-    }
-    .chat-bubble-ai {
-      background: rgba(17, 23, 38, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-    }
-    .typing-dot {
-      animation: typingDot 1.4s infinite ease-in-out both;
-    }
-    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-    @keyframes typingDot {
-      0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
-      40% { transform: scale(1); opacity: 1; }
-    }
   </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="min-h-screen flex flex-col bg-darkbg text-slate-100 selection:bg-brand-500/30">
 
-  <!-- TOP NAVIGATION HEADER -->
-  <header class="h-18 border-b border-panelborder bg-darkbg/95 px-6 py-3 flex items-center justify-between z-30 shrink-0">
+  <!-- TOP EXECUTIVE COMMAND BAR -->
+  <header class="h-16 border-b border-panelborder bg-cardbg/80 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between shrink-0 z-20">
     <div class="flex items-center gap-4">
-      <div class="h-11 w-11 rounded-xl bg-gradient-to-tr from-brand-600 via-accentcyan to-accentpurple p-0.5 shadow-lg shadow-brand-500/20 flex items-center justify-center shrink-0">
-        <div class="w-full h-full bg-darkbg rounded-[10px] flex items-center justify-center">
-          <i data-lucide="activity" class="w-5 h-5 text-accentcyan animate-pulse"></i>
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-500 to-accentcyan flex items-center justify-center font-bold text-white text-xs shadow-md">
+          AP
+        </div>
+        <div>
+          <span class="font-bold text-white text-base tracking-tight leading-none block">AetherPravah</span>
+          <span class="text-[10px] text-slate-400 font-mono">AI Finance Assistant for Indian MSMEs</span>
         </div>
       </div>
-      <div>
-        <div class="flex items-center gap-2.5">
-          <!-- App Name / Logo: 28-32px Desktop, 24px Mobile, Bold 700, Tight letter-spacing -->
-          <span class="font-bold text-2xl md:text-[28px] tracking-tight bg-gradient-to-r from-white via-slate-100 to-accentcyan bg-clip-text text-transparent leading-none">AetherPravah</span>
-          <span class="text-[11px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-brand-500/10 text-brand-500 border border-brand-500/20">Causal Organism v3.8</span>
-        </div>
-        <p class="text-xs md:text-sm text-slate-400 font-medium mt-0.5">Build AI that handles money better • <span class="italic text-slate-500">“The AI that treats your money like a living organism and never lets it die.”</span></p>
+      <div class="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-mono">
+        <span class="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse"></span>
+        <span id="header-conserved">₹30.65L Conserved</span>
       </div>
     </div>
 
-    <!-- BUSINESS ARCHETYPE SELECTOR -->
-    <div class="flex items-center gap-3">
-      <div class="flex items-center bg-panel rounded-xl p-1 border border-panelborder text-xs md:text-sm">
-        <button id="btn-arch-steel" onclick="switchArchetype('STEEL_TRADER')" class="px-3.5 py-1.5 rounded-lg font-medium transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1.5">
-          <i data-lucide="shield" class="w-4 h-4"></i>
-          <span>Bharat Steel Traders</span>
-        </button>
-        <button id="btn-arch-garment" onclick="switchArchetype('VASTRAKALA')" class="px-3.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1.5">
-          <i data-lucide="scissors" class="w-4 h-4"></i>
-          <span>VastraKala Textiles</span>
-        </button>
-        <button id="btn-arch-agency" onclick="switchArchetype('NEXUS_PULSE')" class="px-3.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1.5">
-          <i data-lucide="cpu" class="w-4 h-4"></i>
-          <span>NexusPulse Media</span>
-        </button>
-      </div>
+    <!-- Company Archetype Switcher -->
+    <div class="flex items-center bg-black/60 rounded-xl p-1 border border-panelborder text-xs">
+      <button id="btn-arch-steel" onclick="switchArchetype('STEEL_TRADER')" class="px-3 py-1.5 rounded-lg font-medium transition bg-brand-600 text-white font-semibold shadow">
+        Bharat Steel (Navi Mumbai)
+      </button>
+      <button id="btn-arch-garment" onclick="switchArchetype('VASTRAKALA')" class="px-3 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white">
+        VastraKala (Surat)
+      </button>
+      <button id="btn-arch-agency" onclick="switchArchetype('NEXUS_PULSE')" class="px-3 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white">
+        NexusPulse (Bengaluru)
+      </button>
+    </div>
 
-      <!-- HEALTH GENOME PILL -->
-      <div id="genome-badge" class="flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border border-dangerrose/30 bg-dangerrose/10 text-dangerrose">
-        <div class="relative flex items-center justify-center">
-          <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-dangerrose opacity-75"></span>
-          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-dangerrose"></span>
+    <!-- Executive KPI Strip -->
+    <div class="flex items-center gap-3">
+      <div class="hidden lg:flex items-center gap-4 text-xs font-mono pr-2">
+        <div>
+          <span class="text-slate-400 block text-[10px] uppercase">Bank Cash</span>
+          <span id="kpi-bank-cash" class="text-white font-bold">₹1.85 L</span>
         </div>
-        <div class="flex flex-col text-right">
-          <span class="text-[10px] md:text-[11px] font-medium uppercase tracking-wider text-slate-400">Health Genome</span>
-          <span id="genome-score" class="text-sm md:text-base font-bold mono leading-none">38 / 100</span>
+        <div>
+          <span class="text-slate-400 block text-[10px] uppercase">Tax Vault</span>
+          <span id="kpi-tax-vault" class="text-accentcyan font-bold">₹35,000</span>
         </div>
+        <div>
+          <span class="text-slate-400 block text-[10px] uppercase">Runway</span>
+          <span id="kpi-runway" class="text-brand-400 font-bold">34.2d</span>
+        </div>
+      </div>
+      <div id="kpi-genome" class="px-3 py-1 rounded-xl border border-dangerrose/30 bg-dangerrose/10 text-dangerrose text-xs font-mono flex items-center gap-1.5 font-bold">
+        <span class="w-2 h-2 rounded-full bg-current animate-pulse"></span>
+        <span id="kpi-genome-text">38 / 100</span>
       </div>
     </div>
   </header>
 
-  <!-- MAIN DUAL-PANE CONTAINER -->
-  <main class="flex-1 flex overflow-hidden">
+  <!-- SINGLE CLEAR ALERT STRIP -->
+  <div id="alert-banner" class="px-6 py-2.5 bg-dangerrose/10 border-b border-dangerrose/30 flex items-center justify-between text-xs text-slate-200">
+    <div class="flex items-center gap-2">
+      <i data-lucide="alert-triangle" class="w-4 h-4 text-dangerrose shrink-0"></i>
+      <span>
+        <strong class="text-dangerrose font-bold">GST Payment Alert:</strong>
+        <span id="alert-text">₹1,52,915 cash shortfall converging on 20 Nov 2026 (4 days left). Accrued tax on billed sales must be paid in cash under CGST Section 39.</span>
+      </span>
+    </div>
+    <div class="flex items-center gap-3 shrink-0 ml-4">
+      <button onclick="switchTab('gst')" class="underline hover:text-white text-dangerrose font-semibold">
+        View Tax Plan
+      </button>
+      <button onclick="executeWormhole()" class="px-3 py-1 rounded-lg bg-dangerrose hover:bg-rose-600 text-white font-semibold transition">
+        Bridge Shortfall
+      </button>
+    </div>
+  </div>
 
-    <!-- LEFT PANE: PHONE-STYLE CONVERSATIONAL AI CHAT -->
-    <section class="w-1/2 flex flex-col border-r border-panelborder bg-darkbg relative">
-      <!-- Chat Header -->
-      <div class="h-16 border-b border-panelborder px-4 py-2 flex items-center justify-between bg-panel/50 backdrop-blur-md">
-        <div class="flex items-center gap-3">
-          <div class="relative">
-            <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-brand-600 to-accentcyan flex items-center justify-center font-bold text-xs text-white shadow-md">
-              AP
-            </div>
-            <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-brand-500 border-2 border-darkbg"></span>
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="text-sm md:text-base font-semibold text-white tracking-tight">AetherPravah AI</span>
-              <span class="text-[11px] px-2 py-0.5 rounded bg-brand-500/20 text-brand-400 font-medium">Online</span>
-            </div>
-            <p class="text-xs text-slate-400 font-medium">Your 24x7 Causal Financial AI • Fluent English</p>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 text-xs text-slate-400">
-          <span class="mono text-xs text-slate-300 font-medium" id="biz-city-label">Navi Mumbai</span>
-          <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 mono text-xs">GST: 27AABCB1234F1Z8</span>
-        </div>
-      </div>
+  <!-- MAIN DUAL-PANE WORKSPACE -->
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden h-[calc(100vh-106px)]">
 
-      <!-- Quick Suggested Follow-up Chips -->
-      <div class="p-2.5 border-b border-panelborder bg-black/40 flex items-center gap-2 overflow-x-auto text-xs md:text-sm shrink-0 no-scrollbar">
-        <button onclick="sendQuickMessage('How is my money?')" class="px-3.5 py-1.5 rounded-full bg-panel hover:bg-slate-800 border border-panelborder hover:border-brand-500 text-slate-300 hover:text-white transition flex items-center gap-1.5 whitespace-nowrap font-medium">
-          <span>🩺 How is my money?</span>
-        </button>
-        <button onclick="sendQuickMessage('Who owes me the most money?')" class="px-3.5 py-1.5 rounded-full bg-panel hover:bg-slate-800 border border-panelborder hover:border-accentcyan text-slate-300 hover:text-white transition flex items-center gap-1.5 whitespace-nowrap font-medium">
-          <span>📊 Who owes me money?</span>
-        </button>
-        <button onclick="sendQuickMessage('Can I afford a new machine of 5 lakhs?')" class="px-3.5 py-1.5 rounded-full bg-panel hover:bg-slate-800 border border-panelborder hover:border-warningamber text-slate-300 hover:text-white transition flex items-center gap-1.5 whitespace-nowrap font-medium">
-          <span>🛑 Can I buy equipment?</span>
-        </button>
-        <button onclick="sendQuickMessage('Create invoice for Reliance 2.5 lakh')" class="px-3.5 py-1.5 rounded-full bg-panel hover:bg-slate-800 border border-panelborder hover:border-accentcyan text-slate-300 hover:text-white transition flex items-center gap-1.5 whitespace-nowrap font-medium">
-          <span>📄 Create Reliance Bill</span>
-        </button>
-        <button onclick="activateWormhole()" class="px-3.5 py-1.5 rounded-full bg-accentcyan/10 border border-accentcyan/40 hover:bg-accentcyan/20 text-accentcyan transition flex items-center gap-1.5 whitespace-nowrap font-semibold">
-          <span>⚡ Trigger Wormhole</span>
-        </button>
-      </div>
-
-      <!-- Chat Messages Scroll Container -->
-      <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4">
-        <!-- Messages will be injected here dynamically -->
-      </div>
-
-      <!-- Typing Indicator (hidden by default) -->
-      <div id="typing-indicator" class="hidden px-4 py-2 flex items-center gap-2 text-xs md:text-sm text-slate-400">
-        <div class="w-7 h-7 rounded-full bg-accentcyan/20 text-accentcyan flex items-center justify-center font-bold text-xs">AP</div>
-        <div class="px-3.5 py-2 rounded-2xl bg-panel border border-panelborder flex items-center gap-1.5">
-          <span class="text-xs text-slate-300 font-medium">AetherPravah is thinking</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-accentcyan typing-dot"></span>
-          <span class="w-1.5 h-1.5 rounded-full bg-accentcyan typing-dot"></span>
-          <span class="w-1.5 h-1.5 rounded-full bg-accentcyan typing-dot"></span>
-        </div>
-      </div>
-
-      <!-- Voice Recording Simulation Indicator -->
-      <div id="voice-indicator" class="hidden px-4 py-2.5 bg-accentpurple/15 border-t border-accentpurple/30 flex items-center justify-between text-xs md:text-sm text-accentpurple">
+    <!-- LEFT SIDE: FULL-HEIGHT COMPREHENSIVE AI FINANCE ASSISTANT (5 cols) -->
+    <section class="lg:col-span-5 flex flex-col border-r border-panelborder bg-panel/40 relative h-full overflow-hidden">
+      
+      <!-- Chat Sub-header -->
+      <div class="h-12 px-4 border-b border-panelborder bg-cardbg/50 flex items-center justify-between shrink-0">
         <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-accentpurple animate-ping"></span>
-          <span class="font-medium">Listening to Voice Note (English)...</span>
-          <div class="flex items-center gap-1">
-            <span class="w-1 h-3 bg-accentpurple animate-pulse"></span>
-            <span class="w-1 h-5 bg-accentpurple animate-pulse"></span>
-            <span class="w-1 h-2 bg-accentpurple animate-pulse"></span>
-            <span class="w-1 h-4 bg-accentpurple animate-pulse"></span>
-          </div>
+          <div class="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-white">AI Finance Assistant</span>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 font-medium">Online 24x7</span>
         </div>
-        <button onclick="cancelVoice()" class="text-slate-400 hover:text-white text-xs font-medium">Cancel</button>
+        <span class="text-[11px] text-slate-400 font-mono">Invoices • GST • Loans • Debtors</span>
       </div>
 
-      <!-- Chat Input Area (Phone / Mobile AI App Style) -->
-      <div class="p-3 border-t border-panelborder bg-darkbg flex flex-col gap-2 shrink-0">
-        <form id="chat-form" onsubmit="handleChatSubmit(event)" class="flex items-center gap-2">
-          <!-- Photo Upload Button -->
-          <label class="cursor-pointer p-3 rounded-xl bg-panel hover:bg-slate-800 text-slate-400 hover:text-white border border-panelborder transition flex items-center justify-center shrink-0" title="Upload Invoice Photo (Vision OCR)">
-            <input type="file" id="invoice-file-input" onchange="handleFileUpload(event)" accept="image/*,.pdf" class="hidden" />
-            <i data-lucide="camera" class="w-5 h-5"></i>
+      <!-- Quick Action Prompt Chips -->
+      <div class="p-2 border-b border-panelborder bg-black/40 flex items-center gap-1.5 overflow-x-auto text-xs shrink-0 no-scrollbar">
+        <button onclick="sendChatMessage('How is my money?')" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition whitespace-nowrap">
+          🩺 How is my money?
+        </button>
+        <button onclick="sendChatMessage('What GST do I owe this month?')" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition whitespace-nowrap">
+          🏛️ What GST do I owe?
+        </button>
+        <button onclick="sendChatMessage('Who owes me money?')" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition whitespace-nowrap">
+          💰 Who owes me money?
+        </button>
+        <button onclick="sendChatMessage('Can I afford a 5 lakh machine?')" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition whitespace-nowrap">
+          🛑 Can I afford ₹5L?
+        </button>
+        <button onclick="sendChatMessage('Calculate EMI for 10 lakh at 11% for 5 years')" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition whitespace-nowrap">
+          🏦 EMI for ₹10L
+        </button>
+        <button onclick="sendChatMessage('What if customers pay 15 days late?')" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition whitespace-nowrap">
+          🔮 What if 15d delay?
+        </button>
+        <button onclick="sendChatMessage('Explain ITC')" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition whitespace-nowrap">
+          💡 Explain ITC
+        </button>
+      </div>
+
+      <!-- Messages Scroll Area -->
+      <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Thinking Indicator -->
+      <div id="chat-thinking" class="hidden px-4 py-2 border-t border-panelborder bg-slate-900/60 flex items-center gap-2 text-xs text-slate-400">
+        <div class="w-6 h-6 rounded-full bg-accentcyan/20 text-accentcyan flex items-center justify-center font-bold text-[10px]">AP</div>
+        <div class="px-3 py-1.5 rounded-xl bg-slate-800 flex items-center gap-1.5">
+          <span>Computing financial calculations & counterfactuals</span>
+          <span class="w-1.5 h-1.5 rounded-full bg-accentcyan animate-bounce"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-accentcyan animate-bounce [animation-delay:0.2s]"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-accentcyan animate-bounce [animation-delay:0.4s]"></span>
+        </div>
+      </div>
+
+      <!-- Chat Input Dock -->
+      <div class="p-3 border-t border-panelborder bg-cardbg flex flex-col gap-2 shrink-0">
+        <form onsubmit="handleChatSubmit(event)" class="flex items-center gap-2">
+          <!-- Document Upload OCR -->
+          <label class="cursor-pointer p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-panelborder transition shrink-0" title="Upload Invoice Document (OCR)">
+            <input type="file" onchange="handleFileUpload(event)" accept="image/*,.pdf" class="hidden" />
+            <i data-lucide="camera" class="w-4 h-4"></i>
           </label>
 
-          <!-- Voice Mic Button -->
-          <button type="button" onclick="startVoiceSimulation()" class="p-3 rounded-xl bg-panel hover:bg-slate-800 text-slate-400 hover:text-accentpurple border border-panelborder transition flex items-center justify-center shrink-0" title="Simulate Voice Note">
-            <i data-lucide="mic" class="w-5 h-5"></i>
+          <!-- Voice Note Simulation -->
+          <button type="button" onclick="simulateVoiceNote()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-accentcyan border border-panelborder transition shrink-0" title="Simulate Voice Query">
+            <i data-lucide="mic" class="w-4 h-4"></i>
           </button>
 
-          <!-- Text Input: Type anything you want! (16px text-base) -->
-          <input 
-            type="text" 
-            id="chat-input" 
-            placeholder="Type anything (e.g. 'How is my money?', 'Who owes me money?', 'Can I spend 5 Lakhs?')..." 
-            class="flex-1 bg-panel border border-panelborder focus:border-brand-500 rounded-xl px-4 py-2.5 text-base font-normal text-white placeholder-slate-500 focus:outline-none transition shadow-inner" 
-            autocomplete="off"
+          <!-- Query Input -->
+          <input
+            id="chat-input"
+            type="text"
+            placeholder="Ask about cash flow, GST, EMI, debtors, or 'Can I buy a machine?'..."
+            class="flex-1 bg-slate-950 border border-panelborder focus:border-brand-500 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none transition shadow-inner"
           />
 
-          <!-- Send Button: Primary Button 15-16px, Semi-bold 600 -->
-          <button type="submit" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm md:text-base transition flex items-center gap-2 shadow-md shadow-brand-600/20 shrink-0">
+          <!-- Send Button -->
+          <button type="submit" class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow">
             <span>Send</span>
-            <i data-lucide="send" class="w-4 h-4"></i>
+            <i data-lucide="send" class="w-3.5 h-3.5"></i>
           </button>
         </form>
-        <div class="flex items-center justify-between text-xs text-slate-400 px-1 font-normal">
-          <span>Type any financial inquiry or action in clear, natural English.</span>
-          <span class="text-brand-500 flex items-center gap-1 font-medium"><i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Strict Money Conservation Active</span>
-        </div>
       </div>
+
     </section>
 
-    <!-- RIGHT PANE: ORGANISM VITALS, SINGULARITY RADAR & CAUSAL GRAPH -->
-    <section class="w-1/2 flex flex-col bg-darkbg overflow-hidden">
-      <!-- Tabs Header -->
-      <div class="h-16 border-b border-panelborder px-6 flex items-center justify-between bg-panel/30 shrink-0">
-        <div class="flex items-center gap-1.5">
-          <button onclick="switchTab('singularity')" id="tab-btn-singularity" class="px-3.5 py-2 rounded-lg text-xs md:text-sm font-semibold transition border-b-2 border-dangerrose text-white flex items-center gap-2">
-            <i data-lucide="alert-triangle" class="w-4 h-4 text-dangerrose"></i>
-            <span>GST Singularity Radar</span>
+    <!-- RIGHT SIDE: FOUR ADVANCED FINANCIAL FEATURE TABS (7 cols) -->
+    <section class="lg:col-span-7 flex flex-col bg-cardbg/40 h-full overflow-hidden">
+      
+      <!-- Tool Navigation Tabs -->
+      <div class="h-12 px-6 border-b border-panelborder bg-cardbg/80 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-1.5 text-xs">
+          <button id="tab-btn-cashflow" onclick="switchTab('cashflow')" class="px-3.5 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5 bg-slate-800 text-white border border-slate-700">
+            <i data-lucide="trending-up" class="w-3.5 h-3.5 text-brand-400"></i>
+            <span>Cash-Flow Forecast & What-If</span>
           </button>
-          <button onclick="switchTab('graph')" id="tab-btn-graph" class="px-3.5 py-2 rounded-lg text-xs md:text-sm font-medium transition text-slate-400 hover:text-white flex items-center gap-2">
-            <i data-lucide="git-fork" class="w-4 h-4"></i>
-            <span>Causal Spacetime Graph</span>
+          <button id="tab-btn-gst" onclick="switchTab('gst')" class="px-3.5 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 text-slate-400 hover:text-white">
+            <i data-lucide="landmark" class="w-3.5 h-3.5 text-dangerrose"></i>
+            <span>GST & Tax Planner</span>
           </button>
-          <button onclick="switchTab('wormhole')" id="tab-btn-wormhole" class="px-3.5 py-2 rounded-lg text-xs md:text-sm font-medium transition text-slate-400 hover:text-white flex items-center gap-2">
-            <i data-lucide="sparkles" class="w-4 h-4 text-accentcyan"></i>
-            <span>Liquidity Wormhole Forger</span>
+          <button id="tab-btn-debtors" onclick="switchTab('debtors')" class="px-3.5 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 text-slate-400 hover:text-white">
+            <i data-lucide="book-open" class="w-3.5 h-3.5 text-accentcyan"></i>
+            <span>Who Owes Me / Who I Owe</span>
           </button>
-          <button onclick="switchTab('trajectory')" id="tab-btn-trajectory" class="px-3.5 py-2 rounded-lg text-xs md:text-sm font-medium transition text-slate-400 hover:text-white flex items-center gap-2">
-            <i data-lucide="trending-up" class="w-4 h-4 text-brand-500"></i>
-            <span>What-If Trajectory</span>
+          <button id="tab-btn-profit" onclick="switchTab('profit')" class="px-3.5 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 text-slate-400 hover:text-white">
+            <i data-lucide="calculator" class="w-3.5 h-3.5 text-warningamber"></i>
+            <span>Profit & Loan/EMI Tools</span>
           </button>
         </div>
-        <div class="text-xs mono text-slate-400 flex items-center gap-1.5 font-medium">
-          <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-500"></i>
-          <span>Sim Date: 16 Nov 2026</span>
+        <div class="text-[11px] text-slate-400 font-mono hidden xl:block">
+          Sim Date: <span class="text-white font-bold">16 Nov 2026</span>
         </div>
       </div>
 
-      <!-- TAB CONTENT AREA -->
-      <div class="flex-1 overflow-y-auto p-6 space-y-6">
-
-        <!-- TAB 1: GST SINGULARITY RADAR -->
-        <div id="tab-content-singularity" class="space-y-6">
-          <!-- Singularity Alert Card -->
-          <div id="singularity-card" class="p-6 rounded-2xl glass singularity-glow border border-dangerrose/30 bg-dangerrose/5 relative overflow-hidden">
-            <div class="absolute -right-8 -top-8 w-32 h-32 bg-dangerrose/10 rounded-full blur-2xl pointer-events-none"></div>
-            <div class="flex items-start justify-between">
-              <div>
-                <div class="flex items-center gap-2.5">
-                  <span class="px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-dangerrose/20 text-dangerrose border border-dangerrose/30" id="singularity-severity-badge">CRITICAL BLACK HOLE</span>
-                  <span class="text-xs md:text-sm text-slate-400 font-medium">Event Horizon in <span class="text-white font-bold mono" id="singularity-days-left">4 Days</span> (20 Nov 2026)</span>
-                </div>
-                <!-- Section Headings: 20px desktop, 18px mobile, Semi-bold 600 / Bold 700 -->
-                <h3 class="text-lg md:text-xl font-bold text-white tracking-tight mt-1.5 leading-snug">GST Accrual Singularity Detected</h3>
-                <p class="text-xs md:text-sm text-slate-300 font-normal mt-1 max-w-xl leading-relaxed">
-                  Section 39 CGST Act mandates paying tax on issued invoices even though buyers haven't paid. The sovereign tax deadline will drain liquid bank reserves below zero!
-                </p>
-              </div>
-              <div class="text-right">
-                <span class="text-xs text-slate-400 font-medium uppercase tracking-wider block mb-1">Deficit at Horizon</span>
-                <!-- Large Key Numbers: 36-48px desktop, 32-40px mobile, Bold 700, line-height 1.1 -->
-                <div class="text-3xl md:text-4xl font-bold text-dangerrose mono tracking-tighter leading-none" id="singularity-depth-display">₹1,52,915.00</div>
-              </div>
-            </div>
-
-            <!-- Accrual Trap Breakdown Grid -->
-            <div class="grid grid-cols-4 gap-3.5 mt-5 pt-4 border-t border-panelborder text-xs">
-              <div class="p-3.5 rounded-xl bg-panel/70 border border-panelborder">
-                <span class="text-slate-400 block text-[11px] md:text-xs font-medium uppercase tracking-wider">Net GST Cash Due (20th)</span>
-                <span class="text-white font-bold mono text-base md:text-lg block mt-0.5" id="stat-net-gst">₹2,84,915.00</span>
-              </div>
-              <div class="p-3.5 rounded-xl bg-panel/70 border border-dangerrose/30">
-                <span class="text-dangerrose block text-[11px] md:text-xs font-semibold uppercase tracking-wider">GST on Unpaid Bills (Trap)</span>
-                <span class="text-dangerrose font-bold mono text-base md:text-lg block mt-0.5" id="stat-unpaid-gst">₹3,69,915.00</span>
-              </div>
-              <div class="p-3.5 rounded-xl bg-panel/70 border border-panelborder">
-                <span class="text-slate-400 block text-[11px] md:text-xs font-medium uppercase tracking-wider">Available Bank Cash</span>
-                <span class="text-white font-bold mono text-base md:text-lg block mt-0.5" id="stat-bank-cash">₹1,85,000.00</span>
-              </div>
-              <div class="p-3.5 rounded-xl bg-panel/70 border border-panelborder">
-                <span class="text-slate-400 block text-[11px] md:text-xs font-medium uppercase tracking-wider">Tax Vault Reserved</span>
-                <span class="text-accentcyan font-bold mono text-base md:text-lg block mt-0.5" id="stat-tax-vault">₹35,000.00</span>
-              </div>
-            </div>
-
-            <!-- Causal Propagation Chain -->
-            <div class="mt-4 p-4 rounded-xl bg-black/50 border border-panelborder text-xs md:text-sm">
-              <span class="font-semibold text-slate-200 block mb-2 flex items-center gap-2">
-                <i data-lucide="git-commit" class="w-4 h-4 text-accentcyan"></i>
-                <span class="text-xs md:text-sm uppercase tracking-wide">Causal Propagation Pathway</span>
-              </span>
-              <ul class="space-y-1.5 text-slate-300 text-xs md:text-sm font-normal leading-relaxed" id="singularity-causal-list">
-                <li>• Invoice BST/2026/1042 (₹14.75L) issued to Reliance with ₹2.25L GST accrued</li>
-                <li>• Reliance payment cycle is 35 days; cash will not land until Dec 21</li>
-                <li>• On Nov 20th GSTR-3B filing, bank balance drops below zero, triggering statutory freeze</li>
-              </ul>
-            </div>
+      <!-- TAB 1: CASH-FLOW FORECAST & WHAT-IF SIMULATOR -->
+      <div id="tab-panel-cashflow" class="flex-1 overflow-y-auto p-6 space-y-6">
+        
+        <!-- Forecast Overview Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5 text-xs font-mono">
+          <div class="p-3.5 rounded-xl bg-slate-900/80 border border-panelborder">
+            <span class="text-slate-400 block text-[10px] uppercase">Starting Liquid Cash</span>
+            <span id="fc-starting-cash" class="text-lg font-bold text-white block mt-0.5">₹1,85,000</span>
           </div>
-
-          <!-- Organism Macroscopic Physics Vitals -->
-          <div class="grid grid-cols-3 gap-4">
-            <div class="p-5 rounded-xl glass border border-panelborder">
-              <div class="flex items-center justify-between text-xs md:text-sm font-medium text-slate-400 mb-2">
-                <span>Fluid Viscosity Index</span>
-                <i data-lucide="droplet" class="w-4 h-4 text-warningamber"></i>
-              </div>
-              <!-- Large Key Number: 36-48px Desktop, Bold 700 -->
-              <div class="text-3xl md:text-4xl font-bold mono tracking-tighter text-warningamber leading-none" id="stat-viscosity">3.85</div>
-              <p class="text-xs text-slate-400 font-normal mt-2 leading-relaxed">1.0 = Laminar, 3.0+ = Sluggish receivable delay</p>
-            </div>
-
-            <div class="p-5 rounded-xl glass border border-panelborder">
-              <div class="flex items-center justify-between text-xs md:text-sm font-medium text-slate-400 mb-2">
-                <span>Tax Gravity Force</span>
-                <i data-lucide="anchor" class="w-4 h-4 text-accentpurple"></i>
-              </div>
-              <!-- Medium/Large Numbers -->
-              <div class="text-2xl md:text-3xl font-bold mono tracking-tighter text-accentpurple leading-none" id="stat-gravity">₹62,478 / day</div>
-              <p class="text-xs text-slate-400 font-normal mt-2 leading-relaxed">Downward pull toward 20th Nov statutory cut-off</p>
-            </div>
-
-            <div class="p-5 rounded-xl glass border border-panelborder">
-              <div class="flex items-center justify-between text-xs md:text-sm font-medium text-slate-400 mb-2">
-                <span>Operating Runway</span>
-                <i data-lucide="clock" class="w-4 h-4 text-brand-500"></i>
-              </div>
-              <!-- Large Key Number: 36-48px Desktop, Bold 700 -->
-              <div class="text-3xl md:text-4xl font-bold mono tracking-tighter text-brand-500 leading-none" id="stat-runway">11.4 Days</div>
-              <p class="text-xs text-slate-400 font-normal mt-2 leading-relaxed">Conformal 90% Bound: [8.2 - 15.4 days]</p>
-            </div>
+          <div class="p-3.5 rounded-xl bg-slate-900/80 border border-panelborder">
+            <span class="text-slate-400 block text-[10px] uppercase">Lowest Projected Dip</span>
+            <span id="fc-lowest-balance" class="text-lg font-bold text-dangerrose block mt-0.5">-₹1,52,915</span>
           </div>
+          <div class="p-3.5 rounded-xl bg-slate-900/80 border border-panelborder">
+            <span class="text-slate-400 block text-[10px] uppercase">Dip Date (Critical Point)</span>
+            <span id="fc-lowest-date" class="text-lg font-bold text-warningamber block mt-0.5">20 Nov 2026</span>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-900/80 border border-panelborder">
+            <span class="text-slate-400 block text-[10px] uppercase">Operating Runway</span>
+            <span id="fc-runway" class="text-lg font-bold text-brand-400 block mt-0.5">4 Days</span>
+          </div>
+        </div>
 
-          <!-- Pending Invoices Breakdown Table -->
-          <div class="p-5 rounded-xl glass border border-panelborder">
-            <div class="flex items-center justify-between mb-3.5">
-              <h4 class="text-xs md:text-sm font-bold text-slate-200 uppercase tracking-wider">Unsettled Receivables & Accrual Matrix</h4>
-              <span class="text-xs md:text-sm text-slate-400 mono">Total Pending: <span id="stat-total-receivables" class="text-white font-bold">₹28,45,000.00</span></span>
+        <!-- 45-Day Trajectory Chart -->
+        <div class="p-5 rounded-2xl bg-slate-900/80 border border-panelborder space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h4 class="text-sm font-bold text-white tracking-tight">45-Day Daily Cash Trajectory</h4>
+              <p class="text-xs text-slate-400">Day-by-day projected closing balance reflecting collections, taxes, loan EMIs, and daily burn.</p>
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs md:text-sm">
-                <thead>
-                  <tr class="text-slate-400 border-b border-panelborder font-medium text-xs uppercase tracking-wider">
-                    <th class="pb-2.5">Invoice #</th>
-                    <th class="pb-2.5">Customer</th>
-                    <th class="pb-2.5">Total (₹)</th>
-                    <th class="pb-2.5">GST Accrued</th>
-                    <th class="pb-2.5">Delay Pred</th>
-                    <th class="pb-2.5">Status</th>
-                  </tr>
-                </thead>
-                <tbody id="invoices-table-body" class="divide-y divide-panelborder/50 text-slate-300 font-normal">
-                  <!-- Injected dynamically -->
-                </tbody>
-              </table>
+            <span class="text-xs font-mono text-dangerrose bg-dangerrose/10 px-2.5 py-1 rounded-lg border border-dangerrose/30">
+              Zero Line Breach: 20 Nov
+            </span>
+          </div>
+          <div class="h-56 w-full relative">
+            <canvas id="cashflow-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Interactive What-If Levers Bar -->
+        <div class="p-5 rounded-2xl bg-slate-900/80 border border-panelborder space-y-4">
+          <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            Live What-If Scenario Levers (Drag sliders to simulate outcomes)
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-slate-300 font-medium">Customer Payment Delay</span>
+                <span id="val-delay" class="font-mono text-warningamber font-bold">0 Days</span>
+              </div>
+              <input type="range" id="slider-delay" min="-15" max="45" value="0" oninput="updateForecastFromSliders()" class="w-full accent-warningamber" />
+              <span class="text-[10px] text-slate-500">Negative = earlier payment, Positive = delayed</span>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-slate-300 font-medium">Prompt Settlement Discount</span>
+                <span id="val-discount" class="font-mono text-accentcyan font-bold">0.0%</span>
+              </div>
+              <input type="range" id="slider-discount" min="0" max="4" step="0.5" value="0" oninput="updateForecastFromSliders()" class="w-full accent-accentcyan" />
+              <span class="text-[10px] text-slate-500">Accelerates collections into day 2-3 at small haircut</span>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-slate-300 font-medium">Expense Reduction / Cut</span>
+                <span id="val-costcut" class="font-mono text-brand-400 font-bold">0%</span>
+              </div>
+              <input type="range" id="slider-costcut" min="0" max="40" step="5" value="0" oninput="updateForecastFromSliders()" class="w-full accent-brand-500" />
+              <span class="text-[10px] text-slate-500">Trims non-essential overheads from daily burn</span>
             </div>
           </div>
         </div>
 
-        <!-- TAB 2: CAUSAL SPACETIME GRAPH -->
-        <div id="tab-content-graph" class="hidden space-y-4">
-          <div class="p-4 rounded-xl glass border border-panelborder flex items-center justify-between">
+        <!-- Key Cash Movement Events Table -->
+        <div class="p-5 rounded-2xl bg-slate-900/80 border border-panelborder">
+          <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
+            Major Landmark Cash Inflows & Outflows
+          </h4>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="text-slate-400 border-b border-panelborder font-mono text-[11px] uppercase">
+                  <th class="pb-2">Date</th>
+                  <th class="pb-2">Description / Transaction</th>
+                  <th class="pb-2 text-right">Inflow</th>
+                  <th class="pb-2 text-right">Outflow</th>
+                  <th class="pb-2 text-right">Balance After</th>
+                </tr>
+              </thead>
+              <tbody id="fc-events-tbody" class="divide-y divide-panelborder/50 text-slate-300 font-mono">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB 2: GST & TAX PLANNER -->
+      <div id="tab-panel-gst" class="hidden flex-1 overflow-y-auto p-6 space-y-6">
+        
+        <!-- GST Countdown Banner -->
+        <div class="p-6 rounded-2xl bg-slate-900/90 border border-dangerrose/40 relative overflow-hidden">
+          <div class="flex items-start justify-between">
             <div>
-              <h4 class="text-base md:text-lg font-bold text-white tracking-tight">Dynamic Causal Spacetime Substrate</h4>
-              <p class="text-xs md:text-sm text-slate-400 font-normal">Interactive live topological view of RupeePackets, Invoices, Customer delays, and Tax Gravity wells.</p>
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-dangerrose/20 text-dangerrose border border-dangerrose/30">
+                  CRITICAL DEFICIT
+                </span>
+                <span class="text-xs text-slate-400">GSTR-3B Due in <strong class="text-white font-mono">4 Days</strong> (20 Nov 2026)</span>
+              </div>
+              <h3 class="text-xl font-bold text-white tracking-tight mt-1.5">GST Cash Settlement Ledger</h3>
+              <p class="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
+                Section 39 CGST Act mandates cash tax payment on billed sales even when client payments take 45+ days to arrive.
+              </p>
             </div>
-            <span class="px-2.5 py-1 rounded-full bg-accentcyan/10 border border-accentcyan/30 text-accentcyan text-[11px] mono">
-              Strict Conservation: ₹30.65 Lakhs
+            <div class="text-right">
+              <span class="text-[11px] text-slate-400 uppercase tracking-wider block mb-1">Cash Gap at Due Date</span>
+              <div id="gst-cash-gap" class="text-3xl font-bold text-dangerrose mono">₹1,52,915.00</div>
+            </div>
+          </div>
+
+          <!-- Breakdown Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mt-5 pt-4 border-t border-panelborder text-xs font-mono">
+            <div class="p-3 rounded-xl bg-black/40 border border-panelborder">
+              <span class="text-slate-400 block text-[10px] uppercase">Gross Output GST</span>
+              <span id="gst-gross-output" class="text-white font-bold text-sm block mt-0.5">₹3,69,915</span>
+            </div>
+            <div class="p-3 rounded-xl bg-black/40 border border-panelborder">
+              <span class="text-slate-400 block text-[10px] uppercase">ITC Booked (GSTR-2B)</span>
+              <span id="gst-itc-claimed" class="text-brand-400 font-bold text-sm block mt-0.5">-₹85,000</span>
+            </div>
+            <div class="p-3 rounded-xl bg-black/40 border border-dangerrose/30">
+              <span class="text-dangerrose block text-[10px] uppercase font-semibold">Net Cash Payable</span>
+              <span id="gst-net-payable" class="text-dangerrose font-bold text-sm block mt-0.5">₹2,84,915</span>
+            </div>
+            <div class="p-3 rounded-xl bg-black/40 border border-accentcyan/30">
+              <span class="text-accentcyan block text-[10px] uppercase font-semibold">In Tax Vault</span>
+              <span id="gst-in-vault" class="text-accentcyan font-bold text-sm block mt-0.5">₹35,000 (12%)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Practical Action Steps -->
+        <div class="p-5 rounded-2xl bg-slate-900/80 border border-panelborder space-y-3">
+          <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            Statutory Protective Steps (Recommended by AI Tax Guardian)
+          </h4>
+          <div id="gst-steps-list" class="space-y-2.5 text-xs">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+
+        <!-- Built-in Instant GST Split Calculator -->
+        <div class="p-5 rounded-2xl bg-slate-900/80 border border-panelborder space-y-4">
+          <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            Instant GST Split Calculator
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+            <div class="sm:col-span-2">
+              <label class="text-slate-400 block mb-1">Enter Bill Amount (₹)</label>
+              <input type="number" id="gst-calc-input" value="100000" oninput="runGstSplitCalc()" class="w-full p-2.5 rounded-xl bg-slate-950 border border-panelborder font-mono text-white focus:outline-none focus:border-brand-500" />
+            </div>
+            <div>
+              <label class="text-slate-400 block mb-1">GST Rate</label>
+              <select id="gst-calc-rate" onchange="runGstSplitCalc()" class="w-full p-2.5 rounded-xl bg-slate-950 border border-panelborder text-white focus:outline-none focus:border-brand-500">
+                <option value="18" selected>18% (Standard B2B)</option>
+                <option value="12">12% (Processed Goods)</option>
+                <option value="5">5% (Staples / Textiles)</option>
+                <option value="28">28% (Luxury / Auto)</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-slate-400 block mb-1">Mode</label>
+              <select id="gst-calc-mode" onchange="runGstSplitCalc()" class="w-full p-2.5 rounded-xl bg-slate-950 border border-panelborder text-white focus:outline-none focus:border-brand-500">
+                <option value="inclusive" selected>Tax Inclusive</option>
+                <option value="exclusive">Tax Exclusive</option>
+              </select>
+            </div>
+          </div>
+          <div class="p-3 rounded-xl bg-black/60 border border-panelborder grid grid-cols-4 gap-3 text-xs font-mono">
+            <div><span class="text-slate-500 block text-[10px]">BASE VALUE</span><span id="calc-base" class="text-white font-bold">₹84,746</span></div>
+            <div><span class="text-slate-500 block text-[10px]">TOTAL GST</span><span id="calc-gst" class="text-dangerrose font-bold">₹15,254</span></div>
+            <div><span class="text-slate-500 block text-[10px]">CGST (50%)</span><span id="calc-cgst" class="text-slate-300">₹7,627</span></div>
+            <div><span class="text-slate-500 block text-[10px]">SGST (50%)</span><span id="calc-sgst" class="text-slate-300">₹7,627</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB 3: WHO OWES ME / WHO I OWE -->
+      <div id="tab-panel-debtors" class="hidden flex-1 overflow-y-auto p-6 space-y-6">
+        
+        <!-- Sub-navigation Toggle -->
+        <div class="flex items-center justify-between border-b border-panelborder pb-4">
+          <div class="flex items-center bg-black/60 rounded-xl p-1 border border-panelborder text-xs">
+            <button id="btn-sub-debtors" onclick="switchLedgerView('receivables')" class="px-3.5 py-1.5 rounded-lg font-semibold bg-brand-600 text-white shadow">
+              💰 Who Owes Me (Debtors & Invoices)
+            </button>
+            <button id="btn-sub-creditors" onclick="switchLedgerView('payables')" class="px-3.5 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white">
+              📑 Who I Owe (Creditors, EMIs, Taxes)
+            </button>
+          </div>
+          <span id="ledger-count-summary" class="text-xs font-mono text-slate-400">Total Pending: ₹28.45 L</span>
+        </div>
+
+        <!-- View 1: Debtors / Receivables -->
+        <div id="ledger-receivables-view" class="space-y-4">
+          <div class="p-4 rounded-xl bg-slate-900/80 border border-panelborder flex items-center justify-between text-xs">
+            <div>
+              <span class="text-slate-400">Total Outstanding: <strong id="rec-total" class="text-white font-mono text-sm">₹28,45,000</strong></span>
+              <span class="mx-3 text-slate-600">•</span>
+              <span class="text-slate-400">Already Overdue: <strong id="rec-overdue" class="text-dangerrose font-mono text-sm">₹4,20,000</strong></span>
+            </div>
+            <button onclick="sendChatMessage('Who owes me money?')" class="text-accentcyan hover:underline text-xs">
+              Run AI Chasing Analysis
+            </button>
+          </div>
+
+          <div class="overflow-x-auto rounded-xl border border-panelborder bg-slate-900/60">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-950/80 text-slate-400 border-b border-panelborder font-mono text-[11px] uppercase">
+                <tr>
+                  <th class="p-3">Customer / Debtor</th>
+                  <th class="p-3">Invoice #</th>
+                  <th class="p-3 text-right">Amount (₹)</th>
+                  <th class="p-3 text-right">Accrued GST</th>
+                  <th class="p-3">Due Date</th>
+                  <th class="p-3">Delay Pred</th>
+                  <th class="p-3">Status</th>
+                  <th class="p-3 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody id="rec-tbody" class="divide-y divide-panelborder/50 text-slate-300">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- View 2: Creditors / Payables -->
+        <div id="ledger-payables-view" class="hidden space-y-4">
+          <div class="p-4 rounded-xl bg-slate-900/80 border border-panelborder flex items-center justify-between text-xs">
+            <div>
+              <span class="text-slate-400">Total Liabilities: <strong id="pay-total" class="text-white font-mono text-sm">₹11,17,915</strong></span>
+              <span class="mx-3 text-slate-600">•</span>
+              <span class="text-slate-400">Bank Cash Buffer: <strong id="pay-cash" class="text-brand-400 font-mono text-sm">₹1,85,000</strong></span>
+            </div>
+            <button onclick="sendChatMessage('Who do I owe money to?')" class="text-accentcyan hover:underline text-xs">
+              Run Outflow Strategy
+            </button>
+          </div>
+
+          <div class="overflow-x-auto rounded-xl border border-panelborder bg-slate-900/60">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-950/80 text-slate-400 border-b border-panelborder font-mono text-[11px] uppercase">
+                <tr>
+                  <th class="p-3">Obligation / Creditor</th>
+                  <th class="p-3">Category</th>
+                  <th class="p-3 text-right">Amount (₹)</th>
+                  <th class="p-3">Due Date</th>
+                  <th class="p-3">Priority Level</th>
+                  <th class="p-3">Status</th>
+                </tr>
+              </thead>
+              <tbody id="pay-tbody" class="divide-y divide-panelborder/50 text-slate-300">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB 4: PROFIT, EXPENSES & LOAN/EMI TOOLS -->
+      <div id="tab-panel-profit" class="hidden flex-1 overflow-y-auto p-6 space-y-6">
+        
+        <!-- Profit & Break-Even Model Card -->
+        <div class="p-5 rounded-2xl bg-slate-900/80 border border-panelborder space-y-4">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white tracking-tight">Monthly Profit & Break-Even Modeling</h4>
+            <span class="text-xs font-mono text-brand-400">Margins & Fixed Costs</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5 text-xs font-mono">
+            <div class="p-3 rounded-xl bg-black/40 border border-panelborder">
+              <span class="text-slate-400 block text-[10px] uppercase">Est. Monthly Sales</span>
+              <span id="pm-sales" class="text-white font-bold text-sm block mt-0.5">₹70,00,000</span>
+            </div>
+            <div class="p-3 rounded-xl bg-black/40 border border-panelborder">
+              <span class="text-slate-400 block text-[10px] uppercase">Gross Profit (10%)</span>
+              <span id="pm-gross" class="text-brand-400 font-bold text-sm block mt-0.5">₹7,00,000</span>
+            </div>
+            <div class="p-3 rounded-xl bg-black/40 border border-panelborder">
+              <span class="text-slate-400 block text-[10px] uppercase">Net Operating Profit</span>
+              <span id="pm-net" class="text-white font-bold text-sm block mt-0.5">₹4,60,000</span>
+            </div>
+            <div class="p-3 rounded-xl bg-black/40 border border-warningamber/30">
+              <span class="text-warningamber block text-[10px] uppercase font-semibold">Break-Even Sales</span>
+              <span id="pm-breakeven" class="text-warningamber font-bold text-sm block mt-0.5">₹24,00,000</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Loan / EMI Calculator -->
+        <div class="p-5 rounded-2xl bg-slate-900/80 border border-panelborder space-y-5">
+          <div class="flex items-center justify-between">
+            <div>
+              <h4 class="text-sm font-bold text-white tracking-tight">Interactive Loan & EMI Simulator</h4>
+              <p class="text-xs text-slate-400">Reducing balance EMI calculation with debt-serviceability checks against operating profit.</p>
+            </div>
+            <span id="emi-badge" class="px-3 py-1 rounded-full bg-brand-500/20 text-brand-400 text-xs font-semibold">
+              Comfortable: &lt;40% of Profit
             </span>
           </div>
 
-          <!-- Interactive SVG Causal Graph Container -->
-          <div class="h-[460px] rounded-2xl glass border border-panelborder relative overflow-hidden flex items-center justify-center bg-black/60">
-            <svg id="causal-graph-svg" class="w-full h-full" viewBox="0 0 700 440">
-              <defs>
-                <pattern id="graph-grid" width="30" height="30" patternUnits="userSpaceOnUse">
-                  <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(255, 255, 255, 0.03)" stroke-width="1"/>
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#graph-grid)" />
+          <!-- Sliders -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 text-xs">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-slate-300 font-medium">Loan Principal</span>
+                <span id="lbl-emi-principal" class="font-mono text-white font-bold">₹10,00,000</span>
+              </div>
+              <input type="range" id="sl-emi-principal" min="100000" max="10000000" step="50000" value="1000000" oninput="runEmiSimulation()" class="w-full accent-brand-500" />
+              <div class="flex justify-between text-[10px] text-slate-500 mt-0.5"><span>₹1 Lakh</span><span>₹1 Crore</span></div>
+            </div>
 
-              <!-- Causal Edges -->
-              <g id="causal-edges-layer">
-                <line x1="120" y1="110" x2="280" y2="110" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4" />
-                <line x1="120" y1="210" x2="280" y2="210" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4" />
-                <line x1="280" y1="110" x2="480" y2="220" stroke="#06b6d4" stroke-width="2" stroke-opacity="0.4" />
-                <path d="M 280 110 Q 380 70 520 100" fill="none" stroke="#f43f5e" stroke-width="3" stroke-dasharray="6" class="animate-flow" />
-                <path d="M 280 210 Q 400 150 520 100" fill="none" stroke="#f43f5e" stroke-width="2.5" />
-                <line x1="520" y1="100" x2="480" y2="220" stroke="#f43f5e" stroke-width="3" />
-                <line x1="480" y1="350" x2="520" y2="100" stroke="#10b981" stroke-width="2" stroke-dasharray="3" />
-                <line x1="480" y1="220" x2="620" y2="280" stroke="#8b5cf6" stroke-width="2" />
-              </g>
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-slate-300 font-medium">Interest Rate (Annual)</span>
+                <span id="lbl-emi-rate" class="font-mono text-accentcyan font-bold">11.0%</span>
+              </div>
+              <input type="range" id="sl-emi-rate" min="8" max="24" step="0.5" value="11" oninput="runEmiSimulation()" class="w-full accent-accentcyan" />
+              <div class="flex justify-between text-[10px] text-slate-500 mt-0.5"><span>8.0%</span><span>24.0%</span></div>
+            </div>
 
-              <!-- Causal Nodes -->
-              <g id="causal-nodes-layer">
-                <g transform="translate(120, 110)">
-                  <circle r="28" fill="#111726" stroke="#f59e0b" stroke-width="2" />
-                  <text y="-6" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">Reliance</text>
-                  <text y="8" text-anchor="middle" fill="#f59e0b" font-size="8">35d delay</text>
-                </g>
-                <g transform="translate(120, 210)">
-                  <circle r="26" fill="#111726" stroke="#f59e0b" stroke-width="2" />
-                  <text y="-6" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">L&T Fab</text>
-                  <text y="8" text-anchor="middle" fill="#f59e0b" font-size="8">28d delay</text>
-                </g>
-                <g transform="translate(280, 110)">
-                  <rect x="-40" y="-20" width="80" height="40" rx="8" fill="#111726" stroke="#06b6d4" stroke-width="2" />
-                  <text y="-4" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">Inv #1042</text>
-                  <text y="10" text-anchor="middle" fill="#06b6d4" font-size="8">₹14.75 Lakhs</text>
-                </g>
-                <g transform="translate(280, 210)">
-                  <rect x="-40" y="-20" width="80" height="40" rx="8" fill="#111726" stroke="#06b6d4" stroke-width="2" />
-                  <text y="-4" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">Inv #1043</text>
-                  <text y="10" text-anchor="middle" fill="#06b6d4" font-size="8">₹9.50 Lakhs</text>
-                </g>
-                <g transform="translate(520, 100)">
-                  <circle r="36" fill="#111726" stroke="#f43f5e" stroke-width="3" class="animate-pulse" />
-                  <circle r="42" fill="none" stroke="#f43f5e" stroke-width="1" stroke-opacity="0.4" stroke-dasharray="3" />
-                  <text y="-8" text-anchor="middle" fill="#f43f5e" font-size="10" font-weight="extrabold">GST BLACK HOLE</text>
-                  <text y="6" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">₹2.85L (20 Nov)</text>
-                  <text y="18" text-anchor="middle" fill="#f43f5e" font-size="7">Accrual Drain</text>
-                </g>
-                <g transform="translate(480, 220)">
-                  <circle r="34" fill="#111726" stroke="#10b981" stroke-width="2.5" />
-                  <text y="-6" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">Bank Cash</text>
-                  <text y="8" text-anchor="middle" fill="#10b981" font-size="9" font-weight="bold" id="graph-bank-val">₹1.85 Lakhs</text>
-                </g>
-                <g transform="translate(480, 350)">
-                  <circle r="26" fill="#111726" stroke="#06b6d4" stroke-width="2" />
-                  <text y="-4" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">Tax Vault</text>
-                  <text y="8" text-anchor="middle" fill="#06b6d4" font-size="8" id="graph-vault-val">₹35,000</text>
-                </g>
-                <g transform="translate(620, 280)">
-                  <circle r="25" fill="#111726" stroke="#8b5cf6" stroke-width="2" />
-                  <text y="-4" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">SBI EMI</text>
-                  <text y="8" text-anchor="middle" fill="#8b5cf6" font-size="8">₹88,000</text>
-                </g>
-              </g>
-            </svg>
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-slate-300 font-medium">Tenure (Years)</span>
+                <span id="lbl-emi-years" class="font-mono text-warningamber font-bold">5 Years</span>
+              </div>
+              <input type="range" id="sl-emi-years" min="1" max="7" step="1" value="5" oninput="runEmiSimulation()" class="w-full accent-warningamber" />
+              <div class="flex justify-between text-[10px] text-slate-500 mt-0.5"><span>1 Year</span><span>7 Years</span></div>
+            </div>
           </div>
-          <p class="text-xs text-slate-500">
-            Note the <span class="text-dangerrose font-semibold">Red Accrual Edge</span>: Even though Reliance has not paid Inv #1042, statutory GST instantly binds to the GST Black Hole, draining the central Bank Reservoir.
+
+          <!-- EMI Result Grid -->
+          <div class="p-4 rounded-xl bg-black/60 border border-panelborder grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+            <div>
+              <span class="text-slate-400 block text-[10px]">MONTHLY EMI</span>
+              <span id="res-emi-val" class="text-xl font-bold text-brand-400 block mt-0.5">₹21,742</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block text-[10px]">TOTAL INTEREST</span>
+              <span id="res-emi-interest" class="text-base font-bold text-warningamber block mt-0.5">₹3,04,545</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block text-[10px]">TOTAL REPAYMENT</span>
+              <span id="res-emi-total" class="text-base font-bold text-white block mt-0.5">₹13,04,545</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block text-[10px]">INTEREST SHARE</span>
+              <span id="res-emi-share" class="text-base font-bold text-slate-300 block mt-0.5">23.3%</span>
+            </div>
+          </div>
+
+          <p id="emi-service-text" class="text-xs text-slate-300 bg-panel/60 p-3 rounded-xl border border-panelborder leading-relaxed">
+            Comfortable: Monthly EMIs consume 23.6% of estimated monthly operating profit, leaving a healthy safety cushion for volatile months.
           </p>
         </div>
 
-        <!-- TAB 3: LIQUIDITY WORMHOLE FORGER -->
-        <div id="tab-content-wormhole" class="hidden space-y-6">
-          <div id="wormhole-display-container"></div>
-        </div>
-
-        <!-- TAB 4: WHAT-IF COUNTERFACTUAL TRAJECTORY -->
-        <div id="tab-content-trajectory" class="space-y-6">
-          <div class="p-6 rounded-2xl glass border border-panelborder">
-            <div class="flex items-center justify-between mb-4">
-              <div>
-                <!-- Section Headings: 20px desktop, 18px mobile, Semi-bold 600 / Bold 700 -->
-                <h4 class="text-lg md:text-xl font-bold text-white tracking-tight leading-snug">Pearlian Counterfactual Forward Simulator</h4>
-                <p class="text-xs md:text-sm text-slate-400 font-normal mt-0.5">Monte-Carlo cash trajectory: Status Quo (Inaction) vs Liquidity Wormhole (do-calculus intervention).</p>
-              </div>
-              <button onclick="refreshTrajectory()" class="px-4 py-2 rounded-xl bg-panel border border-panelborder text-xs md:text-sm text-slate-200 hover:text-white font-medium flex items-center gap-2 transition hover:border-slate-500">
-                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                <span>Re-simulate 100 Runs</span>
-              </button>
-            </div>
-
-            <!-- Canvas Chart -->
-            <div class="h-72 w-full">
-              <canvas id="trajectoryChart"></canvas>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4 mt-5 pt-4 border-t border-panelborder text-xs md:text-sm">
-              <div class="p-4 rounded-xl bg-dangerrose/10 border border-dangerrose/30">
-                <span class="font-semibold text-dangerrose block text-sm md:text-base mb-1">Path A: Status Quo (Inaction)</span>
-                <p class="text-slate-300 font-normal leading-relaxed">Liquid cash plunges to -₹1.53 Lakhs on 20th Nov. GST E-way bills blocked. Bank accounts frozen under Garnishee statutory order.</p>
-              </div>
-              <div class="p-4 rounded-xl bg-brand-500/10 border border-brand-500/30">
-                <span class="font-semibold text-brand-500 block text-sm md:text-base mb-1">Path B: do(Liquidity Wormhole)</span>
-                <p class="text-slate-300 font-normal leading-relaxed">Cash remains buoyant at +₹13.06 Lakhs. Statutory GST fully covered by Tax Vault. Operating runway safely extends to 40+ days.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
+
     </section>
 
   </main>
 
-  <!-- FOOTER / STATUTORY DISCLAIMER (Typography Guide: 12px desktop, 11px mobile, Regular 400, muted color) -->
-  <footer class="h-9 border-t border-panelborder bg-darkbg/95 px-6 flex items-center justify-between text-xs text-slate-500 shrink-0 font-normal">
-    <div class="flex items-center gap-2">
-      <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
-      <span class="text-slate-400 font-medium">AetherPravah Causal Financial Organism</span>
-      <span class="text-slate-600">•</span>
-      <span>Active Spacetime Graph Engine</span>
-    </div>
-    <div class="text-[11px] md:text-xs text-slate-500">
-      Paper-trading simulation sandbox • Strict rupee conservation active • Not statutory financial advice
-    </div>
-  </footer>
-
-  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <!-- APPLICATION SCRIPTS -->
   <script>
     let currentState = null;
-    let trajectoryChartInstance = null;
-    let wormholeCandidates = [];
-    let selectedCandidateIndex = 0;
+    let currentSingularity = null;
+    let cashflowChart = null;
 
-    async function fetchWormholeCandidates() {
-      try {
-        const res = await fetch('/api/wormholes/candidates');
-        const data = await res.json();
-        if (data && data.candidates && data.candidates.length > 0) {
-          wormholeCandidates = data.candidates;
-          if (currentState && (!currentState.active_wormholes || currentState.active_wormholes.length === 0 || currentState.active_wormholes[0].status !== 'EXECUTED')) {
-            renderWormholeTab(wormholeCandidates[selectedCandidateIndex]);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load candidate wormholes:', err);
-      }
-    }
-
-    function selectWormholeCandidate(idx) {
-      selectedCandidateIndex = idx;
-      if (wormholeCandidates[idx]) {
-        renderWormholeTab(wormholeCandidates[idx]);
-      }
-    }
-
-    // Helper: Simple Markdown formatting for phone-style bubble
-    function formatMessageText(text) {
-      if (!text) return '';
-      let formatted = text
-        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-bold">$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em class="text-slate-300">$1</em>')
-        .replace(/^- (.*$)/gim, '<li class="ml-3 list-disc text-slate-300">$1</li>')
-        .replace(/\n\n/g, '<p class="mt-2"></p>')
-        .replace(/\n/g, '<br/>');
-      return formatted;
-    }
-
-    // Helper: Formats current time
-    function getCurrentTimeString() {
-      const now = new Date();
-      return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
-    // Initialize application on load
-    document.addEventListener('DOMContentLoaded', () => {
+    // 1. Initialize
+    window.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
-      fetchState();
+      await fetchAndRenderState();
+      await loadForecastData();
+      await loadGstPlanData();
+      await loadLedgerData();
+      await runEmiSimulation();
+      addInitialGreeting();
     });
 
-    // Fetch Full Organism State
-    async function fetchState() {
+    // 2. Fetch State from API
+    async function fetchAndRenderState() {
       try {
         const res = await fetch('/api/state');
-        const data = await res.json();
-        currentState = data.state;
-        updateUI(data.state, data.singularity);
-        fetchWormholeCandidates();
-        if (document.getElementById('chat-messages').children.length === 0) {
-          addSystemGreeting(data.state, data.singularity);
+        if (res.ok) {
+          const data = await res.json();
+          currentState = data.state;
+          currentSingularity = data.singularity;
+          renderHeaderKPIs();
         }
-      } catch (err) {
-        console.error('Failed to fetch state:', err);
+      } catch (e) {
+        console.error('State fetch error:', e);
       }
     }
 
-    // Switch Archetype
+    function renderHeaderKPIs() {
+      if (!currentState) return;
+      const phys = currentState.physics_state;
+      const gst = currentState.gst_snapshot;
+
+      document.getElementById('header-conserved').innerText = `₹${(phys.total_rupees_conserved / 100000).toFixed(2)}L Conserved`;
+      document.getElementById('kpi-bank-cash').innerText = `₹${(phys.bank_cash / 100000).toFixed(2)} L`;
+      document.getElementById('kpi-tax-vault').innerText = `₹${phys.tax_vault_balance.toLocaleString('en-IN')}`;
+      document.getElementById('kpi-runway').innerText = `${phys.estimated_runway_days.toFixed(1)}d`;
+
+      const score = currentState.genome.overall_score;
+      document.getElementById('kpi-genome-text').innerText = `${score} / 100`;
+
+      if (currentSingularity && currentSingularity.singularity_depth > 0) {
+        document.getElementById('alert-banner').classList.remove('hidden');
+        document.getElementById('alert-text').innerText = `₹${currentSingularity.singularity_depth.toLocaleString('en-IN')} cash shortfall converging on 20 Nov 2026 (${currentSingularity.days_to_event_horizon} days left). Accrued tax must be paid in cash under CGST Section 39.`;
+      } else {
+        document.getElementById('alert-banner').classList.add('hidden');
+      }
+    }
+
+    // 3. Tab Switching
+    function switchTab(tabId) {
+      ['cashflow', 'gst', 'debtors', 'profit'].forEach(t => {
+        document.getElementById(`tab-panel-${t}`).classList.add('hidden');
+        document.getElementById(`tab-btn-${t}`).className = 'px-3.5 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 text-slate-400 hover:text-white';
+      });
+
+      document.getElementById(`tab-panel-${tabId}`).classList.remove('hidden');
+      document.getElementById(`tab-btn-${tabId}`).className = 'px-3.5 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5 bg-slate-800 text-white border border-slate-700';
+
+      if (tabId === 'cashflow' && cashflowChart) {
+        setTimeout(() => cashflowChart.resize(), 50);
+      }
+    }
+
+    // 4. Archetype Switching
     async function switchArchetype(archId) {
       try {
         const res = await fetch(`/api/archetype/${archId}`, { method: 'POST' });
-        const data = await res.json();
-        currentState = data.state;
-        selectedCandidateIndex = 0;
-        updateUI(data.state, data.singularity);
-        fetchWormholeCandidates();
+        if (res.ok) {
+          const data = await res.json();
+          currentState = data.state;
+          currentSingularity = data.singularity;
 
-        ['steel', 'garment', 'agency'].forEach(k => {
-          const btn = document.getElementById(`btn-arch-${k}`);
-          if (btn) {
-            btn.className = "px-3 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1.5";
-          }
-        });
-        if (archId === 'STEEL_TRADER') document.getElementById('btn-arch-steel').className = "px-3 py-1.5 rounded-lg font-medium transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1.5";
-        if (archId === 'VASTRAKALA') document.getElementById('btn-arch-garment').className = "px-3 py-1.5 rounded-lg font-medium transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1.5";
-        if (archId === 'NEXUS_PULSE') document.getElementById('btn-arch-agency').className = "px-3 py-1.5 rounded-lg font-medium transition-all bg-brand-600 text-white shadow-sm flex items-center gap-1.5";
+          ['steel', 'garment', 'agency'].forEach(k => {
+            document.getElementById(`btn-arch-${k}`).className = 'px-3 py-1.5 rounded-lg font-medium transition text-slate-400 hover:text-white';
+          });
+          if (archId === 'STEEL_TRADER') document.getElementById('btn-arch-steel').className = 'px-3 py-1.5 rounded-lg font-medium transition bg-brand-600 text-white font-semibold shadow';
+          if (archId === 'VASTRAKALA') document.getElementById('btn-arch-garment').className = 'px-3 py-1.5 rounded-lg font-medium transition bg-brand-600 text-white font-semibold shadow';
+          if (archId === 'NEXUS_PULSE') document.getElementById('btn-arch-agency').className = 'px-3 py-1.5 rounded-lg font-medium transition bg-brand-600 text-white font-semibold shadow';
 
-        addSystemGreeting(data.state, data.singularity);
-      } catch (err) {
-        console.error('Failed to switch archetype:', err);
+          renderHeaderKPIs();
+          await loadForecastData();
+          await loadGstPlanData();
+          await loadLedgerData();
+          await runEmiSimulation();
+
+          addAiMessage({
+            plain_language_summary: `Switched operational context to **${currentState.business.name}** (${currentState.business.city}). Total conserved capital is **₹${(currentState.physics_state.total_rupees_conserved / 100000).toFixed(2)} Lakhs**. Ask me anything about your cash, invoices, or runway.`,
+            suggestions: ["How is my money?", "What GST do I owe this month?", "Who owes me money?", "Can I afford a 5 lakh machine?"]
+          });
+        }
+      } catch (e) {
+        console.error(e);
       }
     }
 
-    // Update UI Elements
-    function updateUI(state, singularity) {
-      if (!state) return;
+    // 5. Load & Render Cash Flow Forecast
+    async function loadForecastData(params = {}) {
+      try {
+        const queryStr = new URLSearchParams(params).toString();
+        const res = await fetch(`/api/forecast?${queryStr}`);
+        if (!res.ok) return;
+        const data = await res.json();
 
-      const scoreEl = document.getElementById('genome-score');
-      const badgeEl = document.getElementById('genome-badge');
-      if (scoreEl) scoreEl.textContent = `${state.genome.overall_score} / 100`;
+        const sm = data.summary;
+        document.getElementById('fc-starting-cash').innerText = `₹${sm.starting_cash.toLocaleString('en-IN')}`;
+        document.getElementById('fc-lowest-balance').innerText = `₹${sm.lowest_balance.toLocaleString('en-IN')}`;
+        document.getElementById('fc-lowest-balance').className = sm.lowest_balance < 0 ? 'text-lg font-bold text-dangerrose block mt-0.5' : 'text-lg font-bold text-brand-400 block mt-0.5';
+        document.getElementById('fc-lowest-date').innerText = sm.lowest_date_label;
+        document.getElementById('fc-runway').innerText = `${sm.estimated_runway_days.toFixed(0)} Days`;
 
-      if (state.genome.overall_score < 50) {
-        badgeEl.className = "flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border border-dangerrose/30 bg-dangerrose/10 text-dangerrose";
-      } else if (state.genome.overall_score < 75) {
-        badgeEl.className = "flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border border-warningamber/30 bg-warningamber/10 text-warningamber";
-      } else {
-        badgeEl.className = "flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border border-brand-500/30 bg-brand-500/10 text-brand-500";
-      }
+        // Render Chart
+        renderCashflowChart(data.dates, data.balances);
 
-      document.getElementById('biz-city-label').textContent = state.business.city;
-
-      if (singularity) {
-        document.getElementById('singularity-severity-badge').textContent = singularity.severity === 'CRITICAL' ? 'CRITICAL BLACK HOLE' : singularity.severity;
-        document.getElementById('singularity-days-left').textContent = `${singularity.days_to_event_horizon} Days`;
-        document.getElementById('singularity-depth-display').textContent = `₹${singularity.singularity_depth.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-        document.getElementById('stat-net-gst').textContent = `₹${state.gst_snapshot.net_gst_cash_payable.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-        document.getElementById('stat-unpaid-gst').textContent = `₹${state.gst_snapshot.gst_on_unpaid_invoices.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-        document.getElementById('stat-bank-cash').textContent = `₹${state.physics_state.bank_cash.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-        document.getElementById('stat-tax-vault').textContent = `₹${state.physics_state.tax_vault_balance.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-
-        const causalList = document.getElementById('singularity-causal-list');
-        if (causalList && singularity.causal_root_chains) {
-          causalList.innerHTML = singularity.causal_root_chains.map(c => `<li>• ${c}</li>`).join('');
-        }
-      }
-
-      document.getElementById('stat-viscosity').textContent = state.physics_state.viscosity_index.toFixed(2);
-      document.getElementById('stat-gravity').textContent = `₹${Math.round(state.physics_state.tax_gravity_well).toLocaleString('en-IN')} / day`;
-      document.getElementById('stat-runway').textContent = `${state.physics_state.estimated_runway_days.toFixed(1)} Days`;
-      document.getElementById('stat-total-receivables').textContent = `₹${state.physics_state.pending_receivables.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-
-      const tBody = document.getElementById('invoices-table-body');
-      if (tBody) {
-        tBody.innerHTML = state.invoices.map(inv => `
-          <tr class="hover:bg-panel/40 transition">
-            <td class="py-2.5 font-medium mono text-white">${inv.invoice_number}</td>
-            <td class="py-2.5">${inv.customer_name}</td>
-            <td class="py-2.5 font-bold mono">₹${inv.total_amount.toLocaleString('en-IN')}</td>
-            <td class="py-2.5 font-medium mono text-dangerrose">₹${inv.gst_amount.toLocaleString('en-IN')}</td>
-            <td class="py-2.5 mono text-warningamber">+${inv.delay_prediction_days}d</td>
-            <td class="py-2.5">
-              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${
-                inv.status === 'PAID' ? 'bg-brand-500/20 text-brand-500' :
-                inv.status === 'OVERDUE' || inv.status === 'CRITICAL_TRAP' ? 'bg-dangerrose/20 text-dangerrose' :
-                'bg-accentcyan/20 text-accentcyan'
-              }">${inv.status}</span>
-            </td>
+        // Render Events
+        const tbody = document.getElementById('fc-events-tbody');
+        tbody.innerHTML = data.events.map(ev => `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="py-2.5 text-white font-semibold">${ev.date}</td>
+            <td class="py-2.5 font-sans">${ev.description}</td>
+            <td class="py-2.5 text-right text-brand-400">${ev.inflow > 0 ? '+₹' + ev.inflow.toLocaleString('en-IN') : '-'}</td>
+            <td class="py-2.5 text-right text-dangerrose">${ev.outflow > 0 ? '-₹' + ev.outflow.toLocaleString('en-IN') : '-'}</td>
+            <td class="py-2.5 text-right font-bold ${ev.balance < 0 ? 'text-dangerrose' : 'text-white'}">₹${ev.balance.toLocaleString('en-IN')}</td>
           </tr>
         `).join('');
+
+      } catch (e) {
+        console.error(e);
       }
-
-      const gBank = document.getElementById('graph-bank-val');
-      if (gBank) gBank.textContent = `₹${(state.physics_state.bank_cash / 100000).toFixed(2)}L`;
-      const gVault = document.getElementById('graph-vault-val');
-      if (gVault) gVault.textContent = `₹${Math.round(state.physics_state.tax_vault_balance).toLocaleString('en-IN')}`;
-
-      renderWormholeTab(state.active_wormholes[0] || null);
-      lucide.createIcons();
     }
 
-    // Render Wormhole Tab Content
-    function renderWormholeTab(wormhole) {
-      const container = document.getElementById('wormhole-display-container');
-      if (!container) return;
+    function renderCashflowChart(dates, balances) {
+      const ctx = document.getElementById('cashflow-chart').getContext('2d');
+      if (cashflowChart) cashflowChart.destroy();
 
-      const isExecuted = (currentState && currentState.active_wormholes && currentState.active_wormholes[0] && currentState.active_wormholes[0].status === 'EXECUTED');
-      
-      const activeCandidate = (!isExecuted && wormholeCandidates.length > 0)
-        ? (wormholeCandidates[selectedCandidateIndex] || wormhole)
-        : (wormhole || (currentState && currentState.active_wormholes && currentState.active_wormholes[0]));
-
-      if (!activeCandidate) {
-        container.innerHTML = `
-          <div class="p-8 rounded-2xl glass border border-panelborder text-center space-y-3">
-            <i data-lucide="shield-check" class="w-12 h-12 text-brand-500 mx-auto"></i>
-            <h4 class="text-base font-bold text-white">Organism Protected</h4>
-            <p class="text-xs text-slate-400 max-w-md mx-auto">No active liquidity singularity threatens your business right now. If a singularity forms or an invoice is delayed, the Wormhole Forger will dynamically synthesize an optimal financial bridge.</p>
-          </div>
-        `;
-        lucide.createIcons();
-        return;
-      }
-
-      const w = isExecuted ? currentState.active_wormholes[0] : activeCandidate;
-
-      container.innerHTML = `
-        <div class="space-y-4">
-          <!-- Pareto Candidate Selector Tabs -->
-          ${wormholeCandidates.length > 1 && !isExecuted ? `
-            <div class="p-2.5 rounded-xl bg-panel/70 border border-panelborder flex items-center gap-2 overflow-x-auto text-xs md:text-sm">
-              <span class="text-slate-400 font-semibold uppercase tracking-wider text-xs pl-1 shrink-0">Pareto Strategies:</span>
-              ${wormholeCandidates.map((c, idx) => `
-                <button onclick="selectWormholeCandidate(${idx})" class="px-3.5 py-2 rounded-lg font-medium transition flex items-center gap-1.5 shrink-0 ${idx === selectedCandidateIndex ? 'bg-accentcyan text-black font-bold shadow-md shadow-accentcyan/30' : 'bg-panel border border-panelborder text-slate-300 hover:text-white'}">
-                  <span>${c.title.includes(':') ? c.title.split(':')[1].trim() : c.title}</span>
-                </button>
-              `).join('')}
-            </div>
-          ` : ''}
-
-          <div class="p-6 rounded-2xl glass wormhole-glow border border-accentcyan/40 bg-accentcyan/5 space-y-5">
-            <div class="flex items-start justify-between">
-              <div>
-                <span class="px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${isExecuted ? 'bg-brand-500/20 text-brand-500 border border-brand-500/30' : 'bg-accentcyan/20 text-accentcyan border border-accentcyan/30'}">
-                  ${isExecuted ? 'EXECUTED' : w.status}
-                </span>
-                <!-- Section Headings: 20px desktop, 18px mobile, Semi-bold 600 / Bold 700 -->
-                <h3 class="text-lg md:text-xl font-bold text-white tracking-tight mt-2 leading-snug">${w.title}</h3>
-                <p class="text-xs md:text-sm text-slate-300 font-normal mt-1 max-w-xl leading-relaxed">${w.explanation_narrative}</p>
-              </div>
-              <div class="text-right">
-                <span class="text-xs text-slate-400 uppercase tracking-wider font-medium block mb-1">Gross Liberated</span>
-                <!-- Large Key Numbers: 36-48px desktop, 32-40px mobile, Bold 700 -->
-                <div class="text-3xl md:text-4xl font-bold text-accentcyan mono tracking-tighter leading-none">₹${w.gross_liquidity_created.toLocaleString('en-IN', {minimumFractionDigits: 2})}</div>
-                <span class="text-xs md:text-sm text-slate-400 font-medium block mt-1">Total Net Cost: <span class="mono text-white font-semibold">₹${w.total_net_cost.toLocaleString('en-IN')}</span></span>
-              </div>
-            </div>
-
-            <!-- Step Breakdown -->
-            <div class="space-y-2.5 pt-3 border-t border-panelborder">
-              <h4 class="text-xs md:text-sm font-bold text-slate-200 uppercase tracking-wider">Synthesized Vector Steps:</h4>
-              ${w.steps.map(step => `
-                <div class="p-3.5 rounded-xl bg-panel/70 border border-panelborder flex items-center justify-between text-xs md:text-sm">
-                  <div class="flex items-center gap-3.5">
-                    <span class="w-7 h-7 rounded-lg bg-accentcyan/20 text-accentcyan font-bold mono flex items-center justify-center text-xs shrink-0">
-                      ${step.step_number}
-                    </span>
-                    <div>
-                      <span class="font-semibold text-white text-sm md:text-base">${step.action_type.replace(/_/g, ' ')}</span>
-                      <span class="text-slate-400 block text-xs md:text-sm font-normal mt-0.5 leading-relaxed">${step.causal_mechanism}</span>
-                    </div>
-                  </div>
-                  <div class="text-right shrink-0 ml-4">
-                    <span class="font-bold mono text-brand-500 block text-sm md:text-base">+₹${step.amount_unlocked.toLocaleString('en-IN')}</span>
-                    <span class="text-xs text-slate-400 font-medium">${step.implementation_time_hours}h SLA</span>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-
-            <!-- Supreme Court Formal Clearance & Action Button -->
-            <div class="p-5 rounded-xl bg-brand-500/10 border border-brand-500/30 flex items-center justify-between">
-              <div class="flex items-center gap-3.5">
-                <i data-lucide="award" class="w-8 h-8 text-brand-500 shrink-0"></i>
-                <div>
-                  <span class="text-xs md:text-sm font-bold text-brand-500 uppercase tracking-wide">Constitutional Supreme Court Clearance</span>
-                  <p class="text-xs md:text-[13px] text-slate-300 font-normal mt-0.5">Passed symbolic math check • Protects 21-day minimum runway • Paper-trading sandbox</p>
-                </div>
-              </div>
-              ${!isExecuted ? `
-                <button onclick="activateWormhole()" class="px-6 py-3 rounded-xl bg-gradient-to-r from-accentcyan to-brand-600 hover:from-accentcyan/90 hover:to-brand-500 text-white font-semibold text-sm md:text-base shadow-lg shadow-accentcyan/20 transition flex items-center gap-2 shrink-0">
-                  <i data-lucide="zap" class="w-4 h-4"></i>
-                  <span>Authorize & Execute Wormhole</span>
-                </button>
-              ` : `
-                <span class="px-4 py-2 rounded-xl bg-brand-500/20 text-brand-500 font-bold text-xs md:text-sm flex items-center gap-1.5">
-                  <i data-lucide="check" class="w-4 h-4"></i>
-                  <span>Executed Successfully</span>
-                </span>
-              `}
-            </div>
-          </div>
-        </div>
-      `;
-      lucide.createIcons();
-    }
-
-    // Switch Tabs
-    function switchTab(tabId) {
-      ['singularity', 'graph', 'wormhole', 'trajectory'].forEach(t => {
-        document.getElementById(`tab-content-${t}`).classList.add('hidden');
-        document.getElementById(`tab-btn-${t}`).className = "px-3.5 py-2 rounded-lg text-xs md:text-sm font-medium transition text-slate-400 hover:text-white flex items-center gap-2";
-      });
-      document.getElementById(`tab-content-${tabId}`).classList.remove('hidden');
-      const activeBtn = document.getElementById(`tab-btn-${tabId}`);
-      activeBtn.className = "px-3.5 py-2 rounded-lg text-xs md:text-sm font-semibold transition border-b-2 border-accentcyan text-white flex items-center gap-2";
-      if (tabId === 'trajectory') {
-        renderTrajectoryChart();
-      }
-      lucide.createIcons();
-    }
-
-    // Render Trajectory Chart
-    async function renderTrajectoryChart() {
-      try {
-        const res = await fetch('/api/counterfactual');
-        const data = await res.json();
-
-        const ctx = document.getElementById('trajectoryChart').getContext('2d');
-        if (trajectoryChartInstance) {
-          trajectoryChartInstance.destroy();
-        }
-
-        trajectoryChartInstance = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: data.dates,
-            datasets: [
-              {
-                label: 'Status Quo (Inaction)',
-                data: data.baseline_median,
-                borderColor: '#f43f5e',
-                backgroundColor: 'rgba(244, 63, 94, 0.1)',
-                borderWidth: 2.5,
-                fill: false,
-                tension: 0.3
-              },
-              {
-                label: 'do(Liquidity Wormhole)',
-                data: data.wormhole_median,
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.3
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                labels: { color: '#94a3b8', font: { family: 'Inter', size: 12, weight: 500 } }
-              }
+      cashflowChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: dates,
+          datasets: [{
+            label: 'Projected Closing Cash Balance (₹)',
+            data: balances,
+            borderColor: '#10b981',
+            backgroundColor: (context) => {
+              const chart = context.chart;
+              const { ctx, chartArea } = chart;
+              if (!chartArea) return null;
+              const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+              gradient.addColorStop(0, 'rgba(16, 185, 129, 0.25)');
+              gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+              return gradient;
             },
-            scales: {
-              x: {
-                ticks: { color: '#64748b', maxTicksLimit: 12, font: { family: 'Inter', size: 11 } },
-                grid: { color: 'rgba(255, 255, 255, 0.05)' }
-              },
-              y: {
-                ticks: {
-                  color: '#64748b',
-                  font: { family: 'JetBrains Mono', size: 11 },
-                  callback: val => `₹${(val / 100000).toFixed(1)}L`
-                },
-                grid: { color: 'rgba(255, 255, 255, 0.05)' }
+            fill: true,
+            tension: 0.35,
+            borderWidth: 2.5,
+            pointRadius: 2,
+            pointHoverRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              titleColor: '#fff',
+              bodyColor: '#38bdf8',
+              borderColor: '#334155',
+              borderWidth: 1,
+              callbacks: {
+                label: (ctx) => `Closing Cash: ₹${ctx.parsed.y.toLocaleString('en-IN')}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 10 }
+            },
+            y: {
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: {
+                color: '#94a3b8',
+                font: { family: 'JetBrains Mono', size: 10 },
+                callback: (val) => val >= 100000 ? `₹${(val/100000).toFixed(1)}L` : (val <= -100000 ? `-₹${(Math.abs(val)/100000).toFixed(1)}L` : `₹${val}`)
               }
             }
           }
-        });
-      } catch (err) {
-        console.error('Trajectory chart fetch error:', err);
-      }
-    }
-
-    function refreshTrajectory() {
-      renderTrajectoryChart();
-    }
-
-    // System Greeting message (Typography Guide: 16px Regular, line-height 1.65)
-    function addSystemGreeting(state, singularity) {
-      const container = document.getElementById('chat-messages');
-      const msgDiv = document.createElement('div');
-      msgDiv.className = "flex gap-3 text-sm md:text-base";
-      msgDiv.innerHTML = `
-        <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-brand-600 to-accentcyan flex items-center justify-center font-bold text-white text-xs shrink-0 shadow mt-0.5">
-          AP
-        </div>
-        <div class="max-w-[92%] chat-bubble-ai p-5 rounded-2xl space-y-3.5">
-          <div class="flex items-center justify-between border-b border-panelborder/60 pb-2.5">
-            <span class="font-bold text-white text-sm md:text-[15px] tracking-tight">AetherPravah AI Organism</span>
-            <span class="text-xs text-slate-400 font-medium">${getCurrentTimeString()}</span>
-          </div>
-          <!-- Chat AI Messages (body): 16px, Regular 400, Line height 1.65 -->
-          <p class="text-base text-slate-200 font-normal leading-[1.65]">
-            Hello! I am actively tracking all <strong class="text-white font-semibold">₹${(state.physics_state.total_rupees_conserved / 100000).toFixed(2)} Lakhs</strong> across <strong class="text-white font-semibold">${state.business.name}</strong> in real time with zero mathematical leakage.
-            While your business operations are profitable, an acute <strong class="text-dangerrose font-semibold">GSTR-3B GST Accrual Singularity</strong> converges on Nov 20th. Unpaid customer bills hold ₹${(state.gst_snapshot.gst_on_unpaid_invoices / 1000).toFixed(0)}k in accrued GST liability that must be settled in cash.
-          </p>
-          <div class="p-3.5 rounded-xl bg-dangerrose/10 border border-dangerrose/30 text-sm md:text-[15px] text-dangerrose font-medium leading-relaxed">
-            ⚠️ <strong>Singularity Warning:</strong> ₹${singularity.singularity_depth.toLocaleString('en-IN', {minimumFractionDigits: 2})} cash deficit in ${singularity.days_to_event_horizon} days.
-          </div>
-          <!-- Interactive Quick Followup Chips: 14-15px Medium 500 -->
-          <div class="flex flex-wrap gap-2 pt-1">
-            <button onclick="sendQuickMessage('Who owes me the most money?')" class="px-3.5 py-1.5 rounded-full bg-panel hover:bg-slate-800 text-xs md:text-sm font-medium text-accentcyan border border-panelborder hover:border-accentcyan transition">
-              📊 Who owes me money?
-            </button>
-            <button onclick="sendQuickMessage('Can I afford a new machine of 5 lakhs?')" class="px-3.5 py-1.5 rounded-full bg-panel hover:bg-slate-800 text-xs md:text-sm font-medium text-warningamber border border-panelborder hover:border-warningamber transition">
-              🛑 Can I spend 5 Lakhs?
-            </button>
-            <button onclick="sendQuickMessage('How is my money?')" class="px-3.5 py-1.5 rounded-full bg-panel hover:bg-slate-800 text-xs md:text-sm font-medium text-brand-400 border border-panelborder hover:border-brand-400 transition">
-              🩺 Full Health Check
-            </button>
-          </div>
-        </div>
-      `;
-      container.appendChild(msgDiv);
-      container.scrollTop = container.scrollHeight;
-      lucide.createIcons();
-    }
-
-    // Phone / AI App Style Chat Rendering (Typography Guide: 16px Regular, line-height 1.65)
-    function addChatMessage(role, content) {
-      const container = document.getElementById('chat-messages');
-      const msgDiv = document.createElement('div');
-
-      if (role === 'user') {
-        msgDiv.className = "flex justify-end items-end gap-2";
-        msgDiv.innerHTML = `
-          <div class="flex flex-col items-end max-w-[82%]">
-            <!-- User Chat Messages: 16px, Regular 400 -->
-            <div class="chat-bubble-user text-white p-4 rounded-2xl rounded-br-sm text-base font-normal leading-relaxed shadow-md">
-              ${content}
-            </div>
-            <span class="text-xs text-slate-400 mt-1 mr-1 font-normal">${getCurrentTimeString()}</span>
-          </div>
-        `;
-      } else {
-        // AI Phone App Message Bubble
-        const cardId = 'details-' + Math.random().toString(36).substring(2, 9);
-        msgDiv.className = "flex items-start gap-3";
-        msgDiv.innerHTML = `
-          <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-brand-600 to-accentcyan flex items-center justify-center font-bold text-white text-xs shrink-0 shadow mt-0.5">
-            AP
-          </div>
-          <div class="max-w-[92%] chat-bubble-ai p-5 rounded-2xl rounded-tl-sm space-y-3.5">
-            <div class="flex items-center justify-between border-b border-panelborder/60 pb-2.5">
-              <div class="flex items-center gap-2">
-                <span class="font-bold text-white text-sm md:text-[15px] tracking-tight">AetherPravah AI</span>
-                <span class="px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 text-xs font-semibold mono">94% Confidence</span>
-              </div>
-              <span class="text-xs text-slate-400 font-medium">${getCurrentTimeString()}</span>
-            </div>
-
-            <!-- Plain Language Conversational Body (Markdown parsed): 16px Regular 400, line-height 1.65 -->
-            <div class="text-slate-200 text-base font-normal leading-[1.65]">
-              ${formatMessageText(content.plain_language_summary)}
-            </div>
-
-            <!-- Actionable Recommendations -->
-            ${content.top_recommended_actions && content.top_recommended_actions.length > 0 ? `
-              <div class="space-y-2 pt-1">
-                <span class="font-semibold text-slate-200 block text-xs md:text-sm uppercase tracking-wide">Recommended Protections:</span>
-                ${content.top_recommended_actions.map(act => `
-                  <div class="flex items-center justify-between p-3 rounded-xl bg-panel/80 border border-panelborder">
-                    <span class="text-slate-200 text-sm font-medium leading-relaxed">${act}</span>
-                    ${act.includes('Wormhole') ? `
-                      <button onclick="activateWormhole()" class="ml-3 px-3.5 py-1.5 rounded-lg bg-accentcyan hover:bg-white text-black font-semibold text-xs md:text-sm shrink-0 transition shadow-sm">
-                        Activate Now
-                      </button>
-                    ` : ''}
-                  </div>
-                `).join('')}
-              </div>
-            ` : ''}
-
-            <!-- Collapsible Technical Math & Causal Chain Details -->
-            <div class="pt-2 border-t border-panelborder/60">
-              <button onclick="toggleDetails('${cardId}')" class="text-xs md:text-sm font-medium text-accentcyan hover:underline flex items-center gap-1.5">
-                <span>View Exact Financial Vitals & Counterfactual</span>
-                <i data-lucide="chevron-down" id="icon-${cardId}" class="w-4 h-4 transition-transform"></i>
-              </button>
-
-              <div id="${cardId}" class="hidden mt-3 space-y-3">
-                <!-- Exact Numbers: JetBrains Mono -->
-                <div class="p-3.5 rounded-xl bg-black/60 border border-panelborder mono text-xs md:text-sm text-slate-300 whitespace-pre-line leading-relaxed">
-                  ${content.exact_numbers}
-                </div>
-                <!-- Causal Explanation -->
-                <div class="p-3.5 rounded-xl bg-accentcyan/5 border border-accentcyan/20 text-slate-300 text-xs md:text-sm leading-relaxed">
-                  <span class="font-semibold text-accentcyan block mb-1">Causal Spacetime Driver:</span>
-                  ${content.causal_explanation}
-                </div>
-                <!-- Counterfactual Inaction Warning -->
-                <div class="p-3.5 rounded-xl bg-dangerrose/10 border border-dangerrose/30 text-dangerrose text-xs md:text-sm leading-relaxed">
-                  <span class="font-semibold block mb-1">What if you ignore this? (Counterfactual)</span>
-                  ${content.what_if_ignore}
-                </div>
-              </div>
-            </div>
-
-            <!-- Smart Suggested Follow-up Chips like Phone AI Apps -->
-            <div class="flex flex-wrap gap-2 pt-2.5 border-t border-panelborder/40">
-              <span class="text-xs text-slate-400 w-full mb-0.5 font-medium">Suggested next questions:</span>
-              <button onclick="sendQuickMessage('Who owes me the most money?')" class="px-3 py-1.5 rounded-lg bg-panel hover:bg-slate-800 text-xs text-slate-300 border border-panelborder hover:border-slate-400 transition font-medium">
-                Who owes me money?
-              </button>
-              <button onclick="sendQuickMessage('Can I afford a 5 lakh expense?')" class="px-3 py-1.5 rounded-lg bg-panel hover:bg-slate-800 text-xs text-slate-300 border border-panelborder hover:border-slate-400 transition font-medium">
-                Can I afford 5L?
-              </button>
-              <button onclick="sendQuickMessage('What is GST accrual trap?')" class="px-3 py-1.5 rounded-lg bg-panel hover:bg-slate-800 text-xs text-slate-300 border border-panelborder hover:border-slate-400 transition font-medium">
-                Explain GST Trap
-              </button>
-              <button onclick="activateWormhole()" class="px-3 py-1.5 rounded-lg bg-accentcyan/10 hover:bg-accentcyan/20 text-xs text-accentcyan border border-accentcyan/30 transition font-semibold">
-                ⚡ Activate Wormhole
-              </button>
-            </div>
-
-          </div>
-        `;
-      }
-
-      container.appendChild(msgDiv);
-      container.scrollTop = container.scrollHeight;
-      lucide.createIcons();
-    }
-
-    function toggleDetails(cardId) {
-      const el = document.getElementById(cardId);
-      const icon = document.getElementById('icon-' + cardId);
-      if (el) {
-        if (el.classList.contains('hidden')) {
-          el.classList.remove('hidden');
-          if (icon) icon.classList.add('rotate-180');
-        } else {
-          el.classList.add('hidden');
-          if (icon) icon.classList.remove('rotate-180');
         }
+      });
+    }
+
+    function updateForecastFromSliders() {
+      const delay = parseInt(document.getElementById('slider-delay').value);
+      const discount = parseFloat(document.getElementById('slider-discount').value);
+      const costcut = parseFloat(document.getElementById('slider-costcut').value);
+
+      document.getElementById('val-delay').innerText = `${delay > 0 ? '+' : ''}${delay} Days`;
+      document.getElementById('val-discount').innerText = `${discount.toFixed(1)}%`;
+      document.getElementById('val-costcut').innerText = `${costcut}%`;
+
+      loadForecastData({ delay, discount, cost_cut: costcut });
+    }
+
+    // 6. Load & Render GST Plan
+    async function loadGstPlanData() {
+      try {
+        const res = await fetch('/api/gst-plan');
+        if (!res.ok) return;
+        const plan = await res.json();
+
+        document.getElementById('gst-cash-gap').innerText = `₹${plan.cash_gap.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        document.getElementById('gst-gross-output').innerText = `₹${plan.output_gst.toLocaleString('en-IN')}`;
+        document.getElementById('gst-itc-claimed').innerText = `-₹${plan.itc_claimed.toLocaleString('en-IN')}`;
+        document.getElementById('gst-net-payable').innerText = `₹${plan.net_payable.toLocaleString('en-IN')}`;
+        document.getElementById('gst-in-vault').innerText = `₹${plan.in_vault.toLocaleString('en-IN')} (${plan.vault_coverage_pct}%)`;
+
+        const stepsList = document.getElementById('gst-steps-list');
+        stepsList.innerHTML = plan.steps.map(st => `
+          <div class="p-3.5 rounded-xl bg-slate-950/60 border border-panelborder flex items-center justify-between">
+            <div>
+              <span class="font-semibold text-white block text-xs sm:text-sm">${st.title}</span>
+              <span class="text-slate-400 text-xs block mt-0.5">${st.detail}</span>
+            </div>
+            ${st.chat ? `<button onclick="sendChatMessage('${st.chat}')" class="ml-4 px-3 py-1.5 rounded-lg bg-accentcyan hover:bg-white text-black font-semibold text-xs transition shrink-0">Draft Notice</button>` : ''}
+          </div>
+        `).join('');
+
+        runGstSplitCalc();
+      } catch (e) {
+        console.error(e);
       }
+    }
+
+    function runGstSplitCalc() {
+      const amount = parseFloat(document.getElementById('gst-calc-input').value) || 0;
+      const rate = parseFloat(document.getElementById('gst-calc-rate').value);
+      const mode = document.getElementById('gst-calc-mode').value;
+
+      let base, gst;
+      if (mode === 'inclusive') {
+        base = amount / (1 + (rate / 100.0));
+        gst = amount - base;
+      } else {
+        base = amount;
+        gst = amount * (rate / 100.0);
+      }
+
+      document.getElementById('calc-base').innerText = `₹${Math.round(base).toLocaleString('en-IN')}`;
+      document.getElementById('calc-gst').innerText = `₹${Math.round(gst).toLocaleString('en-IN')}`;
+      document.getElementById('calc-cgst').innerText = `₹${Math.round(gst / 2).toLocaleString('en-IN')}`;
+      document.getElementById('calc-sgst').innerText = `₹${Math.round(gst / 2).toLocaleString('en-IN')}`;
+    }
+
+    // 7. Load & Render Ledger
+    async function loadLedgerData() {
+      try {
+        const res = await fetch('/api/ledger');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // Receivables
+        const rec = data.receivables;
+        document.getElementById('rec-total').innerText = `₹${rec.summary.total_pending.toLocaleString('en-IN')}`;
+        document.getElementById('rec-overdue').innerText = `₹${rec.summary.overdue_amount.toLocaleString('en-IN')}`;
+        document.getElementById('ledger-count-summary').innerText = `Total Pending: ₹${(rec.summary.total_pending/100000).toFixed(2)} L`;
+
+        const recTbody = document.getElementById('rec-tbody');
+        recTbody.innerHTML = rec.invoices.map(inv => `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="p-3 font-semibold text-white">${inv.customer_name}</td>
+            <td class="p-3 font-mono text-slate-400">${inv.invoice_number}</td>
+            <td class="p-3 font-mono text-right font-bold text-white">₹${inv.amount.toLocaleString('en-IN')}</td>
+            <td class="p-3 font-mono text-right text-dangerrose">₹${inv.gst_amount.toLocaleString('en-IN')}</td>
+            <td class="p-3 font-mono text-slate-300">${inv.due_label}</td>
+            <td class="p-3 font-mono text-warningamber">+${inv.delay_prediction_days}d</td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${inv.status === 'OVERDUE' ? 'bg-dangerrose/20 text-dangerrose' : 'bg-accentcyan/20 text-accentcyan'}">
+                ${inv.status}
+              </span>
+            </td>
+            <td class="p-3 text-center">
+              <button onclick="sendChatMessage('Draft a payment reminder for ${inv.customer_name}')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-accentcyan font-medium text-[11px] transition">
+                Draft Reminder
+              </button>
+            </td>
+          </tr>
+        `).join('');
+
+        // Payables
+        const pay = data.payables;
+        document.getElementById('pay-total').innerText = `₹${pay.summary.total_payables.toLocaleString('en-IN')}`;
+        document.getElementById('pay-cash').innerText = `₹${pay.summary.bank_cash.toLocaleString('en-IN')}`;
+
+        const payTbody = document.getElementById('pay-tbody');
+        payTbody.innerHTML = pay.liabilities.map(it => `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="p-3 font-semibold text-white">${it.name}</td>
+            <td class="p-3 text-slate-400">${it.category}</td>
+            <td class="p-3 font-mono text-right font-bold text-dangerrose">₹${it.amount.toLocaleString('en-IN')}</td>
+            <td class="p-3 font-mono text-slate-300">${it.due_label}</td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${it.priority === 1 ? 'bg-dangerrose/20 text-dangerrose' : 'bg-slate-800 text-slate-300'}">
+                ${it.priority_label}
+              </span>
+            </td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${it.status === 'CRITICAL' ? 'bg-dangerrose/20 text-dangerrose' : 'bg-warningamber/20 text-warningamber'}">
+                ${it.status}
+              </span>
+            </td>
+          </tr>
+        `).join('');
+
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function switchLedgerView(view) {
+      if (view === 'receivables') {
+        document.getElementById('ledger-receivables-view').classList.remove('hidden');
+        document.getElementById('ledger-payables-view').classList.add('hidden');
+        document.getElementById('btn-sub-debtors').className = 'px-3.5 py-1.5 rounded-lg font-semibold bg-brand-600 text-white shadow';
+        document.getElementById('btn-sub-creditors').className = 'px-3.5 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white';
+      } else {
+        document.getElementById('ledger-receivables-view').classList.add('hidden');
+        document.getElementById('ledger-payables-view').classList.remove('hidden');
+        document.getElementById('btn-sub-creditors').className = 'px-3.5 py-1.5 rounded-lg font-semibold bg-brand-600 text-white shadow';
+        document.getElementById('btn-sub-debtors').className = 'px-3.5 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white';
+      }
+    }
+
+    // 8. Loan & EMI Simulation
+    async function runEmiSimulation() {
+      const principal = parseFloat(document.getElementById('sl-emi-principal').value);
+      const rate = parseFloat(document.getElementById('sl-emi-rate').value);
+      const years = parseInt(document.getElementById('sl-emi-years').value);
+      const months = years * 12;
+
+      document.getElementById('lbl-emi-principal').innerText = `₹${principal.toLocaleString('en-IN')}`;
+      document.getElementById('lbl-emi-rate').innerText = `${rate.toFixed(1)}%`;
+      document.getElementById('lbl-emi-years').innerText = `${years} Year${years > 1 ? 's' : ''}`;
+
+      try {
+        const res = await fetch(`/api/emi?principal=${principal}&rate=${rate}&months=${months}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const l = data.loan;
+        document.getElementById('res-emi-val').innerText = `₹${l.emi.toLocaleString('en-IN')}`;
+        document.getElementById('res-emi-interest').innerText = `₹${l.total_interest.toLocaleString('en-IN')}`;
+        document.getElementById('res-emi-total').innerText = `₹${l.total_payment.toLocaleString('en-IN')}`;
+        document.getElementById('res-emi-share').innerText = `${l.interest_share_pct}%`;
+
+        const ds = data.debt_service;
+        document.getElementById('emi-service-text').innerText = ds.text;
+        const badge = document.getElementById('emi-badge');
+        if (ds.verdict === 'comfortable') {
+          badge.className = 'px-3 py-1 rounded-full bg-brand-500/20 text-brand-400 text-xs font-semibold';
+          badge.innerText = 'Comfortable: <40% of Profit';
+        } else if (ds.verdict === 'stretched') {
+          badge.className = 'px-3 py-1 rounded-full bg-warningamber/20 text-warningamber text-xs font-semibold';
+          badge.innerText = 'Stretched: 40-60% of Profit';
+        } else {
+          badge.className = 'px-3 py-1 rounded-full bg-dangerrose/20 text-dangerrose text-xs font-semibold';
+          badge.innerText = 'Heavy Risk: >60% of Profit';
+        }
+
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // 9. Chat Interface & Message Handling
+    function addInitialGreeting() {
+      addAiMessage({
+        plain_language_summary: `Hello! I am your **AI Finance Assistant** for **Bharat Steel Traders Pvt Ltd**.\n\nI actively track all **₹30.65 Lakhs** in conserved capital across your business accounts. Currently, your liquid bank cash is **₹1.85 Lakhs**, while an acute **GST payment of ₹2,84,915** converges on Nov 20th.\n\nAsk me anything about your cash flow, GST planning, loan EMIs, debtor collections, or whether you can afford new purchases.`,
+        suggestions: ["How is my money?", "What GST do I owe this month?", "Who owes me money?", "Can I afford a 5 lakh machine?"]
+      });
     }
 
     async function handleChatSubmit(e) {
@@ -1088,13 +1019,13 @@
       if (!text) return;
 
       input.value = '';
-      addChatMessage('user', text);
+      await sendChatMessage(text);
+    }
 
-      // Show typing indicator
-      const typingEl = document.getElementById('typing-indicator');
-      if (typingEl) typingEl.classList.remove('hidden');
-      const container = document.getElementById('chat-messages');
-      container.scrollTop = container.scrollHeight;
+    async function sendChatMessage(text) {
+      addUserMessage(text);
+      const thinking = document.getElementById('chat-thinking');
+      thinking.classList.remove('hidden');
 
       try {
         const res = await fetch('/api/chat', {
@@ -1102,86 +1033,230 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: text })
         });
-        const data = await res.json();
-        
-        // Hide typing indicator
-        if (typingEl) typingEl.classList.add('hidden');
+        thinking.classList.add('hidden');
 
-        addChatMessage('ai', data);
-        if (data.state) {
-          currentState = data.state;
-          updateUI(data.state, data.singularity);
+        if (res.ok) {
+          const resp = await res.json();
+          addAiMessage(resp);
+
+          // Update underlying state & tab if requested
+          if (resp.state) {
+            currentState = resp.state;
+            currentSingularity = resp.singularity;
+            renderHeaderKPIs();
+          }
+
+          if (resp.open_tool && resp.open_tool.tab) {
+            switchTab(resp.open_tool.tab);
+            if (resp.open_tool.params) {
+              if (resp.open_tool.tab === 'cashflow' && resp.open_tool.params.spend) {
+                loadForecastData({ spend: resp.open_tool.params.spend, spend_day: 0 });
+              }
+              if (resp.open_tool.tab === 'cashflow' && resp.open_tool.params.delay) {
+                document.getElementById('slider-delay').value = resp.open_tool.params.delay;
+                updateForecastFromSliders();
+              }
+            }
+          }
         }
       } catch (err) {
-        console.error('Chat error:', err);
-        if (typingEl) typingEl.classList.add('hidden');
-        addChatMessage('ai', {
-          plain_language_summary: "⚠️ **Connection Error**: Unable to connect to the backend server. Please verify that the engine is active at `http://localhost:8000`.",
-          exact_numbers: "Network Error: Failed to fetch /api/chat",
-          causal_explanation: "The connection to the local Python engine was momentarily lost.",
-          top_recommended_actions: ["Verify server is running on port 8000", "Refresh browser (F5)"],
-          what_if_ignore: "AI cannot process real-time calculations while disconnected."
+        thinking.classList.add('hidden');
+        addAiMessage({
+          plain_language_summary: `Could not connect to the Causal Engine: ${err.message}`
         });
       }
     }
 
-    function sendQuickMessage(text) {
-      document.getElementById('chat-input').value = text;
-      handleChatSubmit(new Event('submit'));
+    function addUserMessage(text) {
+      const c = document.getElementById('chat-messages');
+      const div = document.createElement('div');
+      div.className = 'flex justify-end';
+      div.innerHTML = `
+        <div class="max-w-[85%] p-3.5 rounded-2xl bg-brand-600 text-white rounded-br-sm text-sm leading-relaxed">
+          ${escapeHtml(text)}
+        </div>
+      `;
+      c.appendChild(div);
+      c.scrollTop = c.scrollHeight;
     }
 
-    async function simulateDelay() {
-      sendQuickMessage('Simulate 30-day customer delay');
+    function addAiMessage(data) {
+      const c = document.getElementById('chat-messages');
+      const div = document.createElement('div');
+      div.className = 'flex justify-start items-start gap-2.5';
+
+      let cardsHtml = '';
+      if (data.cards && data.cards.length > 0) {
+        cardsHtml = data.cards.map(card => {
+          if (card.type === 'kpis') {
+            return `
+              <div class="grid grid-cols-2 gap-2 pt-2">
+                ${card.items.map(it => `
+                  <div class="p-2.5 rounded-xl bg-black/60 border border-panelborder font-mono">
+                    <span class="text-[10px] text-slate-400 block">${it.label}</span>
+                    <span class="text-sm font-bold ${it.tone === 'bad' ? 'text-dangerrose' : (it.tone === 'good' ? 'text-brand-400' : 'text-white')}">${it.value}</span>
+                  </div>
+                `).join('')}
+              </div>
+            `;
+          }
+          if (card.type === 'verdict') {
+            return `
+              <div class="p-3 rounded-xl border ${card.tone === 'good' ? 'bg-brand-500/10 border-brand-500/30 text-brand-400' : 'bg-dangerrose/10 border-dangerrose/30 text-dangerrose'}">
+                <span class="font-bold block text-xs uppercase tracking-wider">${card.title}</span>
+                <span class="text-xs text-slate-200 mt-0.5 block">${card.text}</span>
+              </div>
+            `;
+          }
+          if (card.type === 'table') {
+            return `
+              <div class="overflow-x-auto rounded-xl border border-panelborder bg-black/40 mt-2">
+                <div class="p-2 text-[11px] font-bold text-slate-300 border-b border-panelborder">${card.title}</div>
+                <table class="w-full text-left text-[11px]">
+                  <thead class="text-slate-400 bg-slate-950 font-mono">
+                    <tr>${card.columns.map(col => `<th class="p-2">${col}</th>`).join('')}</tr>
+                  </thead>
+                  <tbody class="divide-y divide-panelborder/50 text-slate-300">
+                    ${card.rows.map(row => `<tr>${row.map(cell => `<td class="p-2 font-mono">${cell}</td>`).join('')}</tr>`).join('')}
+                  </tbody>
+                </table>
+              </div>
+            `;
+          }
+          if (card.type === 'draft') {
+            return `
+              <div class="p-3 rounded-xl bg-black/60 border border-accentcyan/30 mt-2 space-y-2">
+                <div class="flex items-center justify-between text-xs text-accentcyan font-semibold">
+                  <span>${card.title}</span>
+                  <button onclick="navigator.clipboard.writeText('${card.text.replace(/'/g, "\\'").replace(/\n/g, '\\n')}'); alert('Copied to clipboard!');" class="underline text-[10px] text-white">Copy Draft</button>
+                </div>
+                <p class="text-[11px] text-slate-300 whitespace-pre-line bg-slate-950 p-2.5 rounded-lg border border-panelborder font-mono">${card.text}</p>
+              </div>
+            `;
+          }
+          return '';
+        }).join('');
+      }
+
+      let actionsHtml = '';
+      if (data.top_recommended_actions && data.top_recommended_actions.length > 0) {
+        actionsHtml = `
+          <div class="space-y-1.5 pt-2 border-t border-panelborder/80">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Recommended Action Steps:</span>
+            ${data.top_recommended_actions.map(act => `
+              <div class="p-2 rounded-lg bg-slate-950 border border-panelborder text-xs text-slate-300 flex items-center justify-between">
+                <span>${act}</span>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      let detailsHtml = '';
+      if (data.exact_numbers || data.causal_explanation || data.what_if_ignore) {
+        const uid = 'det-' + Math.random().toString().slice(2, 8);
+        detailsHtml = `
+          <div class="pt-2 border-t border-panelborder/60">
+            <button onclick="document.getElementById('${uid}').classList.toggle('hidden')" class="text-[11px] text-accentcyan hover:underline flex items-center gap-1">
+              <span>View Exact Numbers & Causal Mechanism</span>
+              <i data-lucide="chevron-down" class="w-3 h-3"></i>
+            </button>
+            <div id="${uid}" class="hidden mt-2 space-y-2 text-xs">
+              ${data.exact_numbers ? `<div class="p-2.5 rounded-xl bg-black/80 border border-panelborder font-mono text-[11px] text-slate-300 whitespace-pre-line">${data.exact_numbers}</div>` : ''}
+              ${data.causal_explanation ? `<div class="p-2 rounded-xl bg-accentcyan/5 border border-accentcyan/20 text-slate-300 text-[11px]"><strong class="text-accentcyan block mb-0.5">Causal Mechanism:</strong>${data.causal_explanation}</div>` : ''}
+              ${data.what_if_ignore ? `<div class="p-2 rounded-xl bg-dangerrose/10 border border-dangerrose/30 text-dangerrose text-[11px]"><strong class="block mb-0.5">Counterfactual (If ignored):</strong>${data.what_if_ignore}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }
+
+      let suggestionsHtml = '';
+      if (data.suggestions && data.suggestions.length > 0) {
+        suggestionsHtml = `
+          <div class="flex flex-wrap gap-1.5 pt-1">
+            ${data.suggestions.map(s => `
+              <button onclick="sendChatMessage('${s.replace(/'/g, "\\'")}')" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition">
+                ${s}
+              </button>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      div.innerHTML = `
+        <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-brand-600 to-accentcyan flex items-center justify-center font-bold text-white text-[10px] shrink-0 mt-1 shadow">
+          AP
+        </div>
+        <div class="max-w-[88%] p-4 rounded-2xl bg-cardbg border border-panelborder text-slate-200 rounded-tl-sm text-sm space-y-3 shadow-lg">
+          <div class="flex items-center justify-between border-b border-panelborder pb-1.5 text-[11px]">
+            <span class="font-bold text-white">AetherPravah AI</span>
+            <span class="text-slate-500 font-mono">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+          </div>
+          <div class="leading-relaxed whitespace-pre-line text-xs sm:text-sm text-slate-200">${formatMarkdown(data.plain_language_summary)}</div>
+          ${cardsHtml}
+          ${actionsHtml}
+          ${detailsHtml}
+          ${suggestionsHtml}
+        </div>
+      `;
+      c.appendChild(div);
+      lucide.createIcons();
+      c.scrollTop = c.scrollHeight;
     }
 
-    async function activateWormhole() {
-      sendQuickMessage('Activate Liquidity Wormhole');
+    // 10. Execute Wormhole Teleportation
+    async function executeWormhole() {
+      confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 }, colors: ['#10b981', '#22d3ee', '#f59e0b'] });
+      await sendChatMessage("Activate Liquidity Wormhole");
+      await fetchAndRenderState();
+      await loadForecastData();
+      await loadGstPlanData();
+      await loadLedgerData();
     }
 
-    // Voice Simulation
-    function startVoiceSimulation() {
-      const ind = document.getElementById('voice-indicator');
-      ind.classList.remove('hidden');
-      setTimeout(() => {
-        ind.classList.add('hidden');
-        sendQuickMessage('What is my cash runway status? Create invoice for Reliance 2.5 lakh');
-      }, 2500);
+    // 11. Voice Note Simulation
+    function simulateVoiceNote() {
+      sendChatMessage("What is my cash runway status and who owes me the most money?");
     }
 
-    function cancelVoice() {
-      document.getElementById('voice-indicator').classList.add('hidden');
-    }
-
-    // File Upload Simulation
-    async function handleFileUpload(event) {
-      const file = event.target.files[0];
+    // 12. File Upload OCR
+    async function handleFileUpload(e) {
+      const file = e.target.files?.[0];
       if (!file) return;
 
-      addChatMessage('user', `📸 Uploaded invoice image: <strong>${file.name}</strong>`);
-
-      const typingEl = document.getElementById('typing-indicator');
-      if (typingEl) typingEl.classList.remove('hidden');
-
+      addUserMessage(`Uploaded document: ${file.name}. Run Vision OCR and check GST liability.`);
       const formData = new FormData();
       formData.append('file', file);
 
-      try {
-        const res = await fetch('/api/upload-invoice', {
-          method: 'POST',
-          body: formData
-        });
-        const data = await res.json();
-        if (typingEl) typingEl.classList.add('hidden');
+      const thinking = document.getElementById('chat-thinking');
+      thinking.classList.remove('hidden');
 
-        addChatMessage('ai', data);
-        if (data.state) {
-          currentState = data.state;
-          updateUI(data.state, data.singularity);
+      try {
+        const res = await fetch('/api/upload-invoice', { method: 'POST', body: formData });
+        thinking.classList.add('hidden');
+        if (res.ok) {
+          const resp = await res.json();
+          addAiMessage(resp);
+          await fetchAndRenderState();
+          await loadForecastData();
+          await loadGstPlanData();
+          await loadLedgerData();
         }
       } catch (err) {
-        console.error('File upload error:', err);
-        if (typingEl) typingEl.classList.add('hidden');
+        thinking.classList.add('hidden');
+        addAiMessage({ plain_language_summary: `Error processing file: ${err.message}` });
       }
+    }
+
+    function formatMarkdown(text) {
+      if (!text) return '';
+      return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em class="text-slate-300">$1</em>');
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
   </script>
 </body>
