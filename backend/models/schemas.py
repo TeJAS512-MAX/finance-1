@@ -180,14 +180,15 @@ class MoneyHealthGenome(BaseModel):
 class BusinessProfile(BaseModel):
     id: str
     name: str
-    archetype: Literal["STEEL_TRADER", "GARMENT_MANUFACTURER", "DIGITAL_AGENCY"]
-    tagline: str
-    city: str
-    gstin: str
-    annual_turnover: float
-    employee_count: int
-    bank_name: str
-    overdraft_limit: float
+    owner_name: str = "Business Owner"
+    archetype: str = "General Business"
+    tagline: str = "MSME Financial Growth"
+    city: str = "Mumbai, Maharashtra"
+    gstin: str = "27AAACU1234M1Z5"
+    annual_turnover: float = 24000000.0
+    employee_count: int = 10
+    bank_name: str = "HDFC Bank / State Bank of India"
+    overdraft_limit: float = 1000000.0
 
 class AetherPravahState(BaseModel):
     business: BusinessProfile

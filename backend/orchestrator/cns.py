@@ -24,6 +24,7 @@ from backend.agents.supreme_court import ConstitutionalSupremeCourt, Constitutio
 from backend.agents.meta_evolution import MetaEvolutionChamber
 from backend.finance.assistant import FinanceAssistant
 from backend.data.archetypes import (
+    create_user_custom_business,
     generate_bharat_steel_data,
     generate_vastrakala_data,
     generate_nexus_pulse_data
@@ -32,8 +33,8 @@ from backend.data.archetypes import (
 class CentralNervousSystem:
     """
     AetherPravah Central Nervous System:
-    Coordinates the living financial organism, routing all sensory inputs
-    through the Causal Spacetime Substrate, Debate Parliament, and Supreme Court.
+    Coordinates the dynamic user financial twin, routing all sensory inputs
+    through the Causal Spacetime Substrate and AI Finance Assistant.
     """
 
     def __init__(self):
@@ -44,14 +45,195 @@ class CentralNervousSystem:
         self.assistant = FinanceAssistant(self)
         self.sync_graph()
 
+    def set_user_profile(
+        self,
+        company_name: str,
+        owner_name: str = "Business Owner",
+        business_type: str = "General Business",
+        city: str = "Mumbai, Maharashtra",
+        gstin: str = "27AAACU1234M1Z5",
+        bank_cash: Optional[float] = None,
+        tax_vault: Optional[float] = None,
+        monthly_burn: Optional[float] = None
+    ) -> AetherPravahState:
+        """Sets or updates the user's custom business profile."""
+        self.state.business.name = company_name
+        self.state.business.owner_name = owner_name
+        self.state.business.archetype = business_type
+        self.state.business.city = city
+        self.state.business.gstin = gstin
+        
+        if bank_cash is not None:
+            old_cash = self.state.physics_state.bank_cash
+            diff = float(bank_cash) - old_cash
+            self.state.physics_state.bank_cash = float(bank_cash)
+            self.state.physics_state.total_rupees_conserved += diff
+            for p in self.state.rupee_packets:
+                if p.current_location == "BANK_AVAILABLE":
+                    p.amount = float(bank_cash)
+                    break
+        if tax_vault is not None:
+            self.state.physics_state.tax_vault_balance = float(tax_vault)
+            self.state.gst_snapshot.tax_vault_reserved = float(tax_vault)
+            self.state.gst_snapshot.tax_deficit = max(0.0, self.state.gst_snapshot.net_gst_cash_payable - float(tax_vault))
+            for p in self.state.rupee_packets:
+                if p.current_location == "TAX_VAULT":
+                    p.amount = float(tax_vault)
+                    break
+        if monthly_burn is not None:
+            self.state.physics_state.monthly_burn_rate = float(monthly_burn)
+
+        self.recompute_physics_and_genome()
+        self.sync_graph()
+        return self.state
+
+    def reset_user_business(
+        self,
+        company_name: str = "Apex Solutions Enterprise",
+        owner_name: str = "Business Owner",
+        business_type: str = "Trading & Services",
+        city: str = "Mumbai, Maharashtra",
+        gstin: str = "27AAACU1234M1Z5",
+        bank_cash: float = 350000.0,
+        tax_vault: float = 25000.0,
+        monthly_burn: float = 80000.0
+    ) -> AetherPravahState:
+        """Resets the state to a clean user-defined business ledger with zero mock invoices."""
+        from backend.data.archetypes import create_user_custom_business
+        self.state = create_user_custom_business(
+            company_name=company_name,
+            owner_name=owner_name,
+            business_type=business_type,
+            city=city,
+            gstin=gstin,
+            bank_cash=bank_cash,
+            tax_vault=tax_vault,
+            monthly_burn=monthly_burn,
+            today=self.current_date
+        )
+        self.recompute_physics_and_genome()
+        self.sync_graph()
+        return self.state
+
+    def add_custom_invoice(self, customer_name: str, base_amount: float, gst_rate: float = 0.18, due_days: int = 30) -> Invoice:
+        """Adds a real customer invoice, accruing GST and adding to receivables."""
+        cust = next((c for c in self.state.customers if customer_name.lower() in c.name.lower()), None)
+        if not cust:
+            cust = Customer(
+                name=customer_name,
+                gstin=f"27AAAC{abs(hash(customer_name)) % 9000 + 1000}M1Z",
+                industry="Commercial Client",
+                payment_behavior_score=75.0,
+                psychological_profile="PROMPT_PAYER",
+                typical_delay_days=15,
+                optimal_chasing_channel="WHATSAPP_GENTLE"
+            )
+            self.state.customers.append(cust)
+
+        inv_count = len(self.state.invoices) + 1
+        inv_num = f"INV-2026-{inv_count:03d}"
+        gst_amt = round(base_amount * gst_rate, 2)
+        total_amt = round(base_amount + gst_amt, 2)
+        due = self.current_date + timedelta(days=due_days)
+
+        new_inv = Invoice(
+            invoice_number=inv_num,
+            customer_id=cust.id,
+            customer_name=cust.name,
+            issue_date=self.current_date,
+            due_date=due,
+            base_amount=base_amount,
+            gst_rate=gst_rate,
+            gst_amount=gst_amt,
+            total_amount=total_amt,
+            amount_paid=0.0,
+            status="ISSUED",
+            gst_filing_period=self.current_date.strftime("%Y-%m"),
+            itc_eligible=True,
+            delay_prediction_days=float(cust.typical_delay_days)
+        )
+
+        self.state.invoices.append(new_inv)
+        cust.total_outstanding += total_amt
+
+        # Statutory GST Accrual: Output GST increases immediately on billing!
+        self.state.gst_snapshot.output_gst_gross += gst_amt
+        self.state.gst_snapshot.gst_on_unpaid_invoices += gst_amt
+        self.state.gst_snapshot.net_gst_cash_payable = max(0.0, self.state.gst_snapshot.output_gst_gross - self.state.gst_snapshot.input_tax_credit_booked)
+        self.state.gst_snapshot.tax_deficit = max(0.0, self.state.gst_snapshot.net_gst_cash_payable - self.state.physics_state.tax_vault_balance)
+
+        self.recompute_physics_and_genome()
+        self.sync_graph()
+        return new_inv
+
+    def add_custom_obligation(self, name: str, amount: float, due_days: int = 15, category: str = "OPERATIONAL_EXPENSE") -> Obligation:
+        """Adds a real operational expense, loan EMI, or vendor payable."""
+        due = self.current_date + timedelta(days=due_days)
+        obl_type = "BANK_EMI" if "emi" in name.lower() or "loan" in name.lower() else ("OFFICE_RENT" if "rent" in name.lower() else "VENDOR_PAYABLE")
+
+        obl = Obligation(
+            name=name,
+            obligation_type=obl_type,
+            amount=amount,
+            due_date=due,
+            priority=1 if obl_type in ("BANK_EMI", "OFFICE_RENT") else 2,
+            is_negotiable=False
+        )
+        self.state.obligations.append(obl)
+        self.recompute_physics_and_genome()
+        self.sync_graph()
+        return obl
+
+    def record_customer_payment(self, customer_name: str, amount: float) -> Dict[str, Any]:
+        """Records payment received from customer, depositing liquid bank cash."""
+        self.state.physics_state.bank_cash += amount
+
+        matched_inv = None
+        for inv in self.state.invoices:
+            if inv.status != "PAID" and (not customer_name or customer_name.lower() in inv.customer_name.lower()):
+                unpaid = inv.unpaid_cash
+                paid_now = min(unpaid, amount)
+                inv.amount_paid += paid_now
+                if inv.unpaid_cash <= 0:
+                    inv.status = "PAID"
+                else:
+                    inv.status = "PARTIALLY_PAID"
+                matched_inv = inv
+                break
+
+        cust = next((c for c in self.state.customers if customer_name.lower() in c.name.lower()), None)
+        if cust:
+            cust.total_outstanding = max(0.0, cust.total_outstanding - amount)
+
+        self.recompute_physics_and_genome()
+        self.sync_graph()
+        return {
+            "amount": amount,
+            "customer": customer_name,
+            "new_bank_cash": self.state.physics_state.bank_cash,
+            "invoice": matched_inv.invoice_number if matched_inv else None
+        }
+
+    def update_bank_cash(self, amount: float) -> float:
+        """Updates bank cash reserves directly."""
+        self.state.physics_state.bank_cash = float(amount)
+        self.recompute_physics_and_genome()
+        self.sync_graph()
+        return self.state.physics_state.bank_cash
+
     def set_archetype(self, archetype_id: str) -> AetherPravahState:
         if archetype_id == "VASTRAKALA":
             self.state = generate_vastrakala_data(self.current_date)
         elif archetype_id == "NEXUS_PULSE":
             self.state = generate_nexus_pulse_data(self.current_date)
-        else:
+        elif archetype_id == "STEEL_TRADER":
             self.state = generate_bharat_steel_data(self.current_date)
-        
+        else:
+            self.state = create_user_custom_business(
+                company_name=archetype_id,
+                today=self.current_date
+            )
+
         self.sync_graph()
         return self.state
 
@@ -84,7 +266,9 @@ class CentralNervousSystem:
         singularity = self.predict_current_singularity()
         
         # Calculate new physics
-        burn = 240000.0 if self.state.business.archetype == "STEEL_TRADER" else (180000.0 if self.state.business.archetype == "GARMENT_MANUFACTURER" else 650000.0)
+        burn = getattr(self.state.business, "monthly_burn_rate", None)
+        if not burn or burn <= 0:
+            burn = 240000.0 if self.state.business.archetype == "STEEL_TRADER" else (180000.0 if self.state.business.archetype == "GARMENT_MANUFACTURER" else 100000.0)
         self.state.physics_state = MoneyPhysicsEngine.calculate_state(
             current_date=self.current_date,
             bank_cash=self.state.physics_state.bank_cash,

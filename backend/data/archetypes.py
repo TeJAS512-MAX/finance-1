@@ -9,6 +9,99 @@ from backend.models.schemas import (
 from backend.physics.engine import MoneyPhysicsEngine
 from backend.physics.singularity import GSTSingularityPredictor
 
+def create_user_custom_business(
+    company_name: str = "My Business Enterprise",
+    owner_name: str = "Business Owner",
+    business_type: str = "Trading & Services",
+    city: str = "Mumbai, Maharashtra",
+    gstin: str = "27AAACU1234M1Z5",
+    bank_cash: float = 300000.0,
+    tax_vault: float = 25000.0,
+    monthly_burn: float = 80000.0,
+    today: date = date(2026, 11, 16)
+) -> AetherPravahState:
+    """Creates a custom, dynamic business state for any user."""
+    biz = BusinessProfile(
+        id="BIZ-USER-CUSTOM",
+        name=company_name,
+        owner_name=owner_name,
+        archetype=business_type,
+        tagline=f"{business_type} Operations",
+        city=city,
+        gstin=gstin,
+        annual_turnover=max(1200000.0, bank_cash * 12.0),
+        employee_count=8,
+        bank_name="Primary Bank Current Account",
+        overdraft_limit=max(500000.0, bank_cash * 0.5)
+    )
+
+    invoices: List[Invoice] = []
+    customers: List[Customer] = []
+    suppliers: List[Supplier] = []
+    obligations: List[Obligation] = []
+
+    gst_snapshot = GSTLiabilitySnapshot(
+        period="2026-11",
+        gstr3b_due_date=date(2026, 11, 20),
+        output_gst_gross=0.0,
+        gst_on_unpaid_invoices=0.0,
+        input_tax_credit_booked=0.0,
+        itc_blocked_or_risky=0.0,
+        net_gst_cash_payable=0.0,
+        tax_vault_reserved=tax_vault,
+        tax_deficit=0.0,
+        singularity_risk_score=0.1
+    )
+
+    packets = [
+        RupeePacket(
+            amount=bank_cash,
+            source_entity="BANK_OPENING_BALANCE",
+            current_location="BANK_AVAILABLE"
+        ),
+        RupeePacket(
+            amount=tax_vault,
+            source_entity="TAX_VAULT_RESERVE",
+            current_location="TAX_VAULT"
+        )
+    ]
+
+    physics = MoneyPhysicsEngine.calculate_state(
+        current_date=today,
+        bank_cash=bank_cash,
+        tax_vault=tax_vault,
+        invoices=invoices,
+        obligations=obligations,
+        gst_snapshot=gst_snapshot,
+        rupee_packets=packets,
+        monthly_burn_rate=monthly_burn
+    )
+
+    genome = MoneyHealthGenome(
+        overall_score=82,
+        liquidity_vitality=85,
+        gst_accrual_shield=80,
+        customer_payment_velocity=82,
+        debt_gravity_balance=80,
+        trajectory="STABLE_BALANCED",
+        genome_markers={"status": "CUSTOM_PROFILE_ACTIVE"}
+    )
+
+    return AetherPravahState(
+        business=biz,
+        physics_state=physics,
+        genome=genome,
+        invoices=invoices,
+        customers=customers,
+        suppliers=suppliers,
+        obligations=obligations,
+        gst_snapshot=gst_snapshot,
+        active_wormholes=[],
+        rupee_packets=packets,
+        causal_nodes=[],
+        causal_edges=[]
+    )
+
 def generate_bharat_steel_data(today: date = date(2026, 11, 16)) -> AetherPravahState:
     """
     Archetype 1: Bharat Steel Traders

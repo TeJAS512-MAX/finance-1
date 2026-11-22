@@ -79,3 +79,42 @@ def test_assistant_chat_intents():
     # Test EMI
     res = cns.process_user_message("Calculate EMI for 10 lakhs at 11% for 3 years")
     assert "emi" in res["plain_language_summary"].lower() or "32,739" in res["plain_language_summary"] or "32,738" in res["plain_language_summary"]
+
+
+def test_user_profile_and_chat_actions():
+    cns = CentralNervousSystem()
+    
+    # User creates profile
+    cns.set_user_profile(
+        company_name="Apex Logistics Ltd",
+        owner_name="Vikram Patel",
+        business_type="Freight & Transport",
+        city="Ahmedabad, Gujarat",
+        gstin="24AAACA1234M1Z8",
+        bank_cash=500000.0,
+        tax_vault=50000.0
+    )
+    assert cns.state.business.name == "Apex Logistics Ltd"
+    assert cns.state.business.owner_name == "Vikram Patel"
+    assert cns.state.physics_state.bank_cash == 500000.0
+
+    # User adds invoice via natural language chat
+    res = cns.process_user_message("Add invoice for Tata Steel of 300000 with 18% gst due 30 days")
+    assert "invoice" in res["plain_language_summary"].lower()
+    assert any(i.customer_name == "Tata Steel" for i in cns.state.invoices)
+
+    # User adds expense via chat
+    res = cns.process_user_message("Add expense monthly rent 45000")
+    assert "expense" in res["plain_language_summary"].lower() or "recorded" in res["plain_language_summary"].lower()
+
+    # User records payment received via chat
+    initial_cash = cns.state.physics_state.bank_cash
+    res = cns.process_user_message("Received payment 100000 from Tata Steel")
+    assert "payment" in res["plain_language_summary"].lower()
+    assert cns.state.physics_state.bank_cash > initial_cash
+
+    # User updates bank balance via chat
+    res = cns.process_user_message("My bank balance is 650000")
+    assert "6,50,000" in res["plain_language_summary"]
+    assert cns.state.physics_state.bank_cash == 650000.0
+

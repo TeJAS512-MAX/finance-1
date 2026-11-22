@@ -32,9 +32,43 @@ app.add_middleware(
 
 # Instantiate the Singleton Central Nervous System
 cns = CentralNervousSystem()
+# Initialize with custom user business profile
+cns.set_user_profile(
+    company_name="Apex Solutions Enterprise",
+    owner_name="Business Owner",
+    business_type="Trading & Services",
+    city="Mumbai, Maharashtra",
+    gstin="27AAACU1234M1Z5"
+)
 
 class ChatRequest(BaseModel):
     message: str
+
+class ProfileRequest(BaseModel):
+    company_name: str
+    owner_name: str = "Business Owner"
+    business_type: str = "Trading & Services"
+    city: str = "Mumbai, Maharashtra"
+    gstin: str = "27AAACU1234M1Z5"
+    bank_cash: Optional[float] = None
+    tax_vault: Optional[float] = None
+    monthly_burn: Optional[float] = None
+
+class InvoiceCreateRequest(BaseModel):
+    customer_name: str
+    base_amount: float
+    gst_rate: float = 0.18
+    due_days: int = 30
+
+class ExpenseCreateRequest(BaseModel):
+    name: str
+    amount: float
+    due_days: int = 15
+    category: str = "OPERATIONAL_EXPENSE"
+
+class PaymentRecordRequest(BaseModel):
+    customer_name: str
+    amount: float
 
 class ArchetypeRequest(BaseModel):
     archetype: str
@@ -46,6 +80,69 @@ def health_check():
         "system": "AetherPravah Causal Organism",
         "rupees_conserved": cns.state.physics_state.total_rupees_conserved,
         "genome_score": cns.state.genome.overall_score
+    }
+
+@app.get("/api/profile")
+def get_profile():
+    return {
+        "business": cns.state.business.model_dump(),
+        "bank_cash": cns.state.physics_state.bank_cash,
+        "tax_vault": cns.state.physics_state.tax_vault_balance,
+        "runway": cns.state.physics_state.estimated_runway_days
+    }
+
+@app.post("/api/profile")
+def update_profile(req: ProfileRequest):
+    new_state = cns.set_user_profile(
+        company_name=req.company_name,
+        owner_name=req.owner_name,
+        business_type=req.business_type,
+        city=req.city,
+        gstin=req.gstin,
+        bank_cash=req.bank_cash,
+        tax_vault=req.tax_vault,
+        monthly_burn=req.monthly_burn
+    )
+    return {
+        "status": "PROFILE_SAVED",
+        "state": new_state.model_dump(),
+        "singularity": cns.predict_current_singularity().model_dump()
+    }
+
+@app.post("/api/profile/reset")
+def reset_profile_endpoint():
+    new_state = cns.reset_user_business()
+    return {
+        "status": "RESET_SUCCESS",
+        "state": new_state.model_dump(),
+        "singularity": cns.predict_current_singularity().model_dump()
+    }
+
+@app.post("/api/transaction/invoice")
+def create_invoice_endpoint(req: InvoiceCreateRequest):
+    inv = cns.add_custom_invoice(req.customer_name, req.base_amount, req.gst_rate, req.due_days)
+    return {
+        "status": "INVOICE_CREATED",
+        "invoice": inv.model_dump(),
+        "state": cns.state.model_dump()
+    }
+
+@app.post("/api/transaction/expense")
+def create_expense_endpoint(req: ExpenseCreateRequest):
+    obl = cns.add_custom_obligation(req.name, req.amount, req.due_days, req.category)
+    return {
+        "status": "EXPENSE_CREATED",
+        "obligation": obl.model_dump(),
+        "state": cns.state.model_dump()
+    }
+
+@app.post("/api/transaction/payment")
+def record_payment_endpoint(req: PaymentRecordRequest):
+    res = cns.record_customer_payment(req.customer_name, req.amount)
+    return {
+        "status": "PAYMENT_RECORDED",
+        "details": res,
+        "state": cns.state.model_dump()
     }
 
 @app.get("/api/state")

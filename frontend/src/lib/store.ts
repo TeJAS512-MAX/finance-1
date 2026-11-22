@@ -7,6 +7,8 @@ import {
   activateWormholeApi,
   simulateDelayApi,
   uploadInvoiceApi,
+  saveProfileApi,
+  UserProfileData,
   BackendStateResponse,
   ChatResponse,
   ChatCardItem,
@@ -92,6 +94,7 @@ interface AetherStoreState {
   simulateDelayLive: () => Promise<void>;
   createInvoiceLive: (customer: string, amount: number) => Promise<void>;
   uploadInvoice: (file: File) => Promise<void>;
+  saveUserProfile: (profile: UserProfileData) => Promise<void>;
 }
 
 function processBackendGraph(
@@ -275,6 +278,36 @@ export const useAetherStore = create<AetherStoreState>((set, get) => ({
         edges,
         selectedCandidateIdx: 0,
         messages: [...get().messages, switchMsg],
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      set({ isLoading: false, error: msg });
+    }
+  },
+
+  saveUserProfile: async (profile: UserProfileData) => {
+    playUiSound("click");
+    set({ isLoading: true, error: null });
+    try {
+      const res = await saveProfileApi(profile);
+      const { nodes, edges } = processBackendGraph(res.graph);
+      const welcomeMsg: ChatMessageItem = {
+        id: Math.random().toString(),
+        sender: "ai",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        text: `Namaste ${profile.owner_name || "Owner"}! I am now tracking **${profile.company_name}** (${profile.city || "India"}).\n\nYour liquid bank cash is starting at **₹${(res.state.physics_state.bank_cash).toLocaleString("en-IN")}**. You can now tell me any customer invoice you issued, expense to pay, or money received, and I will maintain your live cash flow and GST twin!`,
+        numbers: `• Company: ${profile.company_name}\n• Bank Cash: ₹${(res.state.physics_state.bank_cash).toLocaleString("en-IN")}\n• Operating Runway: ${res.state.physics_state.estimated_runway_days.toFixed(1)} Days`,
+        suggestions: ["Add an invoice", "Add an expense", "How is my money?", "What GST do I owe?"]
+      };
+
+      set({
+        isLoading: false,
+        businessKey: "CUSTOM",
+        state: res.state,
+        singularity: res.singularity,
+        nodes,
+        edges,
+        messages: [...get().messages, welcomeMsg],
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

@@ -10,9 +10,6 @@ import {
   AlertTriangle,
   Sparkles,
   TrendingUp,
-  Shield,
-  Scissors,
-  Cpu,
   CheckCircle2,
   Copy,
   Check,
@@ -27,6 +24,9 @@ import {
   PieChart,
   Users,
   AlertCircle,
+  Edit3,
+  X,
+  Plus,
 } from "lucide-react";
 import { useAetherStore } from "@/lib/store";
 import {
@@ -73,18 +73,29 @@ function fmtCompact(num: number | undefined | null): string {
 
 export default function ExecutiveDeck() {
   const init = useAetherStore((s) => s.init);
-  const businessKey = useAetherStore((s) => s.businessKey);
   const state = useAetherStore((s) => s.state);
   const singularity = useAetherStore((s) => s.singularity);
   const messages = useAetherStore((s) => s.messages);
   const isThinking = useAetherStore((s) => s.isThinking);
 
-  const switchBusiness = useAetherStore((s) => s.switchBusiness);
   const sendMessage = useAetherStore((s) => s.sendMessage);
   const activateWormhole = useAetherStore((s) => s.activateWormhole);
   const uploadInvoice = useAetherStore((s) => s.uploadInvoice);
+  const saveUserProfile = useAetherStore((s) => s.saveUserProfile);
 
-  // Active Tool Tab on Right
+  // Profile Modal State
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profCompany, setProfCompany] = useState("");
+  const [profOwner, setProfOwner] = useState("");
+  const [profType, setProfType] = useState("Trading & Services");
+  const [profCity, setProfCity] = useState("Mumbai, Maharashtra");
+  const [profGstin, setProfGstin] = useState("27AAACU1234M1Z5");
+  const [profCash, setProfCash] = useState(350000);
+  const [profVault, setProfVault] = useState(35000);
+  const [profBurn, setProfBurn] = useState(80000);
+
+  // Mobile view toggle (between Chat and Tools on small screens)
+  const [mobileTab, setMobileTab] = useState<"chat" | "tools">("chat");
   const [activeTab, setActiveTab] = useState<"forecast" | "gst" | "ledger" | "profit">("forecast");
 
   // Chat input
@@ -125,6 +136,19 @@ export default function ExecutiveDeck() {
     init();
   }, [init]);
 
+  // Sync profile fields from state when state updates
+  useEffect(() => {
+    if (state?.business) {
+      setProfCompany(state.business.name || "");
+      setProfOwner((state.business as any).owner_name || "Business Owner");
+      setProfType(state.business.archetype || "Trading & Services");
+      setProfCity(state.business.city || "Mumbai, Maharashtra");
+      setProfGstin(state.business.gstin || "27AAACU1234M1Z5");
+      setProfCash(state.physics_state?.bank_cash || 350000);
+      setProfVault(state.physics_state?.tax_vault_balance || 35000);
+    }
+  }, [state]);
+
   // --- API LOADERS ---
   const loadForecast = useCallback(async () => {
     setIsForecastLoading(true);
@@ -137,7 +161,7 @@ export default function ExecutiveDeck() {
       });
       setForecastData(data);
     } catch {
-      // Graceful fallback if backend starting
+      // Graceful fallback
     } finally {
       setIsForecastLoading(false);
     }
@@ -163,25 +187,19 @@ export default function ExecutiveDeck() {
 
   const loadProfitModel = useCallback(async () => {
     try {
-      const defaults = {
-        STEEL_TRADER: { sales: 2400000, cogs: 82.0, fixed: 190000, emi: 48000 },
-        VASTRAKALA: { sales: 1850000, cogs: 68.0, fixed: 240000, emi: 35000 },
-        NEXUS_PULSE: { sales: 3200000, cogs: 45.0, fixed: 850000, emi: 72000 },
-      }[businessKey] || { sales: 2400000, cogs: 82.0, fixed: 190000, emi: 48000 };
-
-      const data = await fetchProfitModelApi(defaults.sales, defaults.cogs, defaults.fixed, defaults.emi);
+      const sales = (state?.physics_state?.bank_cash || 300000) * 6;
+      const data = await fetchProfitModelApi(sales, 70.0, profBurn, 25000);
       setProfitData(data);
     } catch {
       // Graceful fallback
     }
-  }, [businessKey]);
+  }, [state, profBurn]);
 
   const loadEmi = useCallback(async () => {
     try {
       const data = await fetchEmiApi(loanPrincipal, loanRate, loanTenure);
       setEmiResult(data);
     } catch {
-      // Local math fallback if backend busy
       const monthlyRate = loanRate / 1200.0;
       const emi = (loanPrincipal * monthlyRate * Math.pow(1 + monthlyRate, loanTenure)) / (Math.pow(1 + monthlyRate, loanTenure) - 1);
       const totalPay = emi * loanTenure;
@@ -205,7 +223,6 @@ export default function ExecutiveDeck() {
       const data = await fetchGstCalcApi(calcAmount, calcRate, calcMode);
       setCalcResult(data);
     } catch {
-      // Local fallback
       let base: number;
       let gst: number;
       if (calcMode === "gross") {
@@ -225,7 +242,6 @@ export default function ExecutiveDeck() {
     }
   }, [calcAmount, calcRate, calcMode]);
 
-  // Load right-hand tool data whenever business changes
   useEffect(() => {
     loadForecast();
     loadGstPlan();
@@ -233,9 +249,8 @@ export default function ExecutiveDeck() {
     loadProfitModel();
     loadEmi();
     loadGstCalc();
-  }, [businessKey, loadForecast, loadGstPlan, loadLedger, loadProfitModel, loadEmi, loadGstCalc]);
+  }, [state, loadForecast, loadGstPlan, loadLedger, loadProfitModel, loadEmi, loadGstCalc]);
 
-  // Reactive updates on forecast sliders
   useEffect(() => {
     const t = setTimeout(() => {
       loadForecast();
@@ -243,17 +258,14 @@ export default function ExecutiveDeck() {
     return () => clearTimeout(t);
   }, [delayDays, discountPct, expenseCutPct, plannedSpend, loadForecast]);
 
-  // Reactive updates on EMI sliders
   useEffect(() => {
     loadEmi();
   }, [loanPrincipal, loanRate, loanTenure, loadEmi]);
 
-  // Reactive updates on GST Calculator
   useEffect(() => {
     loadGstCalc();
   }, [calcAmount, calcRate, calcMode, loadGstCalc]);
 
-  // Auto-scroll chat
   useEffect(() => {
     if (chatEndRef.current) {
       chatEndRef.current.scrollTop = chatEndRef.current.scrollHeight;
@@ -267,6 +279,29 @@ export default function ExecutiveDeck() {
     if (!textToSend) setInputText("");
     playUiSound("click");
     await sendMessage(q);
+    loadForecast();
+    loadGstPlan();
+    loadLedger();
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profCompany.trim()) return;
+    playUiSound("click");
+    await saveUserProfile({
+      company_name: profCompany.trim(),
+      owner_name: profOwner.trim() || "Business Owner",
+      business_type: profType.trim() || "Trading & Services",
+      city: profCity.trim() || "Mumbai, Maharashtra",
+      gstin: profGstin.trim() || "27AAACU1234M1Z5",
+      bank_cash: Number(profCash) || 300000,
+      tax_vault: Number(profVault) || 30000,
+      monthly_burn: Number(profBurn) || 80000,
+    });
+    setShowProfileModal(false);
+    loadForecast();
+    loadGstPlan();
+    loadLedger();
   };
 
   const handleVoiceSimulation = () => {
@@ -298,15 +333,37 @@ export default function ExecutiveDeck() {
     loadGstPlan();
   };
 
+  const handleResetBusiness = async () => {
+    if (!confirm("Are you sure you want to reset to a clean slate? This will clear all sample transactions.")) return;
+    try {
+      const res = await fetch("/api/profile/reset", { method: "POST" });
+      if (res.ok) {
+        init();
+        loadForecast();
+        loadGstPlan();
+        loadLedger();
+        loadProfitModel();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const copyToClipboard = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedDraftId(id);
     setTimeout(() => setCopiedDraftId(null), 2500);
   };
 
-  // Top alert conditions
+  // Financial aggregates
+  const totalReceivables = state?.invoices?.reduce((sum, i) => sum + (i.unpaid_cash || 0), 0) || 0;
+  const totalPayables = state?.obligations?.reduce((sum, o) => sum + (o.amount || 0), 0) || 0;
+  const bankCash = state?.physics_state?.bank_cash || 0;
+  const taxDue = state?.gst_snapshot?.net_gst_cash_payable || 0;
+  const runwayDays = state?.physics_state?.estimated_runway_days || 0;
+
   const hasDeficit = singularity && singularity.severity !== "LOW" && singularity.days_to_event_horizon <= 10;
-  const deficitAmount = singularity?.tax_vault_deficit || 152915;
+  const deficitAmount = singularity?.tax_vault_deficit || 0;
 
   return (
     <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col font-sans selection:bg-brand-500/30">
@@ -314,220 +371,215 @@ export default function ExecutiveDeck() {
       {/* 1. TOP COMMAND BAR */}
       <header className="h-16 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between shrink-0 z-30">
         
-        {/* Brand */}
+        {/* Brand & User Company Profile */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-500 to-accentcyan flex items-center justify-center font-bold text-white text-sm shadow-lg shadow-brand-500/20">
             AP
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-white text-base tracking-tight">AetherPravah</span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-brand-500/15 border border-brand-500/30 text-brand-400">
-                Finance AI
+              <span className="font-bold text-white text-base tracking-tight">
+                {state?.business?.name || "My Business Enterprise"}
               </span>
+              <button
+                onClick={() => setShowProfileModal(true)}
+                className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 flex items-center gap-1 transition"
+                title="Edit Company Profile"
+              >
+                <Edit3 className="w-3 h-3 text-accentcyan" />
+                <span>Edit Profile</span>
+              </button>
+              <button
+                onClick={handleResetBusiness}
+                className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-900 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-800/40 flex items-center gap-1 transition"
+                title="Reset to Clean Slate"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span className="hidden sm:inline">Reset</span>
+              </button>
             </div>
             <span className="text-[11px] text-slate-400 font-mono hidden sm:block">
-              Intelligent Cash Flow & Tax Twin for MSMEs
+              {(state?.business as any)?.owner_name || "Owner"} • {state?.business?.city || "India"} • GST: {state?.business?.gstin || "Active"}
             </span>
           </div>
         </div>
 
-        {/* MSME Archetype Switcher */}
-        <div className="flex items-center bg-black/60 rounded-xl p-1 border border-slate-800 text-xs">
-          <button
-            onClick={() => switchBusiness("STEEL_TRADER")}
-            className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
-              businessKey === "STEEL_TRADER"
-                ? "bg-brand-600 text-white font-semibold shadow"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
-            <Shield className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Bharat Steel</span>
-            <span className="md:hidden">Steel</span>
-          </button>
-          <button
-            onClick={() => switchBusiness("VASTRAKALA")}
-            className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
-              businessKey === "VASTRAKALA"
-                ? "bg-brand-600 text-white font-semibold shadow"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
-            <Scissors className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">VastraKala</span>
-            <span className="md:hidden">Textiles</span>
-          </button>
-          <button
-            onClick={() => switchBusiness("NEXUS_PULSE")}
-            className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
-              businessKey === "NEXUS_PULSE"
-                ? "bg-brand-600 text-white font-semibold shadow"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
-            <Cpu className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">NexusPulse</span>
-            <span className="md:hidden">Agency</span>
-          </button>
-        </div>
-
-        {/* Live Metrics Pill Strip */}
+        {/* Live Business KPI Badges */}
         <div className="flex items-center gap-3">
-          {state && (
-            <div className="hidden xl:flex items-center gap-4 text-xs font-mono pr-2">
-              <div>
-                <span className="text-slate-400 block text-[10px] uppercase">Bank Cash</span>
-                <span className="text-white font-bold">{fmtCompact(state.physics_state.bank_cash)}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[10px] uppercase">Tax Vault</span>
-                <span className="text-accentcyan font-bold">{fmtCompact(state.physics_state.tax_vault_balance)}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[10px] uppercase">Runway</span>
-                <span className="text-brand-400 font-bold">{state.physics_state.estimated_runway_days.toFixed(1)}d</span>
-              </div>
+          <div className="hidden md:flex items-center gap-3 text-xs font-mono">
+            <div className="px-3 py-1 rounded-lg bg-black/40 border border-slate-800">
+              <span className="text-slate-400 text-[10px] block uppercase">Bank Cash</span>
+              <span className="text-white font-bold">{fmtCompact(bankCash)}</span>
             </div>
-          )}
+            <div className="px-3 py-1 rounded-lg bg-black/40 border border-slate-800">
+              <span className="text-slate-400 text-[10px] block uppercase">Receivables</span>
+              <span className="text-accentcyan font-bold">{fmtCompact(totalReceivables)}</span>
+            </div>
+            <div className="px-3 py-1 rounded-lg bg-black/40 border border-slate-800">
+              <span className="text-slate-400 text-[10px] block uppercase">Payables</span>
+              <span className="text-purple-400 font-bold">{fmtCompact(totalPayables)}</span>
+            </div>
+            <div className="px-3 py-1 rounded-lg bg-black/40 border border-slate-800">
+              <span className="text-slate-400 text-[10px] block uppercase">GST Due (20th)</span>
+              <span className="text-warningamber font-bold">{fmtCompact(taxDue)}</span>
+            </div>
+            <div className="px-3 py-1 rounded-lg bg-black/40 border border-slate-800">
+              <span className="text-slate-400 text-[10px] block uppercase">Runway</span>
+              <span className="text-brand-400 font-bold">{runwayDays.toFixed(1)}d</span>
+            </div>
+          </div>
 
-          {/* Health Score */}
-          {state && (
-            <div
-              className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 text-xs font-mono ${
-                state.genome.overall_score >= 70
-                  ? "bg-brand-500/10 border-brand-500/30 text-brand-400"
-                  : state.genome.overall_score >= 50
-                  ? "bg-warningamber/10 border-warningamber/30 text-warningamber"
-                  : "bg-dangerrose/10 border-dangerrose/30 text-dangerrose"
+          {/* Mobile Screen Toggle (Chat vs Tools) */}
+          <div className="lg:hidden flex items-center bg-black/60 rounded-xl p-0.5 border border-slate-800 text-xs">
+            <button
+              onClick={() => {
+                playUiSound("click");
+                setMobileTab("chat");
+              }}
+              className={`px-3 py-1 rounded-lg font-medium transition ${
+                mobileTab === "chat" ? "bg-brand-600 text-white font-semibold" : "text-slate-400"
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
-              <span className="font-bold">Health: {state.genome.overall_score}/100</span>
-            </div>
-          )}
+              Chat
+            </button>
+            <button
+              onClick={() => {
+                playUiSound("click");
+                setMobileTab("tools");
+              }}
+              className={`px-3 py-1 rounded-lg font-medium transition ${
+                mobileTab === "tools" ? "bg-brand-600 text-white font-semibold" : "text-slate-400"
+              }`}
+            >
+              Tools
+            </button>
+          </div>
         </div>
 
       </header>
 
-      {/* 2. PROMINENT GST ALERT STRIP (Clean & Plain Language) */}
-      {hasDeficit && (
-        <div className="bg-gradient-to-r from-dangerrose/20 via-warningamber/15 to-transparent border-b border-dangerrose/30 px-4 sm:px-6 py-2.5 flex items-center justify-between text-xs sm:text-sm">
-          <div className="flex items-center gap-2.5">
+      {/* 2. PROMINENT GST ALERT STRIP (Only if tax deficit exists) */}
+      {hasDeficit && deficitAmount > 0 && (
+        <div className="bg-gradient-to-r from-dangerrose/20 via-warningamber/15 to-transparent border-b border-dangerrose/30 px-4 sm:px-6 py-2 flex items-center justify-between text-xs sm:text-sm">
+          <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-dangerrose animate-ping" />
             <AlertTriangle className="w-4 h-4 text-dangerrose shrink-0" />
             <span className="text-slate-200">
-              <strong className="text-white font-semibold">GST Payment Alert:</strong>{" "}
-              {fmtInr(deficitAmount)} cash shortfall due in{" "}
-              <strong className="text-white font-semibold">{singularity?.days_to_event_horizon || 4} days</strong> (20 Nov).
-              Unpaid customer invoices hold GST liability that must be settled in cash.
+              <strong className="text-white font-semibold">GST Alert:</strong>{" "}
+              {fmtInr(deficitAmount)} cash shortfall due on 20 Nov. Unpaid customer bills hold GST liability that must be paid in cash.
             </span>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => setActiveTab("gst")}
-              className="px-3 py-1 rounded-lg bg-dangerrose/20 hover:bg-dangerrose/30 text-dangerrose border border-dangerrose/40 text-xs font-semibold transition"
-            >
-              View GST Planner
-            </button>
-            <button
-              onClick={handleLiquidityBridge}
-              className="px-3 py-1 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition shadow-sm"
-            >
-              Bridge Cash
-            </button>
-          </div>
+          <button
+            onClick={handleLiquidityBridge}
+            className="px-3 py-1 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition shrink-0"
+          >
+            Bridge Cash
+          </button>
         </div>
       )}
 
-      {/* 3. MAIN SPLIT STUDIO: LEFT AI CHAT (45%) | RIGHT ADVANCED FEATURES (55%) */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden h-[calc(100vh-64px)]">
+      {/* 3. MAIN WORKSPACE: DUAL-PANE (LEFT: AI CHAT ASSISTANT, RIGHT: ADVANCED FINANCE TOOLS) */}
+      <div className="flex-1 flex overflow-hidden h-[calc(100vh-64px)] relative">
         
         {/* ============================================================== */}
-        {/* LEFT COLUMN: FULL-HEIGHT AI FINANCE ASSISTANT (5 of 12 cols) */}
+        {/* PRIMARY CHAT EXPERIENCE: USER & AI FINANCE ASSISTANT (PLAIN)   */}
         {/* ============================================================== */}
-        <section className="lg:col-span-5 flex flex-col border-r border-slate-800/80 bg-slate-950/60 relative h-full overflow-hidden">
+        <main className={`w-full lg:w-[48%] xl:w-[45%] flex flex-col bg-slate-950/80 border-r border-slate-800/80 h-full overflow-hidden shrink-0 ${
+          mobileTab === "tools" ? "hidden lg:flex" : "flex"
+        }`}>
           
-          {/* Assistant Sub-Header */}
-          <div className="h-12 px-4 border-b border-slate-800/80 bg-slate-950/90 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-brand-400 animate-pulse" />
-              <span className="text-xs font-semibold text-white">AI Finance Assistant</span>
-              <span className="text-[10px] text-slate-400 font-mono">
-                {state?.business?.gstin ? `GST: ${state.business.gstin}` : "GST Active"}
-              </span>
-            </div>
-            <div className="text-[10px] font-mono text-slate-400 flex items-center gap-1.5">
-              <Building2 className="w-3 h-3 text-accentcyan" />
-              <span>{state?.business?.city || "Navi Mumbai"}</span>
-            </div>
-          </div>
-
-          {/* Quick Prompt Chips */}
-          <div className="p-2.5 border-b border-slate-800/60 bg-slate-900/40 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 text-xs">
+          {/* Top Quick Actions Bar: User enters information directly into chat */}
+          <div className="p-3 border-b border-slate-800/80 bg-slate-900/60 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 text-xs">
+            <button
+              onClick={() => setInputText("Add invoice for Reliance Infra ₹2,50,000 with 18% GST due in 30 days")}
+              className="px-3 py-1.5 rounded-lg bg-brand-500/15 hover:bg-brand-500/25 text-brand-300 border border-brand-500/30 whitespace-nowrap transition flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Invoice</span>
+            </button>
+            <button
+              onClick={() => setInputText("Add expense monthly office rent ₹35,000 due in 10 days")}
+              className="px-3 py-1.5 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 whitespace-nowrap transition flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Expense</span>
+            </button>
+            <button
+              onClick={() => setInputText("Received payment of ₹1,50,000 from Reliance")}
+              className="px-3 py-1.5 rounded-lg bg-accentcyan/15 hover:bg-accentcyan/25 text-accentcyan border border-accentcyan/30 whitespace-nowrap transition flex items-center gap-1.5"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Record Payment</span>
+            </button>
+            <button
+              onClick={() => setInputText("My bank balance is ₹5,00,000")}
+              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap transition"
+            >
+              Update Bank Balance
+            </button>
             <button
               onClick={() => handleSendMessage("How is my money?")}
-              className="px-2.5 py-1 rounded-lg bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-700/60 whitespace-nowrap transition flex items-center gap-1"
+              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap transition"
             >
-              <span>📊</span>
-              <span>How is my money?</span>
+              How is my money?
             </button>
             <button
               onClick={() => handleSendMessage("Who owes me money?")}
-              className="px-2.5 py-1 rounded-lg bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-700/60 whitespace-nowrap transition flex items-center gap-1"
+              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap transition"
             >
-              <span>💰</span>
-              <span>Who owes me?</span>
+              Who owes me?
             </button>
             <button
-              onClick={() => handleSendMessage("Can I buy machinery for 500000?")}
-              className="px-2.5 py-1 rounded-lg bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-700/60 whitespace-nowrap transition flex items-center gap-1"
+              onClick={() => handleSendMessage("What GST do I owe this month?")}
+              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap transition"
             >
-              <span>🚜</span>
-              <span>Can I spend ₹5L?</span>
+              What GST do I owe?
             </button>
             <button
-              onClick={() => handleSendMessage("What is my GST breakdown?")}
-              className="px-2.5 py-1 rounded-lg bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-700/60 whitespace-nowrap transition flex items-center gap-1"
+              onClick={() => setInputText("Can I afford to buy new equipment for ₹2,00,000?")}
+              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap transition"
             >
-              <span>📑</span>
-              <span>GST breakdown</span>
-            </button>
-            <button
-              onClick={() => handleSendMessage("Calculate EMI for 10 lakhs at 11% for 3 years")}
-              className="px-2.5 py-1 rounded-lg bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-700/60 whitespace-nowrap transition flex items-center gap-1"
-            >
-              <span>💳</span>
-              <span>Calculate EMI</span>
-            </button>
-            <button
-              onClick={() => handleSendMessage("Draft payment reminder for Reliance")}
-              className="px-2.5 py-1 rounded-lg bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-700/60 whitespace-nowrap transition flex items-center gap-1"
-            >
-              <span>✉️</span>
-              <span>Draft reminder</span>
+              Can I afford spend?
             </button>
           </div>
 
           {/* Chat Message Scroll */}
           <div
             ref={chatEndRef}
-            className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth"
+            className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 scroll-smooth"
           >
-            {/* Welcome Message if empty */}
+            {/* Welcome banner if no messages */}
             {messages.length === 0 && (
-              <div className="p-4 rounded-xl glass-card border border-slate-800 text-xs text-slate-300 space-y-2">
-                <div className="flex items-center gap-2 text-brand-400 font-semibold">
-                  <Sparkles className="w-4 h-4" />
-                  <span>Namaste! Your AI Finance Assistant is Active.</span>
+              <div className="p-5 rounded-2xl glass-card border border-slate-800 space-y-3">
+                <div className="flex items-center gap-2 text-brand-400 font-semibold text-sm">
+                  <Sparkles className="w-5 h-5" />
+                  <span>Welcome to your Dedicated Finance AI Assistant</span>
                 </div>
-                <p>
-                  I monitor all cash flows, unpaid customer bills, statutory GST filings, and supplier liabilities in real time. Ask me anything about your finances or pick one of the quick chips above.
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  I track all money movements for <strong>{state?.business?.name || "your company"}</strong>. Tell me in plain words whenever you:
                 </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
+                  <div className="p-2.5 rounded-lg bg-black/40 border border-slate-800 text-slate-300">
+                    <strong className="text-brand-400 block mb-0.5">1. Issue an Invoice:</strong>
+                    &quot;Add invoice for Tata ₹2,50,000 18% GST due in 30 days&quot;
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-black/40 border border-slate-800 text-slate-300">
+                    <strong className="text-purple-400 block mb-0.5">2. Add an Expense / EMI:</strong>
+                    &quot;Add monthly rent ₹35,000 due in 10 days&quot;
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-black/40 border border-slate-800 text-slate-300">
+                    <strong className="text-accentcyan block mb-0.5">3. Record Payment Received:</strong>
+                    &quot;Client Tata paid ₹1,50,000 today&quot;
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-black/40 border border-slate-800 text-slate-300">
+                    <strong className="text-warningamber block mb-0.5">4. Ask Any Financial Question:</strong>
+                    &quot;What is my cash runway?&quot; or &quot;Who owes me?&quot;
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Messages Stream */}
+            {/* Message Stream */}
             {messages.map((m) => {
               const isAi = m.sender === "ai";
               return (
@@ -536,16 +588,16 @@ export default function ExecutiveDeck() {
                   className={`flex flex-col ${isAi ? "items-start" : "items-end"} gap-1`}
                 >
                   <div className="flex items-center gap-1.5 text-[10px] text-slate-400 px-1 font-mono">
-                    <span>{isAi ? "AetherPravah AI" : "You"}</span>
+                    <span>{isAi ? "AetherPravah AI" : (state?.business as any)?.owner_name || "You"}</span>
                     <span>•</span>
                     <span>{m.timestamp}</span>
                   </div>
 
                   <div
-                    className={`max-w-[92%] rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed ${
+                    className={`max-w-[88%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${
                       isAi
-                        ? "bg-slate-900/90 text-slate-200 border border-slate-800/80 shadow-md"
-                        : "bg-brand-600 text-white font-medium shadow-md shadow-brand-600/20"
+                        ? "bg-slate-900/95 text-slate-200 border border-slate-800/90 shadow-lg"
+                        : "bg-brand-600 text-white font-medium shadow-md shadow-brand-600/25"
                     }`}
                   >
                     {/* Main text content */}
@@ -553,23 +605,23 @@ export default function ExecutiveDeck() {
                       {m.text}
                     </div>
 
-                    {/* Rich Mini-Cards Rendering */}
+                    {/* Rich Structured Cards */}
                     {isAi && m.cards && m.cards.length > 0 && (
                       <div className="mt-3 space-y-2 pt-2 border-t border-slate-800">
                         {m.cards.map((card, cIdx) => {
                           if (card.type === "kpis" && card.items) {
                             return (
-                              <div key={cIdx} className="grid grid-cols-2 gap-2 my-2">
+                              <div key={cIdx} className="grid grid-cols-2 sm:grid-cols-4 gap-2 my-2">
                                 {card.items.map((it, iIdx) => (
                                   <div
                                     key={iIdx}
-                                    className="p-2 rounded-lg bg-black/40 border border-slate-800 flex flex-col"
+                                    className="p-2 rounded-lg bg-black/50 border border-slate-800 flex flex-col"
                                   >
                                     <span className="text-[10px] text-slate-400 uppercase tracking-wide">
                                       {it.label}
                                     </span>
                                     <span
-                                      className={`text-xs font-bold font-mono mt-0.5 ${
+                                      className={`text-xs sm:text-sm font-bold font-mono mt-0.5 ${
                                         it.tone === "danger"
                                           ? "text-dangerrose"
                                           : it.tone === "good"
@@ -592,7 +644,7 @@ export default function ExecutiveDeck() {
                             return (
                               <div
                                 key={cIdx}
-                                className={`p-3 rounded-xl border my-2 ${
+                                className={`p-3.5 rounded-xl border my-2 ${
                                   isGood
                                     ? "bg-brand-500/10 border-brand-500/30 text-slate-200"
                                     : "bg-dangerrose/10 border-dangerrose/30 text-slate-200"
@@ -619,15 +671,15 @@ export default function ExecutiveDeck() {
                             return (
                               <div key={cIdx} className="my-2 overflow-x-auto rounded-lg border border-slate-800">
                                 {card.title && (
-                                  <div className="bg-slate-800/60 px-2.5 py-1 text-[11px] font-semibold text-slate-200">
+                                  <div className="bg-slate-800/70 px-3 py-1.5 text-xs font-semibold text-slate-200">
                                     {card.title}
                                   </div>
                                 )}
-                                <table className="w-full text-left text-[11px] font-mono">
+                                <table className="w-full text-left text-xs font-mono">
                                   <thead className="bg-black/60 text-slate-400 border-b border-slate-800">
                                     <tr>
                                       {card.headers.map((h, hIdx) => (
-                                        <th key={hIdx} className="p-2 font-medium">
+                                        <th key={hIdx} className="p-2.5 font-medium">
                                           {h}
                                         </th>
                                       ))}
@@ -637,7 +689,7 @@ export default function ExecutiveDeck() {
                                     {card.rows.map((row, rIdx) => (
                                       <tr key={rIdx} className="hover:bg-slate-800/30">
                                         {row.map((cell, cellIdx) => (
-                                          <td key={cellIdx} className="p-2 text-slate-300">
+                                          <td key={cellIdx} className="p-2.5 text-slate-300">
                                             {cell}
                                           </td>
                                         ))}
@@ -654,12 +706,12 @@ export default function ExecutiveDeck() {
                             return (
                               <div
                                 key={cIdx}
-                                className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 my-2 space-y-2 text-xs"
+                                className="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800 my-2 space-y-2 text-xs"
                               >
                                 <div className="flex items-center justify-between">
                                   <span className="font-semibold text-accentcyan flex items-center gap-1.5">
-                                    <FileText className="w-3.5 h-3.5" />
-                                    <span>Draft Reminder for {card.customer || "Client"}</span>
+                                    <FileText className="w-4 h-4" />
+                                    <span>Payment Reminder for {card.customer || "Client"}</span>
                                   </span>
                                   {card.amount && (
                                     <span className="font-mono font-bold text-white">
@@ -667,28 +719,23 @@ export default function ExecutiveDeck() {
                                     </span>
                                   )}
                                 </div>
-                                {card.subject && (
-                                  <div className="text-[11px] text-slate-400 font-mono">
-                                    <strong>Subject:</strong> {card.subject}
-                                  </div>
-                                )}
-                                <div className="p-2.5 rounded-lg bg-black/60 font-mono text-[11px] text-slate-300 whitespace-pre-wrap border border-slate-800/60">
+                                <div className="p-3 rounded-lg bg-black/70 font-mono text-xs text-slate-300 whitespace-pre-wrap border border-slate-800/60 leading-relaxed">
                                   {draftMsg}
                                 </div>
                                 <div className="flex items-center justify-end gap-2 pt-1">
                                   <button
                                     onClick={() => copyToClipboard(`draft-${cIdx}`, draftMsg)}
-                                    className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-medium text-slate-200 flex items-center gap-1 transition"
+                                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 flex items-center gap-1.5 transition"
                                   >
                                     {copiedDraftId === `draft-${cIdx}` ? (
                                       <>
-                                        <Check className="w-3 h-3 text-brand-400" />
-                                        <span>Copied!</span>
+                                        <Check className="w-3.5 h-3.5 text-brand-400" />
+                                        <span>Copied to Clipboard!</span>
                                       </>
                                     ) : (
                                       <>
-                                        <Copy className="w-3 h-3" />
-                                        <span>Copy WhatsApp</span>
+                                        <Copy className="w-3.5 h-3.5" />
+                                        <span>Copy WhatsApp / Email</span>
                                       </>
                                     )}
                                   </button>
@@ -702,27 +749,11 @@ export default function ExecutiveDeck() {
                       </div>
                     )}
 
-                    {/* Key numbers / causal box */}
-                    {isAi && (m.numbers || m.causalExplanation) && (
-                      <div className="mt-2.5 pt-2 border-t border-slate-800/60 text-xs space-y-2 font-mono">
-                        {m.numbers && (
-                          <div className="p-2 rounded bg-black/30 border border-slate-800/40 text-slate-300 whitespace-pre-line text-[11px]">
-                            {m.numbers}
-                          </div>
-                        )}
-                        {m.causalExplanation && (
-                          <div className="text-[11px] text-slate-400">
-                            <strong className="text-accentcyan">Root Cause:</strong> {m.causalExplanation}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Recommendations checklist */}
+                    {/* Recommendations */}
                     {isAi && m.recommendations && m.recommendations.length > 0 && (
-                      <div className="mt-2.5 pt-2 border-t border-slate-800/60 space-y-1.5 text-xs">
+                      <div className="mt-3 pt-2.5 border-t border-slate-800/60 space-y-1.5 text-xs">
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-400 block">
-                          Recommended Actions:
+                          Next Recommended Steps:
                         </span>
                         {m.recommendations.map((rec, rIdx) => (
                           <div key={rIdx} className="flex items-start gap-1.5 text-slate-300 text-xs">
@@ -733,14 +764,14 @@ export default function ExecutiveDeck() {
                       </div>
                     )}
 
-                    {/* Suggestion prompt chips */}
+                    {/* Follow-up suggestion chips */}
                     {isAi && m.suggestions && m.suggestions.length > 0 && (
                       <div className="mt-3 pt-2 border-t border-slate-800/60 flex flex-wrap gap-1.5">
                         {m.suggestions.map((sug, sIdx) => (
                           <button
                             key={sIdx}
                             onClick={() => handleSendMessage(sug)}
-                            className="px-2 py-0.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] border border-slate-700 transition"
+                            className="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 transition"
                           >
                             {sug}
                           </button>
@@ -754,24 +785,24 @@ export default function ExecutiveDeck() {
 
             {/* Thinking indicator */}
             {isThinking && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-400 w-fit">
+              <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-400 w-fit">
                 <div className="w-4 h-4 rounded-full border-2 border-brand-400 border-t-transparent animate-spin" />
-                <span>AI analyzing cash flow & tax twin...</span>
+                <span>AI analyzing cash flow & updating financial twin...</span>
               </div>
             )}
           </div>
 
           {/* Bottom Chat Command Bar */}
-          <div className="p-3 border-t border-slate-800/80 bg-slate-950/90 shrink-0">
+          <div className="p-3 sm:p-4 border-t border-slate-800/80 bg-slate-950/95 shrink-0">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSendMessage();
               }}
-              className="flex items-center gap-2 bg-slate-900/90 rounded-xl p-1.5 border border-slate-800 focus-within:border-brand-500 transition"
+              className="flex items-center gap-2 bg-slate-900/90 rounded-2xl p-2 border border-slate-800 focus-within:border-brand-500 transition shadow-inner"
             >
-              {/* Document / Camera upload */}
-              <label className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer transition">
+              {/* Camera OCR */}
+              <label className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 cursor-pointer transition">
                 <Camera className="w-4 h-4" />
                 <input
                   type="file"
@@ -781,26 +812,26 @@ export default function ExecutiveDeck() {
                 />
               </label>
 
-              {/* Voice Note Simulation */}
+              {/* Voice simulation */}
               <button
                 type="button"
                 onClick={handleVoiceSimulation}
-                className={`p-2 rounded-lg transition ${
+                className={`p-2 rounded-xl transition ${
                   isVoiceRecording
                     ? "bg-dangerrose text-white animate-pulse"
                     : "text-slate-400 hover:text-white hover:bg-slate-800"
                 }`}
-                title="Simulate Voice Prompt"
+                title="Voice Note"
               >
                 <Mic className="w-4 h-4" />
               </button>
 
-              {/* Main Text Input */}
+              {/* Text Input */}
               <input
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Ask about cash runway, GST due, loans, or invoices..."
+                placeholder="Tell me about an invoice, expense, payment, or ask any financial question..."
                 className="flex-1 bg-transparent border-none text-xs sm:text-sm text-white focus:outline-none placeholder:text-slate-500"
               />
 
@@ -808,839 +839,206 @@ export default function ExecutiveDeck() {
               <button
                 type="submit"
                 disabled={!inputText.trim()}
-                className={`p-2 rounded-lg transition flex items-center justify-center ${
+                className={`px-4 py-2 rounded-xl font-medium text-xs sm:text-sm transition flex items-center gap-1.5 ${
                   inputText.trim()
                     ? "bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-600/30"
                     : "bg-slate-800 text-slate-500 cursor-not-allowed"
                 }`}
               >
-                <Send className="w-4 h-4" />
+                <span>Send</span>
+                <Send className="w-3.5 h-3.5" />
               </button>
             </form>
-            <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-500 px-1 font-mono">
-              <span>Strict Rupee Conservation Active</span>
-              <span>100% Indian MSME Compliant</span>
-            </div>
           </div>
 
-        </section>
+        </main>
 
         {/* ============================================================== */}
-        {/* RIGHT COLUMN: 4 ADVANCED FINANCIAL TOOL TABS (7 of 12 cols)    */}
+        {/* RIGHT PANE: FOUR ADVANCED FINANCIAL FEATURE TABS               */}
         {/* ============================================================== */}
-        <section className="lg:col-span-7 flex flex-col bg-slate-950/40 relative h-full overflow-hidden">
-          
-          {/* Tab Bar Header */}
-          <div className="h-12 px-4 border-b border-slate-800/80 bg-slate-950/90 flex items-center justify-between shrink-0 overflow-x-auto no-scrollbar">
-            <div className="flex items-center gap-1.5 text-xs">
+        <aside className={`flex-1 flex flex-col bg-slate-900/40 h-full overflow-hidden ${
+          mobileTab === "chat" ? "hidden lg:flex" : "flex"
+        }`}>
+          {/* Tool Navigation Tabs Bar */}
+          <div className="h-12 px-4 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-1.5 text-xs overflow-x-auto no-scrollbar">
               <button
-                onClick={() => {
-                  playUiSound("click");
-                  setActiveTab("forecast");
-                }}
-                className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "forecast"
-                    ? "bg-slate-800 text-white font-semibold border border-slate-700"
-                    : "text-slate-400 hover:text-white"
+                onClick={() => setActiveTab("forecast")}
+                className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
+                  activeTab === "forecast" ? "bg-slate-800 text-white font-semibold border border-slate-700" : "text-slate-400 hover:text-white"
                 }`}
               >
                 <TrendingUp className="w-3.5 h-3.5 text-brand-400" />
-                <span>Cash-Flow Forecast & What-If</span>
+                <span>Cash Flow & What-If</span>
               </button>
-
               <button
-                onClick={() => {
-                  playUiSound("click");
-                  setActiveTab("gst");
-                }}
-                className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "gst"
-                    ? "bg-slate-800 text-white font-semibold border border-slate-700"
-                    : "text-slate-400 hover:text-white"
+                onClick={() => setActiveTab("gst")}
+                className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
+                  activeTab === "gst" ? "bg-slate-800 text-white font-semibold border border-slate-700" : "text-slate-400 hover:text-white"
                 }`}
               >
-                <AlertTriangle className="w-3.5 h-3.5 text-warningamber" />
-                <span>GST & Tax Planner</span>
+                <Building2 className="w-3.5 h-3.5 text-dangerrose" />
+                <span>GST & Tax</span>
               </button>
-
               <button
-                onClick={() => {
-                  playUiSound("click");
-                  setActiveTab("ledger");
-                }}
-                className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "ledger"
-                    ? "bg-slate-800 text-white font-semibold border border-slate-700"
-                    : "text-slate-400 hover:text-white"
+                onClick={() => setActiveTab("ledger")}
+                className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
+                  activeTab === "ledger" ? "bg-slate-800 text-white font-semibold border border-slate-700" : "text-slate-400 hover:text-white"
                 }`}
               >
                 <Users className="w-3.5 h-3.5 text-accentcyan" />
                 <span>Who Owes Me / Who I Owe</span>
               </button>
-
               <button
-                onClick={() => {
-                  playUiSound("click");
-                  setActiveTab("profit");
-                }}
-                className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "profit"
-                    ? "bg-slate-800 text-white font-semibold border border-slate-700"
-                    : "text-slate-400 hover:text-white"
+                onClick={() => setActiveTab("profit")}
+                className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
+                  activeTab === "profit" ? "bg-slate-800 text-white font-semibold border border-slate-700" : "text-slate-400 hover:text-white"
                 }`}
               >
-                <Calculator className="w-3.5 h-3.5 text-purple-400" />
-                <span>Profit & Loan/EMI Tools</span>
+                <Calculator className="w-3.5 h-3.5 text-warningamber" />
+                <span>Profit & EMI</span>
               </button>
+            </div>
+            <div className="text-[11px] text-slate-400 font-mono hidden xl:block">
+              Sim Date: <span className="text-white font-semibold">16 Nov 2026</span>
             </div>
           </div>
 
-          {/* Tab Content Body */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-            
-            {/* ------------------------------------------------------------ */}
-            {/* TAB 1: CASH-FLOW FORECAST & WHAT-IF                          */}
-            {/* ------------------------------------------------------------ */}
-            {activeTab === "forecast" && (
-              <div className="space-y-6">
-                
-                {/* KPI Overview Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="p-3.5 rounded-xl glass-card border border-slate-800">
-                    <span className="text-[11px] text-slate-400 block uppercase font-mono">
-                      Lowest Projected Dip
-                    </span>
-                    <span
-                      className={`text-lg sm:text-xl font-bold font-mono mt-1 block ${
-                        (forecastData?.summary?.lowest_balance || -192915) < 0
-                          ? "text-dangerrose"
-                          : "text-brand-400"
-                      }`}
-                    >
-                      {fmtInr(forecastData?.summary?.lowest_balance ?? -192915)}
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-mono mt-0.5 block">
-                      on {forecastData?.summary?.lowest_date_label || "20 Nov 2026"}
-                    </span>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl glass-card border border-slate-800">
-                    <span className="text-[11px] text-slate-400 block uppercase font-mono">
-                      Estimated Runway
-                    </span>
-                    <span className="text-lg sm:text-xl font-bold font-mono text-warningamber mt-1 block">
-                      {forecastData?.summary?.estimated_runway_days ?? 4.0} Days
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-mono mt-0.5 block">
-                      Before negative cash dip
-                    </span>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl glass-card border border-slate-800">
-                    <span className="text-[11px] text-slate-400 block uppercase font-mono">
-                      Current Bank Cash
-                    </span>
-                    <span className="text-lg sm:text-xl font-bold font-mono text-white mt-1 block">
-                      {fmtInr(forecastData?.summary?.starting_cash ?? 185000)}
-                    </span>
-                    <span className="text-[10px] text-brand-400 font-mono mt-0.5 block">
-                      Liquid reserves
-                    </span>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl glass-card border border-slate-800">
-                    <span className="text-[11px] text-slate-400 block uppercase font-mono">
-                      Daily Operating Burn
-                    </span>
-                    <span className="text-lg sm:text-xl font-bold font-mono text-slate-200 mt-1 block">
-                      {fmtInr(forecastData?.summary?.daily_burn_rate ?? 8000)}
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-mono mt-0.5 block">
-                      Fixed rent + payroll
-                    </span>
-                  </div>
-                </div>
-
-                {/* Interactive Sliders: What-If Simulator */}
-                <div className="p-5 rounded-2xl glass-card border border-slate-800 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Sliders className="w-4 h-4 text-brand-400" />
-                      <h3 className="font-semibold text-sm text-white">
-                        Dynamic What-If Scenario Levers
-                      </h3>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setDelayDays(0);
-                        setDiscountPct(0);
-                        setExpenseCutPct(0);
-                        setPlannedSpend(0);
-                      }}
-                      className="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition"
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      <span>Reset</span>
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Slider 1: Customer Delay */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-300">Customer Payment Delay</span>
-                        <span className="font-mono text-brand-400 font-bold">
-                          {delayDays > 0 ? `+${delayDays} Days` : `${delayDays} Days`}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="-10"
-                        max="30"
-                        value={delayDays}
-                        onChange={(e) => setDelayDays(Number(e.target.value))}
-                        className="w-full accent-brand-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
-                      />
-                      <span className="text-[10px] text-slate-500">
-                        Models buyers paying faster (-10d) or defaulting/lagging (+30d)
+            {/* Drawer Content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+              {activeTab === "forecast" && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-3 rounded-xl bg-black/40 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block">Lowest Dip</span>
+                      <span className="font-mono font-bold text-base text-dangerrose">
+                        {fmtInr(forecastData?.summary?.lowest_balance ?? -1097915)}
                       </span>
                     </div>
-
-                    {/* Slider 2: Prompt Settlement Discount */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-300">Prompt Discount Offered</span>
-                        <span className="font-mono text-accentcyan font-bold">{discountPct}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="5"
-                        step="0.5"
-                        value={discountPct}
-                        onChange={(e) => setDiscountPct(Number(e.target.value))}
-                        className="w-full accent-accentcyan h-1.5 bg-slate-800 rounded-lg cursor-pointer"
-                      />
-                      <span className="text-[10px] text-slate-500">
-                        Offers 2% rebate to accelerate collections within 48 hours
-                      </span>
-                    </div>
-
-                    {/* Slider 3: Expense Reduction */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-300">Cut Operating Expenses</span>
-                        <span className="font-mono text-warningamber font-bold">{expenseCutPct}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="30"
-                        step="5"
-                        value={expenseCutPct}
-                        onChange={(e) => setExpenseCutPct(Number(e.target.value))}
-                        className="w-full accent-warningamber h-1.5 bg-slate-800 rounded-lg cursor-pointer"
-                      />
-                      <span className="text-[10px] text-slate-500">
-                        Reduces discretionary burn to stretch cash runway
-                      </span>
-                    </div>
-
-                    {/* Slider 4: Planned Capex Purchase */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-300">Planned Capex / Spend</span>
-                        <span className="font-mono text-purple-400 font-bold">
-                          {fmtInr(plannedSpend)}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1000000"
-                        step="50000"
-                        value={plannedSpend}
-                        onChange={(e) => setPlannedSpend(Number(e.target.value))}
-                        className="w-full accent-purple-400 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
-                      />
-                      <span className="text-[10px] text-slate-500">
-                        Tests if you can afford to buy equipment or hire immediately
+                    <div className="p-3 rounded-xl bg-black/40 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block">Runway</span>
+                      <span className="font-mono font-bold text-base text-brand-400">
+                        {forecastData?.summary?.estimated_runway_days ?? 4} Days
                       </span>
                     </div>
                   </div>
-                </div>
 
-                {/* 45-Day Cash Flow Trajectory Visual */}
-                <div className="p-5 rounded-2xl glass-card border border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-sm text-white flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-accentcyan" />
-                      <span>45-Day Day-by-Day Cash Balance Trajectory</span>
-                    </h3>
-                    <span className="text-xs text-slate-400 font-mono">
-                      {isForecastLoading ? "Simulating..." : "Real-time Pearlian Engine"}
-                    </span>
-                  </div>
-
-                  {/* Daily Balance Bar Chart Representation */}
-                  <div className="h-40 flex items-end gap-1 pt-4 pb-2 border-b border-slate-800/80 overflow-x-auto">
-                    {forecastData?.daily?.map((d: ForecastDayItem, idx: number) => {
-                      const isNegative = d.balance < 0;
-                      // Height scaling between 0 and 100%
-                      const maxAbs = 600000;
-                      const heightPct = Math.min(100, Math.max(12, (Math.abs(d.balance) / maxAbs) * 100));
-
-                      return (
-                        <div
-                          key={idx}
-                          className="flex-1 min-w-[14px] flex flex-col items-center justify-end group relative"
-                        >
-                          {/* Tooltip on Hover */}
-                          <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col items-center bg-black/90 text-white text-[10px] font-mono p-2 rounded border border-slate-700 whitespace-nowrap z-20 shadow-xl">
-                            <span className="font-bold text-accentcyan">{d.date}</span>
-                            <span>Balance: {fmtInr(d.balance)}</span>
-                            {d.inflow > 0 && <span className="text-brand-400">+In: {fmtInr(d.inflow)}</span>}
-                            {d.outflow > 0 && <span className="text-dangerrose">-Out: {fmtInr(d.outflow)}</span>}
-                          </div>
-
-                          <div
-                            style={{ height: `${heightPct}%` }}
-                            className={`w-full rounded-t transition-all ${
-                              isNegative
-                                ? "bg-dangerrose/80 group-hover:bg-dangerrose"
-                                : d.balance < 100000
-                                ? "bg-warningamber/80 group-hover:bg-warningamber"
-                                : "bg-brand-500/80 group-hover:bg-brand-400"
-                            }`}
-                          />
-                          {idx % 7 === 0 && (
-                            <span className="text-[9px] text-slate-500 font-mono mt-1">
-                              {d.date.split(" ")[0]}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Landmark Events Table */}
-                  <div className="space-y-2 pt-2">
-                    <span className="text-xs font-semibold text-slate-300 block">
-                      Critical Cash Milestones:
-                    </span>
-                    <div className="space-y-1.5 text-xs font-mono">
-                      {forecastData?.events?.slice(0, 5).map((ev: ForecastEventItem, idx: number) => (
-                        <div
-                          key={idx}
-                          className={`p-2 rounded-lg border flex items-center justify-between ${
-                            ev.is_negative
-                              ? "bg-dangerrose/10 border-dangerrose/30 text-slate-200"
-                              : "bg-black/30 border-slate-800 text-slate-300"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                            <strong className="text-white">{ev.date}:</strong>
-                            <span>{ev.description}</span>
-                          </div>
-                          <span className={`font-bold ${ev.is_negative ? "text-dangerrose" : "text-brand-400"}`}>
-                            Bal: {fmtInr(ev.balance)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Action Bridge Button */}
-                  <div className="pt-2 flex justify-end">
-                    <button
-                      onClick={handleLiquidityBridge}
-                      className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-2 transition shadow-lg shadow-brand-600/30"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      <span>Activate Cash Bridge (Unlock Receivables)</span>
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-            )}
-
-            {/* ------------------------------------------------------------ */}
-            {/* TAB 2: GST & TAX PLANNER                                     */}
-            {/* ------------------------------------------------------------ */}
-            {activeTab === "gst" && (
-              <div className="space-y-6">
-                
-                {/* Countdown Banner */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-dangerrose/15 via-black/40 to-black/40 border border-dangerrose/30 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-dangerrose/20 border border-dangerrose/40 flex items-center justify-center font-bold text-dangerrose">
-                      3B
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-sm text-white">
-                        GSTR-3B Statutory Filing Due in {gstPlanData?.days_left ?? 4} Days
-                      </h3>
-                      <span className="text-xs text-slate-400 font-mono">
-                        Mandatory settlement deadline: {gstPlanData?.due_label || "20 Nov 2026"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] text-slate-400 uppercase font-mono block">
-                      Cash Shortfall
-                    </span>
-                    <span className="text-lg font-bold font-mono text-dangerrose">
-                      {fmtInr(gstPlanData?.still_to_arrange ?? 152915)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Statutory Ledger Cards Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                  <div className="p-3 rounded-xl glass-card border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block uppercase font-mono">
-                      Output GST
-                    </span>
-                    <span className="text-sm sm:text-base font-bold font-mono text-white mt-1 block">
-                      {fmtInr(gstPlanData?.output_gst ?? 445215)}
-                    </span>
-                    <span className="text-[9px] text-slate-500 mt-0.5 block">Accrued on sales</span>
-                  </div>
-
-                  <div className="p-3 rounded-xl glass-card border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block uppercase font-mono">
-                      Eligible ITC
-                    </span>
-                    <span className="text-sm sm:text-base font-bold font-mono text-accentcyan mt-1 block">
-                      {fmtInr(gstPlanData?.itc_claimed ?? 160300)}
-                    </span>
-                    <span className="text-[9px] text-slate-500 mt-0.5 block">Input tax credit</span>
-                  </div>
-
-                  <div className="p-3 rounded-xl glass-card border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block uppercase font-mono">
-                      Net Cash Due
-                    </span>
-                    <span className="text-sm sm:text-base font-bold font-mono text-white mt-1 block">
-                      {fmtInr(gstPlanData?.net_payable ?? 284915)}
-                    </span>
-                    <span className="text-[9px] text-dangerrose mt-0.5 block">Legal mandate</span>
-                  </div>
-
-                  <div className="p-3 rounded-xl glass-card border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block uppercase font-mono">
-                      Tax Vault
-                    </span>
-                    <span className="text-sm sm:text-base font-bold font-mono text-brand-400 mt-1 block">
-                      {fmtInr(gstPlanData?.in_vault ?? 35000)}
-                    </span>
-                    <span className="text-[9px] text-slate-500 mt-0.5 block">Reserved cash</span>
-                  </div>
-
-                  <div className="p-3 rounded-xl glass-card border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block uppercase font-mono">
-                      Deficit Gap
-                    </span>
-                    <span className="text-sm sm:text-base font-bold font-mono text-dangerrose mt-1 block">
-                      {fmtInr(gstPlanData?.still_to_arrange ?? 152915)}
-                    </span>
-                    <span className="text-[9px] text-dangerrose mt-0.5 block">Urgent to fund</span>
-                  </div>
-                </div>
-
-                {/* Accrual Trap Explanation */}
-                <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-xs space-y-2">
-                  <div className="flex items-center gap-2 text-warningamber font-semibold">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>The GST Accrual Trap (CGST Act Section 39)</span>
-                  </div>
-                  <p className="text-slate-300 leading-relaxed">
-                    Under Indian GST law, tax liability occurs on invoice issuance date, not when the buyer pays. Currently,{" "}
-                    <strong className="text-white font-mono">{fmtInr(gstPlanData?.gst_on_unpaid ?? 369915)}</strong> of your tax liability is locked in invoices whose customers have delayed payment. You must arrange liquid funds to pay the government by 20 Nov.
-                  </p>
-                  <div className="flex justify-end pt-1">
-                    <button
-                      onClick={() => handleSendMessage("Draft payment reminder for Reliance to clear GST shortfall")}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium border border-slate-700 transition"
-                    >
-                      Follow up on Trapped GST Invoices →
-                    </button>
-                  </div>
-                </div>
-
-                {/* Instant GST Split Calculator */}
-                <div className="p-5 rounded-2xl glass-card border border-slate-800 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Calculator className="w-4 h-4 text-accentcyan" />
-                    <h3 className="font-semibold text-sm text-white">
-                      Instant GST Split & Tax Calculator
-                    </h3>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="text-[11px] text-slate-400 block mb-1">Invoice Amount (₹)</label>
-                      <input
-                        type="number"
-                        value={calcAmount}
-                        onChange={(e) => setCalcAmount(Number(e.target.value))}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-mono text-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] text-slate-400 block mb-1">GST Slab Rate</label>
-                      <select
-                        value={calcRate}
-                        onChange={(e) => setCalcRate(Number(e.target.value))}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-mono text-white"
-                      >
-                        <option value={5}>5% (Basic Goods)</option>
-                        <option value={12}>12% (Processed Goods)</option>
-                        <option value={18}>18% (Standard B2B / Services)</option>
-                        <option value={28}>28% (Luxury / Automobiles)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] text-slate-400 block mb-1">Mode</label>
-                      <div className="flex rounded-lg overflow-hidden border border-slate-700">
-                        <button
-                          type="button"
-                          onClick={() => setCalcMode("gross")}
-                          className={`flex-1 py-2 text-xs font-medium transition ${
-                            calcMode === "gross" ? "bg-brand-600 text-white" : "bg-slate-900 text-slate-400"
-                          }`}
-                        >
-                          Inclusive
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setCalcMode("net")}
-                          className={`flex-1 py-2 text-xs font-medium transition ${
-                            calcMode === "net" ? "bg-brand-600 text-white" : "bg-slate-900 text-slate-400"
-                          }`}
-                        >
-                          Exclusive
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Calculator Breakdown Results */}
-                  {calcResult && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800 text-xs font-mono">
-                      <div className="p-2.5 rounded bg-black/40 border border-slate-800">
-                        <span className="text-[10px] text-slate-400 block">Base Price</span>
-                        <span className="font-bold text-white text-sm">{fmtInr(calcResult.base)}</span>
-                      </div>
-                      <div className="p-2.5 rounded bg-black/40 border border-slate-800">
-                        <span className="text-[10px] text-slate-400 block">Total GST ({calcRate}%)</span>
-                        <span className="font-bold text-accentcyan text-sm">{fmtInr(calcResult.gst)}</span>
-                      </div>
-                      <div className="p-2.5 rounded bg-black/40 border border-slate-800">
-                        <span className="text-[10px] text-slate-400 block">CGST + SGST</span>
-                        <span className="font-bold text-slate-300 text-sm">
-                          {fmtInr(calcResult.cgst)} each
-                        </span>
-                      </div>
-                      <div className="p-2.5 rounded bg-black/40 border border-slate-800">
-                        <span className="text-[10px] text-slate-400 block">Total Invoice Value</span>
-                        <span className="font-bold text-brand-400 text-sm">{fmtInr(calcResult.total)}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Compliance Steps Checklist */}
-                <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-slate-300">Statutory Compliance Action Plan</h4>
-                  <div className="space-y-1.5 text-xs">
-                    {gstPlanData?.steps?.map((st: GstStepItem, sIdx: number) => (
-                      <div key={sIdx} className="p-3 rounded-xl bg-black/30 border border-slate-800 flex items-start gap-2.5">
-                        <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0 mt-0.5" />
-                        <div>
-                          <strong className="text-white block">{st.title}</strong>
-                          <span className="text-slate-400 text-xs">{st.detail}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-              </div>
-            )}
-
-            {/* ------------------------------------------------------------ */}
-            {/* TAB 3: WHO OWES ME / WHO I OWE                               */}
-            {/* ------------------------------------------------------------ */}
-            {activeTab === "ledger" && (
-              <div className="space-y-6">
-                
-                {/* Sub-tab toggle */}
-                <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
-                  <button
-                    onClick={() => setLedgerSubTab("debtors")}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-2 ${
-                      ledgerSubTab === "debtors"
-                        ? "bg-brand-600 text-white"
-                        : "bg-slate-900 text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    <ArrowDownRight className="w-4 h-4 text-brand-300" />
-                    <span>Who Owes Me (Debtors & Invoices)</span>
-                  </button>
-                  <button
-                    onClick={() => setLedgerSubTab("creditors")}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-2 ${
-                      ledgerSubTab === "creditors"
-                        ? "bg-brand-600 text-white"
-                        : "bg-slate-900 text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    <ArrowUpRight className="w-4 h-4 text-dangerrose" />
-                    <span>Who I Owe (Creditors, Taxes & EMIs)</span>
-                  </button>
-                </div>
-
-                {/* DEBTORS VIEW */}
-                {ledgerSubTab === "debtors" && (
-                  <div className="space-y-4">
-                    {/* Summary row */}
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="p-3 rounded-xl glass-card border border-slate-800">
-                        <span className="text-[10px] text-slate-400 uppercase font-mono block">
-                          Total Pending Receivables
-                        </span>
-                        <span className="text-base sm:text-lg font-bold font-mono text-white mt-1 block">
-                          {fmtInr(ledgerData?.debtors?.summary?.total_pending ?? 2845000)}
-                        </span>
-                      </div>
-                      <div className="p-3 rounded-xl glass-card border border-slate-800">
-                        <span className="text-[10px] text-slate-400 uppercase font-mono block">
-                          Already Overdue
-                        </span>
-                        <span className="text-base sm:text-lg font-bold font-mono text-dangerrose mt-1 block">
-                          {fmtInr(ledgerData?.debtors?.summary?.overdue_amount ?? 420000)}
-                        </span>
-                      </div>
-                      <div className="p-3 rounded-xl glass-card border border-slate-800">
-                        <span className="text-[10px] text-slate-400 uppercase font-mono block">
-                          Expected in 30 Days
-                        </span>
-                        <span className="text-base sm:text-lg font-bold font-mono text-brand-400 mt-1 block">
-                          {fmtInr(ledgerData?.debtors?.summary?.expected_30_days ?? 1250000)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Invoices List */}
-                    <div className="space-y-2.5">
-                      <span className="text-xs font-semibold text-slate-300 block">
-                        Open Customer Invoices:
-                      </span>
-                      {ledgerData?.debtors?.invoices?.map((inv: LedgerDebtorItem) => {
-                        const isOverdue = inv.days_overdue > 0;
+                  {/* 45-day Trajectory */}
+                  <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-2">
+                    <span className="font-semibold text-slate-200 block">45-Day Cash Progression</span>
+                    <div className="h-28 flex items-end gap-1 pt-2">
+                      {forecastData?.daily?.slice(0, 30).map((d: ForecastDayItem, idx: number) => {
+                        const hPct = Math.min(100, Math.max(15, (Math.abs(d.balance) / 500000) * 100));
                         return (
                           <div
-                            key={inv.id}
-                            className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                              isOverdue
-                                ? "bg-dangerrose/10 border-dangerrose/30"
-                                : "bg-black/30 border-slate-800"
+                            key={idx}
+                            style={{ height: `${hPct}%` }}
+                            className={`flex-1 rounded-t ${
+                              d.balance < 0 ? "bg-dangerrose" : "bg-brand-500"
                             }`}
-                          >
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-sm text-white">{inv.customer_name}</span>
-                                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                                  #{inv.invoice_number}
-                                </span>
-                                {isOverdue ? (
-                                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-dangerrose/20 text-dangerrose">
-                                    {inv.days_overdue}d Overdue
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-brand-500/15 text-brand-400">
-                                    Due in {inv.due_label}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-xs text-slate-400 font-mono">
-                                <span>Total: {fmtInr(inv.amount)}</span>
-                                <span className="mx-2">•</span>
-                                <span>Accrued GST: {fmtInr(inv.gst_amount)}</span>
-                                <span className="mx-2">•</span>
-                                <span>Expected: {inv.expected_label}</span>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleSendMessage(`Draft payment reminder for ${inv.customer_name} for invoice ${inv.invoice_number}`)}
-                                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-white border border-slate-700 transition"
-                              >
-                                Draft Reminder
-                              </button>
-                              <button
-                                onClick={() => handleSendMessage(`Offer 2% prompt discount to ${inv.customer_name} to clear today`)}
-                                className="px-3 py-1.5 rounded-lg bg-brand-600/30 hover:bg-brand-600/40 text-brand-300 text-xs font-medium border border-brand-500/40 transition"
-                              >
-                                Offer 2% Discount
-                              </button>
-                            </div>
-                          </div>
+                            title={`${d.date}: ${fmtInr(d.balance)}`}
+                          />
                         );
                       })}
                     </div>
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* CREDITORS VIEW */}
-                {ledgerSubTab === "creditors" && (
-                  <div className="space-y-4">
-                    {/* Summary row */}
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="p-3 rounded-xl glass-card border border-slate-800">
-                        <span className="text-[10px] text-slate-400 uppercase font-mono block">
-                          Total Payables
-                        </span>
-                        <span className="text-base sm:text-lg font-bold font-mono text-white mt-1 block">
-                          {fmtInr(ledgerData?.creditors?.summary?.total_payables ?? 625000)}
-                        </span>
-                      </div>
-                      <div className="p-3 rounded-xl glass-card border border-slate-800">
-                        <span className="text-[10px] text-slate-400 uppercase font-mono block">
-                          Available Liquid Cash
-                        </span>
-                        <span className="text-base sm:text-lg font-bold font-mono text-brand-400 mt-1 block">
-                          {fmtInr(ledgerData?.creditors?.summary?.bank_cash ?? 185000)}
-                        </span>
-                      </div>
-                      <div className="p-3 rounded-xl glass-card border border-slate-800">
-                        <span className="text-[10px] text-slate-400 uppercase font-mono block">
-                          Coverage Deficit
-                        </span>
-                        <span className="text-base sm:text-lg font-bold font-mono text-dangerrose mt-1 block">
-                          {fmtInr(ledgerData?.creditors?.summary?.coverage_deficit ?? 440000)}
-                        </span>
-                      </div>
+              {activeTab === "gst" && (
+                <div className="space-y-3">
+                  <div className="p-3 rounded-xl bg-dangerrose/10 border border-dangerrose/30 space-y-1">
+                    <span className="font-bold text-dangerrose block">GSTR-3B Due in 4 Days (20 Nov)</span>
+                    <span className="text-slate-300">
+                      Net Tax Payable: <strong>{fmtInr(gstPlanData?.net_payable ?? 284915)}</strong>
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-2">
+                    <span className="font-semibold text-slate-200 block">GST Calculator</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="number"
+                        value={calcAmount}
+                        onChange={(e) => setCalcAmount(Number(e.target.value))}
+                        className="bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white font-mono"
+                      />
+                      <select
+                        value={calcRate}
+                        onChange={(e) => setCalcRate(Number(e.target.value))}
+                        className="bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white font-mono"
+                      >
+                        <option value={18}>18% GST</option>
+                        <option value={12}>12% GST</option>
+                        <option value={5}>5% GST</option>
+                        <option value={28}>28% GST</option>
+                      </select>
                     </div>
+                    {calcResult && (
+                      <div className="grid grid-cols-2 gap-2 pt-2 text-[11px] font-mono">
+                        <div>Base: {fmtInr(calcResult.base)}</div>
+                        <div className="text-accentcyan">Tax: {fmtInr(calcResult.gst)}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
-                    {/* Liabilities List */}
-                    <div className="space-y-2.5">
-                      <span className="text-xs font-semibold text-slate-300 block">
-                        Mandatory Obligations & Debts:
-                      </span>
-                      {ledgerData?.creditors?.liabilities?.map((lib: LedgerCreditorItem) => (
-                        <div
-                          key={lib.id}
-                          className="p-3.5 rounded-xl bg-black/30 border border-slate-800 flex items-center justify-between"
-                        >
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-sm text-white">{lib.name}</span>
-                              <span
-                                className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
-                                  lib.priority === 1
-                                    ? "bg-dangerrose/20 text-dangerrose"
-                                    : "bg-warningamber/20 text-warningamber"
-                                }`}
-                              >
-                                {lib.priority_label}
-                              </span>
-                            </div>
-                            <div className="text-xs text-slate-400 font-mono">
-                              <span>Due on: {lib.due_label} ({lib.days_left}d left)</span>
-                              <span className="mx-2">•</span>
-                              <span>Category: {lib.category}</span>
-                            </div>
+              {activeTab === "ledger" && (
+                <div className="space-y-3">
+                  <div className="flex gap-2 border-b border-slate-800 pb-2">
+                    <button
+                      onClick={() => setLedgerSubTab("debtors")}
+                      className={`px-3 py-1 rounded text-xs ${
+                        ledgerSubTab === "debtors" ? "bg-brand-600 text-white" : "text-slate-400"
+                      }`}
+                    >
+                      Debtors
+                    </button>
+                    <button
+                      onClick={() => setLedgerSubTab("creditors")}
+                      className={`px-3 py-1 rounded text-xs ${
+                        ledgerSubTab === "creditors" ? "bg-brand-600 text-white" : "text-slate-400"
+                      }`}
+                    >
+                      Creditors
+                    </button>
+                  </div>
+                  {ledgerSubTab === "debtors" ? (
+                    <div className="space-y-2">
+                      {ledgerData?.debtors?.invoices?.map((inv: LedgerDebtorItem) => (
+                        <div key={inv.id} className="p-2.5 rounded bg-black/40 border border-slate-800 space-y-1">
+                          <div className="flex justify-between font-semibold">
+                            <span>{inv.customer_name}</span>
+                            <span className="font-mono">{fmtInr(inv.amount)}</span>
                           </div>
-
-                          <span className="font-bold font-mono text-sm text-white">
-                            {fmtInr(lib.amount)}
-                          </span>
+                          <div className="text-[10px] text-slate-400">Due: {inv.due_label}</div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-
-              </div>
-            )}
-
-            {/* ------------------------------------------------------------ */}
-            {/* TAB 4: PROFIT, EXPENSES & LOAN/EMI TOOLS                     */}
-            {/* ------------------------------------------------------------ */}
-            {activeTab === "profit" && (
-              <div className="space-y-6">
-                
-                {/* Business Model & Profit Breakdown */}
-                <div className="p-5 rounded-2xl glass-card border border-slate-800 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <PieChart className="w-4 h-4 text-brand-400" />
-                    <h3 className="font-semibold text-sm text-white">
-                      Monthly Profit & Break-Even Model
-                    </h3>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
-                    <div className="p-3 rounded-xl bg-black/40 border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block uppercase">Monthly Sales</span>
-                      <span className="text-base font-bold text-white mt-1 block">
-                        {fmtInr(profitData?.monthly_sales ?? 2400000)}
-                      </span>
+                  ) : (
+                    <div className="space-y-2">
+                      {ledgerData?.creditors?.liabilities?.map((lib: LedgerCreditorItem) => (
+                        <div key={lib.id} className="p-2.5 rounded bg-black/40 border border-slate-800 space-y-1">
+                          <div className="flex justify-between font-semibold">
+                            <span>{lib.name}</span>
+                            <span className="font-mono">{fmtInr(lib.amount)}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-400">Due: {lib.due_label}</div>
+                        </div>
+                      ))}
                     </div>
-
-                    <div className="p-3 rounded-xl bg-black/40 border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block uppercase">COGS (Direct Costs)</span>
-                      <span className="text-base font-bold text-slate-300 mt-1 block">
-                        {profitData?.cogs_percentage ?? 82}%
-                      </span>
-                    </div>
-
-                    <div className="p-3 rounded-xl bg-black/40 border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block uppercase">Operating Profit</span>
-                      <span className="text-base font-bold text-brand-400 mt-1 block">
-                        {fmtInr(profitData?.operating_profit ?? 242000)}
-                      </span>
-                    </div>
-
-                    <div className="p-3 rounded-xl bg-black/40 border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block uppercase">Net Profit</span>
-                      <span className="text-base font-bold text-white mt-1 block">
-                        {fmtInr(profitData?.net_profit ?? 194000)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-900/50 border border-slate-800 text-xs flex items-center justify-between">
-                    <span className="text-slate-300">
-                      Monthly Break-Even Sales Volume required to cover all fixed costs:
-                    </span>
-                    <strong className="text-accentcyan font-mono text-sm">
-                      {fmtInr(profitData?.break_even_sales ?? 1322222)}
-                    </strong>
-                  </div>
+                  )}
                 </div>
+              )}
 
-                {/* Interactive Loan EMI Calculator */}
-                <div className="p-5 rounded-2xl glass-card border border-slate-800 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Calculator className="w-4 h-4 text-purple-400" />
-                    <h3 className="font-semibold text-sm text-white">
-                      Loan EMI & Debt Serviceability Calculator
-                    </h3>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {/* Principal */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-300">Loan Amount (Principal)</span>
-                        <span className="font-mono text-purple-400 font-bold">{fmtInr(loanPrincipal)}</span>
+              {activeTab === "profit" && (
+                <div className="space-y-3">
+                  <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-2">
+                    <span className="font-semibold text-slate-200 block">Loan EMI Calculator</span>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px]">
+                        <span>Loan Amount</span>
+                        <span className="font-mono">{fmtInr(loanPrincipal)}</span>
                       </div>
                       <input
                         type="range"
@@ -1649,107 +1047,151 @@ export default function ExecutiveDeck() {
                         step="50000"
                         value={loanPrincipal}
                         onChange={(e) => setLoanPrincipal(Number(e.target.value))}
-                        className="w-full accent-purple-400 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+                        className="w-full accent-purple-400"
                       />
                     </div>
-
-                    {/* Interest Rate */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-300">Annual Interest Rate</span>
-                        <span className="font-mono text-brand-400 font-bold">{loanRate}% p.a.</span>
+                    {emiResult && (
+                      <div className="p-2.5 rounded bg-purple-500/10 border border-purple-500/30 font-mono">
+                        <span className="text-[10px] text-purple-300 block">Monthly EMI</span>
+                        <span className="text-base font-bold text-white">{fmtInr(emiResult.monthly_emi)}</span>
                       </div>
-                      <input
-                        type="range"
-                        min="8"
-                        max="18"
-                        step="0.5"
-                        value={loanRate}
-                        onChange={(e) => setLoanRate(Number(e.target.value))}
-                        className="w-full accent-brand-400 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
-                      />
-                    </div>
-
-                    {/* Tenure */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-300">Tenure (Months)</span>
-                        <span className="font-mono text-accentcyan font-bold">{loanTenure} Mo ({(loanTenure/12).toFixed(1)} Yrs)</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="6"
-                        max="60"
-                        step="6"
-                        value={loanTenure}
-                        onChange={(e) => setLoanTenure(Number(e.target.value))}
-                        className="w-full accent-accentcyan h-1.5 bg-slate-800 rounded-lg cursor-pointer"
-                      />
-                    </div>
-                  </div>
-
-                  {/* EMI Results Grid */}
-                  {emiResult && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-slate-800 text-xs font-mono">
-                      <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/30">
-                        <span className="text-[10px] text-purple-300 block uppercase">Monthly EMI</span>
-                        <span className="text-base sm:text-lg font-bold text-white mt-1 block">
-                          {fmtInr(emiResult.monthly_emi)}
-                        </span>
-                      </div>
-
-                      <div className="p-3 rounded-xl bg-black/40 border border-slate-800">
-                        <span className="text-[10px] text-slate-400 block uppercase">Total Interest</span>
-                        <span className="text-base sm:text-lg font-bold text-warningamber mt-1 block">
-                          {fmtInr(emiResult.total_interest)}
-                        </span>
-                      </div>
-
-                      <div className="p-3 rounded-xl bg-black/40 border border-slate-800">
-                        <span className="text-[10px] text-slate-400 block uppercase">Total Repayment</span>
-                        <span className="text-base sm:text-lg font-bold text-slate-200 mt-1 block">
-                          {fmtInr(emiResult.total_payment)}
-                        </span>
-                      </div>
-
-                      <div className="p-3 rounded-xl bg-black/40 border border-slate-800">
-                        <span className="text-[10px] text-slate-400 block uppercase">Debt Verdict</span>
-                        <span
-                          className={`text-sm font-bold mt-1 block uppercase ${
-                            emiResult.verdict?.verdict === "comfortable"
-                              ? "text-brand-400"
-                              : emiResult.verdict?.verdict === "stretched"
-                              ? "text-warningamber"
-                              : "text-dangerrose"
-                          }`}
-                        >
-                          {emiResult.verdict?.verdict || "Comfortable"}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-xs text-slate-400">
-                      {emiResult?.verdict?.text || "Based on reducing balance amortization method."}
-                    </span>
-                    <button
-                      onClick={() => handleSendMessage(`Can I afford a loan of ${fmtCompact(loanPrincipal)} at ${loanRate}% for ${loanTenure} months?`)}
-                      className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium border border-slate-700 transition"
-                    >
-                      Ask AI About This Loan →
-                    </button>
+                    )}
                   </div>
                 </div>
+              )}
+            </div>
 
-              </div>
-            )}
-
-          </div>
-
-        </section>
+          </aside>
 
       </div>
+
+      {/* 4. COMPANY PROFILE CREATION & EDIT MODAL */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl animate-in zoom-in-95 duration-150">
+            
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-brand-400" />
+                <h3 className="font-bold text-base text-white">Create / Edit Business Profile</h3>
+              </div>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium block">Company / Business Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={profCompany}
+                    onChange={(e) => setProfCompany(e.target.value)}
+                    placeholder="e.g. Acme Corp"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium block">Owner / Founder Name</label>
+                  <input
+                    type="text"
+                    value={profOwner}
+                    onChange={(e) => setProfOwner(e.target.value)}
+                    placeholder="e.g. Rahul Sharma"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium block">Business Type / Industry</label>
+                  <input
+                    type="text"
+                    value={profType}
+                    onChange={(e) => setProfType(e.target.value)}
+                    placeholder="e.g. Trading, Manufacturing, IT Services"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium block">City / State</label>
+                  <input
+                    type="text"
+                    value={profCity}
+                    onChange={(e) => setProfCity(e.target.value)}
+                    placeholder="e.g. Mumbai, Maharashtra"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-300 font-medium block">GSTIN Number (Optional)</label>
+                <input
+                  type="text"
+                  value={profGstin}
+                  onChange={(e) => setProfGstin(e.target.value)}
+                  placeholder="e.g. 27AAACU1234M1Z5"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 pt-1">
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium block">Bank Cash (₹)</label>
+                  <input
+                    type="number"
+                    value={profCash}
+                    onChange={(e) => setProfCash(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium block">Tax Vault (₹)</label>
+                  <input
+                    type="number"
+                    value={profVault}
+                    onChange={(e) => setProfVault(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium block">Monthly Burn (₹)</label>
+                  <input
+                    type="number"
+                    value={profBurn}
+                    onChange={(e) => setProfBurn(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowProfileModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold shadow-lg shadow-brand-600/30"
+                >
+                  Save Profile & Start Twin
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -171,6 +171,45 @@ export async function fetchCounterfactualApi(): Promise<unknown> {
   return await res.json();
 }
 
+export interface UserProfileData {
+  company_name: string;
+  owner_name?: string;
+  business_type?: string;
+  city?: string;
+  gstin?: string;
+  bank_cash?: number;
+  tax_vault?: number;
+  monthly_burn?: number;
+}
+
+export async function saveProfileApi(profile: UserProfileData): Promise<BackendStateResponse> {
+  const res = await fetch(`${BACKEND_URL}/api/profile`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(profile),
+  });
+  if (!res.ok) throw new Error(`Save profile error: ${res.statusText}`);
+  return await res.json();
+}
+
+export async function getProfileApi(): Promise<{
+  business: {
+    id: string;
+    name: string;
+    owner_name: string;
+    archetype: string;
+    city: string;
+    gstin: string;
+  };
+  bank_cash: number;
+  tax_vault: number;
+  runway: number;
+}> {
+  const res = await fetch(`${BACKEND_URL}/api/profile`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Get profile error: ${res.statusText}`);
+  return await res.json();
+}
+
 // 8. Fetch 45-day Cash Flow Forecast & What-If
 export async function fetchForecastApi(params?: {
   delay_days?: number;

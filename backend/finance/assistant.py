@@ -20,6 +20,37 @@ DEFAULT_SUGGESTIONS = [
     "Can I afford a 5 lakh machine?"
 ]
 
+def extract_customer_name(text: str) -> str:
+    m = re.search(r"(?:for|to|client|customer|from)\s+([A-Za-z0-9\s\.\-&]+?)(?=\s+(?:with|worth|amount|for|rs|₹|of|\d|due|gst|$))", text, re.IGNORECASE)
+    if m:
+        val = m.group(1).strip()
+        clean = re.sub(r"^(a|an|the|new|our)\s+", "", val, flags=re.IGNORECASE).strip()
+        if len(clean) >= 2:
+            return clean.title()
+    words = re.findall(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b", text)
+    if words:
+        for w in words:
+            if w.lower() not in ("add", "create", "invoice", "bill", "gst", "payment", "received", "expense", "bank", "can"):
+                return w
+    return "Client"
+
+def extract_expense_name(text: str) -> str:
+    if "rent" in text.lower():
+        return "Office / Facility Rent"
+    if "emi" in text.lower() or "loan" in text.lower():
+        return "Bank Loan EMI"
+    if "salary" in text.lower() or "payroll" in text.lower():
+        return "Employee Payroll"
+    if "electricity" in text.lower() or "power" in text.lower():
+        return "Electricity Bill"
+    m = re.search(r"(?:for|to|vendor|supplier|bill|expense)\s+([A-Za-z0-9\s\.\-&]+?)(?=\s+(?:with|worth|amount|for|rs|₹|of|\d|due|$))", text, re.IGNORECASE)
+    if m:
+        val = m.group(1).strip()
+        clean = re.sub(r"^(a|an|the|my)\s+", "", val, flags=re.IGNORECASE).strip()
+        if len(clean) >= 2:
+            return clean.title()
+    return "Operational Expense"
+
 class FinanceAssistant:
     """
     Comprehensive AI Finance Assistant for Indian MSMEs:
@@ -75,64 +106,342 @@ class FinanceAssistant:
     def try_answer(self, message: str, history: Optional[List[Dict[str, str]]] = None) -> Optional[Dict[str, Any]]:
         q = message.lower().strip()
 
-        # 1. Invoice creation commands stay with original CNS logic
-        if re.search(r"\b(create|make|generate|raise|issue|bill)\b.*\binvoice|bill banao|invoice banao", q):
-            return None
-        # 2. Wormhole activation commands stay with original CNS logic
-        if re.search(r"\b(activate|execute|trigger|apply)\b.*\bwormhole|apply solution", q):
-            return None
+        # 0. Action: Profile setup / update / company info / reset
+        if re.search(r"\b(reset business|start fresh|clear business|reset ledger|new business|clear data)\b", q):
+            return self._action_reset_business()
 
-        # 3. Topic explanations (ITC, MSME 45-day rule, e-invoicing, etc.)
+        if re.search(r"\b(my company is|company name is|set company|update company|create profile|business name is|change company|register company)\b", q):
+            return self._action_set_profile(q, message)
+
+        # 1. Action: Add / Raise Invoice
+        if re.search(r"\b(add|create|raise|issue|bill|billed)\b.*\b(invoice|bill)\b|\bbill\s+for\b|\binvoice\s+for\b", q):
+            return self._action_add_invoice(q, message)
+
+        # 2. Action: Add Expense / Scheduled Bill / EMI
+        if re.search(r"\b(add|record)\b.*\b(expense|rent|emi|bill|loan|payable)\b|\bi have to pay\b|\bnew expense\b", q) and not any(w in q for w in ["who do i owe", "when is my emi", "due date of emi"]):
+            return self._action_add_expense(q, message)
+
+        # 3. Action: Record Customer Payment
+        if re.search(r"\b(received|got|client|customer)\b.*\b(payment|paid|money|deposit)\b|\bpaid me\b|\bpayment from\b", q):
+            return self._action_record_payment(q, message)
+
+        # 4. Action: Update Bank Balance
+        if re.search(r"\b(bank balance|cash balance|balance is|update bank|set bank|set cash)\b", q):
+            return self._action_update_balance(q, message)
+
+        # 5. Action: Cash Bridge
+        if re.search(r"\b(bridge|activate bridge|bridge cash|wormhole)\b", q):
+            return self._action_cash_bridge()
+
+        # 6. Topic explanations (ITC, MSME 45-day rule, e-invoicing, etc.)
         topic = find_topic(q)
         if topic and any(w in q for w in ["what is", "explain", "meaning", "samjhao", "rules", "tell me about"]):
             return self._explain_topic(topic)
 
-        # 4. Debtors / Receivables ("who owes me money?")
+        # 7. Debtors / Receivables ("who owes me money?")
         if any(w in q for w in ["who owes", "debtor", "receivable", "unpaid bill", "pending bill", "kiska paisa"]):
             return self._receivables_reply()
 
-        # 5. Payables / Creditors / Upcoming Bills ("who do I owe?", "when is my EMI due?")
+        # 8. Payables / Creditors / Upcoming Bills ("who do I owe?", "when is my EMI due?")
         if any(w in q for w in ["who do i owe", "whom do i owe", "what do i owe", "payable", "supplier", "vendor", "upcoming bill", "kisko dena", "when is my emi", "due date of emi"]):
             return self._payables_reply()
 
-        # 6. Affordability & Capex Check ("Can I afford ₹5L machine?", "Can I spend 3 lakhs?")
+        # 9. Affordability & Capex Check ("Can I afford ₹5L machine?", "Can I spend 3 lakhs?")
         if any(w in q for w in ["can i afford", "can i buy", "can i spend", "khareed sakta", "le sakta", "should i buy"]):
             return self._affordability_reply(q)
 
-        # 7. Loans & EMI calculations ("Calculate EMI for 10L at 11% for 5 years")
+        # 10. Loans & EMI calculations ("Calculate EMI for 10L at 11% for 5 years")
         if "emi" in q or "loan" in q:
             return self._emi_reply(q)
 
-        # 8. GST & Tax inquiries ("What GST do I owe?", "When is GSTR-3B due?", "gst late fee")
+        # 11. GST & Tax inquiries ("What GST do I owe?", "When is GSTR-3B due?", "gst late fee")
         if "gst" in q or "gstr" in q or "tax due" in q:
             return self._gst_reply(q)
 
-        # 9. Cash flow forecast & runway ("How long will cash last?", "What is my runway?", "Show forecast")
+        # 12. Cash flow forecast & runway ("How long will cash last?", "What is my runway?", "Show forecast")
         if any(w in q for w in ["runway", "cash flow", "forecast", "how long will my cash", "balance after"]):
             return self._cashflow_reply()
 
-        # 10. What-If Simulation ("What if customers pay 15 days late?", "what if I cut costs by 15%")
+        # 13. What-If Simulation ("What if customers pay 15 days late?", "what if I cut costs by 15%")
         if "what if" in q or "simulate delay" in q or "agar late" in q:
             return self._what_if_reply(q)
 
-        # 11. Payment reminder drafting ("Draft reminder for Shree Ram / Reliance")
+        # 14. Payment reminder drafting ("Draft reminder for Shree Ram / Reliance")
         if "reminder" in q or "remind" in q or "draft" in q:
             return self._reminder_reply(q)
 
-        # 12. Profit & Break-even ("How is my profit?", "What is break-even?")
+        # 15. Profit & Break-even ("How is my profit?", "What is break-even?")
         if "profit" in q or "margin" in q or "break-even" in q or "breakeven" in q:
             return self._profit_reply()
 
-        # 13. General Overall Financial Health ("How is my money?", "Paisa kaisa hai?")
+        # 16. General Overall Financial Health ("How is my money?", "Paisa kaisa hai?")
         if any(w in q for w in ["how is my money", "paisa kaisa", "overall health", "financial status", "summary"]):
             return self._health_reply()
 
-        # 14. Greeting / Help
+        # 17. Greeting / Help
         if re.search(r"^(hi|hello|hey|namaste|good morning|help)\b", q):
             return self._greeting_reply()
 
         # Fallback to general financial overview
         return self._fallback_reply(message)
+
+    def _action_add_invoice(self, q: str, raw_msg: str) -> Dict[str, Any]:
+        amounts = extract_amounts(raw_msg)
+        base = amounts[0] if amounts else 100000.0
+        cust_name = extract_customer_name(raw_msg)
+        rate = extract_rate_pct(raw_msg)
+        days = extract_days(raw_msg)
+
+        inv = self.cns.add_custom_invoice(cust_name, base, rate / 100.0, days)
+        total_rec = sum(i.unpaid_cash for i in self.state.invoices)
+
+        summary = (
+            f"✅ **Invoice #{inv.invoice_number} successfully recorded for {inv.customer_name}**\n\n"
+            f"• **Base Value**: {fmt_inr(inv.base_amount)}\n"
+            f"• **Accrued GST ({int(inv.gst_rate*100)}%)**: {fmt_inr(inv.gst_amount)}\n"
+            f"• **Total Invoice Amount**: {fmt_inr(inv.total_amount)}\n"
+            f"• **Payment Due Date**: {inv.due_date.strftime('%d %b %Y')} ({days} days credit)\n\n"
+            f"📌 **Statutory Note (CGST Section 39)**: Under Indian GST law, this {fmt_inr(inv.gst_amount)} tax liability accrues immediately on invoice issue date and must be settled in cash by the 20th, even if the customer hasn't paid yet.\n\n"
+            f"Your total pending receivables are now **{fmt_inr(total_rec)}**."
+        )
+        cards = [{
+            "type": "kpis",
+            "items": [
+                {"label": "Invoice Total", "value": fmt_inr(inv.total_amount), "tone": "accent"},
+                {"label": "Accrued GST", "value": fmt_inr(inv.gst_amount), "tone": "danger"},
+                {"label": "Customer", "value": inv.customer_name, "tone": "neutral"},
+                {"label": "Due Date", "value": inv.due_date.strftime("%d %b"), "tone": "good"}
+            ]
+        }]
+        return self._resp(
+            summary,
+            intent="CREATE_INVOICE",
+            numbers=f"• Invoice Total: {fmt_inr(inv.total_amount)}\n• Accrued Tax: {fmt_inr(inv.gst_amount)}\n• Total Receivables: {fmt_inr(total_rec)}\n• Bank Cash: {fmt_inr(self.state.physics_state.bank_cash)}",
+            causal="Issuing an invoice creates immediate legally enforceable GST liability before buyer cash settles.",
+            actions=[
+                f"Send invoice #{inv.invoice_number} to {inv.customer_name} via WhatsApp/email",
+                f"Set aside ₹{inv.gst_amount:,.2f} in Tax Vault to avoid shortfall on the 20th",
+                "Track payment due date on calendar"
+            ],
+            cards=cards,
+            suggestions=[f"Draft payment reminder for {inv.customer_name}", "What GST do I owe this month?", "How is my money?"]
+        )
+
+    def _action_add_expense(self, q: str, raw_msg: str) -> Dict[str, Any]:
+        amounts = extract_amounts(raw_msg)
+        amt = amounts[0] if amounts else 25000.0
+        exp_name = extract_expense_name(raw_msg)
+        days = extract_days(raw_msg)
+
+        obl = self.cns.add_custom_obligation(exp_name, amt, days)
+        total_pay = sum(o.amount for o in self.state.obligations)
+        runway = self.state.physics_state.estimated_runway_days
+
+        summary = (
+            f"📝 **Expense Recorded: {obl.name}**\n\n"
+            f"• **Amount**: {fmt_inr(obl.amount)}\n"
+            f"• **Due Date**: {obl.due_date.strftime('%d %b %Y')} ({days} days left)\n"
+            f"• **Category**: {obl.obligation_type.replace('_', ' ').title()}\n\n"
+            f"Your total scheduled payables are now **{fmt_inr(total_pay)}**. Available bank cash is **{fmt_inr(self.state.physics_state.bank_cash)}** with an estimated runway of **{runway:.1f} days**."
+        )
+        cards = [{
+            "type": "kpis",
+            "items": [
+                {"label": "Expense Amount", "value": fmt_inr(obl.amount), "tone": "danger"},
+                {"label": "Due Date", "value": obl.due_date.strftime("%d %b"), "tone": "neutral"},
+                {"label": "Total Payables", "value": fmt_inr(total_pay), "tone": "danger"},
+                {"label": "Current Runway", "value": f"{runway:.1f} Days", "tone": "good" if runway > 15 else "warning"}
+            ]
+        }]
+        return self._resp(
+            summary,
+            intent="ADD_EXPENSE",
+            numbers=f"• Recorded Expense: {fmt_inr(obl.amount)}\n• Total Payables: {fmt_inr(total_pay)}\n• Bank Cash: {fmt_inr(self.state.physics_state.bank_cash)}\n• Runway: {runway:.1f} Days",
+            causal="Operating expenses and loan EMIs consume cash reserves directly on scheduled due dates.",
+            actions=[
+                "Ensure sufficient bank balance before debit date to avoid ECS penalty",
+                "Align payment date with customer collection cycles"
+            ],
+            cards=cards,
+            suggestions=["Who do I owe?", "How is my money?", "Can I afford to spend?"]
+        )
+
+    def _action_record_payment(self, q: str, raw_msg: str) -> Dict[str, Any]:
+        amounts = extract_amounts(raw_msg)
+        amt = amounts[0] if amounts else 50000.0
+        cust_name = extract_customer_name(raw_msg)
+
+        res = self.cns.record_customer_payment(cust_name, amt)
+        new_cash = res["new_bank_cash"]
+        runway = self.state.physics_state.estimated_runway_days
+        total_rec = sum(i.unpaid_cash for i in self.state.invoices)
+
+        summary = (
+            f"💰 **Payment of {fmt_inr(amt)} Received from {cust_name}!**\n\n"
+            f"• **Bank Cash Increased To**: {fmt_inr(new_cash)}\n"
+            f"• **Remaining Receivables**: {fmt_inr(total_rec)}\n"
+            f"• **Updated Cash Runway**: **{runway:.1f} Days**\n\n"
+            f"This collection reinforces your liquidity cushion and helps secure upcoming GST and loan obligations."
+        )
+        cards = [{
+            "type": "kpis",
+            "items": [
+                {"label": "Payment Received", "value": fmt_inr(amt), "tone": "good"},
+                {"label": "New Bank Cash", "value": fmt_inr(new_cash), "tone": "good"},
+                {"label": "Remaining Receivables", "value": fmt_inr(total_rec), "tone": "accent"},
+                {"label": "Cash Runway", "value": f"{runway:.1f} Days", "tone": "good"}
+            ]
+        }]
+        return self._resp(
+            summary,
+            intent="RECORD_PAYMENT",
+            numbers=f"• Received: {fmt_inr(amt)}\n• Current Bank Cash: {fmt_inr(new_cash)}\n• Total Receivables: {fmt_inr(total_rec)}\n• Runway: {runway:.1f} Days",
+            causal="Converting accounts receivable into liquid bank cash shortens cash conversion cycles.",
+            actions=[
+                "Consider transferring the GST component (18%) to Tax Vault now",
+                "Issue official receipt acknowledgement to customer"
+            ],
+            cards=cards,
+            suggestions=["How is my money?", "What GST do I owe this month?", "Who owes me money?"]
+        )
+
+    def _action_update_balance(self, q: str, raw_msg: str) -> Dict[str, Any]:
+        amounts = extract_amounts(raw_msg)
+        amt = amounts[0] if amounts else 200000.0
+        self.cns.update_bank_cash(amt)
+        runway = self.state.physics_state.estimated_runway_days
+
+        summary = (
+            f"🏦 **Bank Balance Updated to {fmt_inr(amt)}**\n\n"
+            f"• **Current Liquid Cash**: {fmt_inr(amt)}\n"
+            f"• **Estimated Cash Runway**: **{runway:.1f} Days** based on daily operating burn.\n\n"
+            f"All affordability and cash flow projections are now aligned with your real bank balance."
+        )
+        cards = [{
+            "type": "kpis",
+            "items": [
+                {"label": "Bank Cash", "value": fmt_inr(amt), "tone": "good"},
+                {"label": "Cash Runway", "value": f"{runway:.1f} Days", "tone": "good" if runway > 15 else "warning"}
+            ]
+        }]
+        return self._resp(
+            summary,
+            intent="UPDATE_BALANCE",
+            numbers=f"• Bank Cash: {fmt_inr(amt)}\n• Estimated Runway: {runway:.1f} Days",
+            causal="Bank cash forms the primary operational cushion for working capital solvency.",
+            actions=["Review upcoming 30-day payables against updated bank cash"],
+            cards=cards,
+            suggestions=["How is my money?", "Who do I owe?", "What GST do I owe?"]
+        )
+
+    def _action_cash_bridge(self) -> Dict[str, Any]:
+        s = self.state
+        unpaid = [inv for inv in s.invoices if inv.status != "PAID"]
+        unlocked = sum(i.unpaid_cash for i in unpaid) * 0.8
+        cost = unlocked * 0.02
+        net_cash = unlocked - cost
+
+        s.physics_state.bank_cash += net_cash
+        s.physics_state.tax_vault_balance += min(net_cash, s.gst_snapshot.tax_deficit)
+        s.gst_snapshot.tax_deficit = max(0.0, s.gst_snapshot.net_gst_cash_payable - s.physics_state.tax_vault_balance)
+        self.cns.recompute_physics_and_genome()
+
+        summary = (
+            f"⚡ **Liquidity Cash Bridge Activated!**\n\n"
+            f"• **Gross Receivables Advanced**: {fmt_inr(unlocked)}\n"
+            f"• **Early Clearance Cost (2% fee)**: -{fmt_inr(cost)}\n"
+            f"• **Net Liquid Cash Added to Bank**: **+{fmt_inr(net_cash)}**\n"
+            f"• **Tax Vault Secured**: {fmt_inr(s.physics_state.tax_vault_balance)}\n\n"
+            f"Your cash shortfall is fully bridged. Bank cash is now **{fmt_inr(s.physics_state.bank_cash)}** and runway is extended to **{s.physics_state.estimated_runway_days:.1f} days**."
+        )
+        cards = [{
+            "type": "kpis",
+            "items": [
+                {"label": "Cash Added", "value": fmt_inr(net_cash), "tone": "good"},
+                {"label": "New Bank Cash", "value": fmt_inr(s.physics_state.bank_cash), "tone": "good"},
+                {"label": "Tax Vault", "value": fmt_inr(s.physics_state.tax_vault_balance), "tone": "accent"},
+                {"label": "New Runway", "value": f"{s.physics_state.estimated_runway_days:.1f}d", "tone": "good"}
+            ]
+        }]
+        return self._resp(
+            summary,
+            intent="CASH_BRIDGE",
+            numbers=f"• Net Cash Inflow: {fmt_inr(net_cash)}\n• New Bank Cash: {fmt_inr(s.physics_state.bank_cash)}\n• New Runway: {s.physics_state.estimated_runway_days:.1f} Days",
+            causal="Early invoice settlement converts locked receivables into immediate liquidity, eliminating default risk on GST.",
+            actions=[
+                "Confirm invoice settlements with factor / customer",
+                "Ensure GST payment is remitted to government portal before 20 Nov"
+            ],
+            cards=cards,
+            suggestions=["How is my money?", "What GST do I owe this month?", "Who owes me money?"]
+        )
+
+    def _action_reset_business(self) -> Dict[str, Any]:
+        self.cns.reset_user_business()
+        s = self.state
+        summary = (
+            f"🔄 **Business Ledger Reset to Clean Slate**\n\n"
+            f"All sample invoices and obligations have been cleared. "
+            f"Your active business is **{s.business.name}** ({s.business.city}).\n\n"
+            f"• **Available Bank Cash**: **{fmt_inr(s.physics_state.bank_cash)}**\n"
+            f"• **Open Invoices**: **0**\n"
+            f"• **Scheduled Payables**: **0**\n\n"
+            f"You can now record your real financial data directly in this chat! Try typing:\n"
+            f"• *'Add invoice for Tata Motors ₹2,50,000 at 18% GST due in 15 days'*\n"
+            f"• *'Add rent expense ₹40,000 due in 5 days'*\n"
+            f"• *'My bank balance is ₹5,00,000'*"
+        )
+        return self._resp(
+            summary,
+            intent="RESET_BUSINESS",
+            numbers=f"• Bank Cash: {fmt_inr(s.physics_state.bank_cash)}\n• Receivables: ₹0.00\n• Payables: ₹0.00",
+            causal="Resetting starts a fresh rupee-conserved accounting ledger with zero simulated debt.",
+            actions=[
+                "Add your real client invoices to track receivables and GST accrual",
+                "Log your monthly overheads and vendor bills",
+                "Update your current bank balance"
+            ],
+            suggestions=["Add invoice for Reliance 2.5L", "Add rent expense 40k", "My bank balance is 5 lakh"]
+        )
+
+    def _action_set_profile(self, q: str, raw_msg: str) -> Dict[str, Any]:
+        m = re.search(r"(?:company(?: name)?(?: is)?|business(?: name)?(?: is)?|set company(?: to)?|my company is)\s+([A-Za-z0-9\s\.\-&]+?)(?=\s+(?:in|based|with|having|gstin|bank|balance|and|$))", raw_msg, re.IGNORECASE)
+        name = m.group(1).strip() if m else "My Business Enterprise"
+        if len(name) < 2:
+            name = "My Business Enterprise"
+
+        m_city = re.search(r"(?:in|based in|city|location)\s+([A-Za-z\s,]+?)(?=\s+(?:with|having|gstin|bank|balance|$))", raw_msg, re.IGNORECASE)
+        city = m_city.group(1).strip() if m_city else self.state.business.city
+
+        amounts = extract_amounts(raw_msg)
+        bank_cash = amounts[0] if (amounts and ("bank" in q or "balance" in q or "cash" in q)) else None
+
+        self.cns.set_user_profile(
+            company_name=name,
+            city=city,
+            bank_cash=bank_cash
+        )
+        s = self.state
+        summary = (
+            f"🏢 **Business Profile Configured: {s.business.name}**\n\n"
+            f"• **Location**: {s.business.city}\n"
+            f"• **Owner**: {s.business.owner_name}\n"
+            f"• **GSTIN**: {s.business.gstin}\n"
+            f"• **Available Bank Cash**: {fmt_inr(s.physics_state.bank_cash)}\n\n"
+            f"Your company's financial twin is active! You can now ask any question or add invoices and bills directly here in plain English."
+        )
+        return self._resp(
+            summary,
+            intent="SET_PROFILE",
+            numbers=f"• Company: {s.business.name}\n• Bank Cash: {fmt_inr(s.physics_state.bank_cash)}\n• Runway: {s.physics_state.estimated_runway_days:.1f} Days",
+            causal="All financial simulations, GST deadlines, and cash-flow projections now operate on your custom business parameters.",
+            actions=[
+                "Add your open customer invoices",
+                "Log scheduled vendor or tax payments",
+                "Check 30-day cash flow projection"
+            ],
+            suggestions=["How is my money?", "Who owes me money?", "What GST do I owe this month?", "Can I afford to spend?"]
+        )
 
     def _greeting_reply(self) -> Dict[str, Any]:
         s = self.state
@@ -200,12 +509,18 @@ class FinanceAssistant:
         sm = recv["summary"]
         invoices = recv["invoices"]
         
+        top_debtor_str = (
+            f"Your largest open invoice is with **{invoices[0]['customer_name']}** ({fmt_compact(invoices[0]['amount'])}), expected around {invoices[0]['expected_label']}."
+            if invoices
+            else "You currently have no open customer invoices."
+        )
+
         summary = (
             f"💰 **Who Owes You: Total Pending Receivables: {fmt_inr(sm['total_pending'])}** across {sm['count']} open invoices.\n\n"
             f"• **Already Overdue**: {fmt_inr(sm['overdue_amount'])}\n"
             f"• **Expected within 30 Days**: {fmt_inr(sm['expected_30_days'])}\n"
             f"• **GST Trapped Inside Unpaid Bills**: {fmt_inr(sm['gst_inside'])}\n\n"
-            f"Your largest open invoice is with **{invoices[0]['customer_name']}** ({fmt_compact(invoices[0]['amount'])}), expected around {invoices[0]['expected_label']}."
+            f"{top_debtor_str}"
         )
         
         table_rows = [
