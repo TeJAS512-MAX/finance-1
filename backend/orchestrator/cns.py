@@ -81,7 +81,7 @@ class CentralNervousSystem:
                     p.amount = float(tax_vault)
                     break
         if monthly_burn is not None:
-            self.state.physics_state.monthly_burn_rate = float(monthly_burn)
+            self.state.business.monthly_burn_rate = float(monthly_burn)
 
         self.recompute_physics_and_genome()
         self.sync_graph()

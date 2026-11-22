@@ -189,6 +189,7 @@ class BusinessProfile(BaseModel):
     employee_count: int = 10
     bank_name: str = "HDFC Bank / State Bank of India"
     overdraft_limit: float = 1000000.0
+    monthly_burn_rate: float = 80000.0
 
 class AetherPravahState(BaseModel):
     business: BusinessProfile

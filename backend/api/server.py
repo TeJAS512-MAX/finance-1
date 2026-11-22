@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+from datetime import datetime, date
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -44,6 +45,37 @@ cns.set_user_profile(
 class ChatRequest(BaseModel):
     message: str
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class RegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+    company_name: str
+    business_type: str = "Trading & Services"
+    city: str = "Mumbai, Maharashtra"
+    gstin: str = "27AAACU1234M1Z5"
+    bank_cash: float = 350000.0
+    tax_vault: float = 25000.0
+    monthly_burn: float = 80000.0
+
+USERS_DB: Dict[str, Dict[str, Any]] = {
+    "demo@aetherpravah.com": {
+        "name": "Rajesh Sharma",
+        "email": "demo@aetherpravah.com",
+        "password": "password123",
+        "company_name": "Apex Solutions Enterprise",
+        "business_type": "Trading & Services",
+        "city": "Mumbai, Maharashtra",
+        "gstin": "27AAACU1234M1Z5",
+        "bank_cash": 350000.0,
+        "tax_vault": 25000.0,
+        "monthly_burn": 80000.0
+    }
+}
+
 class ProfileRequest(BaseModel):
     company_name: str
     owner_name: str = "Business Owner"
@@ -80,6 +112,113 @@ def health_check():
         "system": "AetherPravah Causal Organism",
         "rupees_conserved": cns.state.physics_state.total_rupees_conserved,
         "genome_score": cns.state.genome.overall_score
+    }
+
+@app.post("/api/auth/login")
+def auth_login(req: LoginRequest):
+    email = req.email.strip().lower()
+    user = USERS_DB.get(email)
+    
+    if not user:
+        if email in ["demo", "guest", "admin"] or "demo" in email:
+            user = USERS_DB["demo@aetherpravah.com"]
+        elif req.password:
+            name_part = email.split("@")[0].replace(".", " ").replace("_", " ").title()
+            user = {
+                "name": name_part,
+                "email": email,
+                "password": req.password,
+                "company_name": f"{name_part} Enterprises",
+                "business_type": "Trading & Services",
+                "city": "Mumbai, Maharashtra",
+                "gstin": "27AAACU1234M1Z5",
+                "bank_cash": 350000.0,
+                "tax_vault": 25000.0,
+                "monthly_burn": 80000.0
+            }
+            USERS_DB[email] = user
+        else:
+            raise HTTPException(status_code=401, detail="Invalid credentials. Please enter email and password.")
+
+    cns.set_user_profile(
+        company_name=user["company_name"],
+        owner_name=user["name"],
+        business_type=user.get("business_type", "Trading & Services"),
+        city=user.get("city", "Mumbai, Maharashtra"),
+        gstin=user.get("gstin", "27AAACU1234M1Z5"),
+        bank_cash=user.get("bank_cash"),
+        tax_vault=user.get("tax_vault"),
+        monthly_burn=user.get("monthly_burn")
+    )
+
+    token = f"tok_{abs(hash(email))}_{int(datetime.now().timestamp())}"
+    return {
+        "status": "AUTHENTICATED",
+        "token": token,
+        "user": {
+            "name": user["name"],
+            "email": user["email"],
+            "company_name": user["company_name"],
+            "business_type": user.get("business_type", "Trading & Services"),
+            "city": user.get("city", "Mumbai, Maharashtra"),
+            "gstin": user.get("gstin", "27AAACU1234M1Z5")
+        },
+        "state": cns.state.model_dump()
+    }
+
+@app.post("/api/auth/register")
+def auth_register(req: RegisterRequest):
+    email = req.email.strip().lower()
+    user = {
+        "name": req.name.strip(),
+        "email": email,
+        "password": req.password,
+        "company_name": req.company_name.strip(),
+        "business_type": req.business_type,
+        "city": req.city,
+        "gstin": req.gstin.strip().upper(),
+        "bank_cash": float(req.bank_cash),
+        "tax_vault": float(req.tax_vault),
+        "monthly_burn": float(req.monthly_burn)
+    }
+    USERS_DB[email] = user
+
+    cns.reset_user_business(
+        company_name=user["company_name"],
+        owner_name=user["name"],
+        business_type=user["business_type"],
+        city=user["city"],
+        gstin=user["gstin"],
+        bank_cash=user["bank_cash"],
+        tax_vault=user["tax_vault"],
+        monthly_burn=user["monthly_burn"]
+    )
+
+    token = f"tok_{abs(hash(email))}_{int(datetime.now().timestamp())}"
+    return {
+        "status": "REGISTERED",
+        "token": token,
+        "user": {
+            "name": user["name"],
+            "email": user["email"],
+            "company_name": user["company_name"],
+            "business_type": user["business_type"],
+            "city": user["city"],
+            "gstin": user["gstin"]
+        },
+        "state": cns.state.model_dump()
+    }
+
+@app.get("/api/auth/me")
+def auth_me():
+    return {
+        "authenticated": True,
+        "user": {
+            "name": cns.state.business.owner_name,
+            "company_name": cns.state.business.name,
+            "city": cns.state.business.city,
+            "gstin": cns.state.business.gstin
+        }
     }
 
 @app.get("/api/profile")

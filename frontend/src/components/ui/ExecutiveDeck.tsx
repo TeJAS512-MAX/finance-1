@@ -27,7 +27,9 @@ import {
   Edit3,
   X,
   Plus,
+  LogOut,
 } from "lucide-react";
+import { UserAuthData } from "./LoginPage";
 import { useAetherStore } from "@/lib/store";
 import {
   fetchForecastApi,
@@ -71,7 +73,12 @@ function fmtCompact(num: number | undefined | null): string {
   return `${sign}₹${abs.toFixed(0)}`;
 }
 
-export default function ExecutiveDeck() {
+interface ExecutiveDeckProps {
+  user?: UserAuthData | null;
+  onLogout?: () => void;
+}
+
+export default function ExecutiveDeck({ user, onLogout }: ExecutiveDeckProps) {
   const init = useAetherStore((s) => s.init);
   const state = useAetherStore((s) => s.state);
   const singularity = useAetherStore((s) => s.singularity);
@@ -453,6 +460,28 @@ export default function ExecutiveDeck() {
             >
               Tools
             </button>
+          </div>
+
+          {/* User Badge & Logout */}
+          <div className="flex items-center gap-2 pl-2 sm:border-l border-slate-800">
+            <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-800/80 border border-slate-700/80 text-xs">
+              <div className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 font-bold flex items-center justify-center text-[10px]">
+                {(user?.name || (state?.business as any)?.owner_name || "BO").slice(0, 2).toUpperCase()}
+              </div>
+              <span className="text-slate-200 font-medium">
+                {user?.name || (state?.business as any)?.owner_name || "Business Owner"}
+              </span>
+            </div>
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 text-xs font-medium border border-slate-800 hover:border-rose-800/40 transition flex items-center gap-1.5"
+                title="Sign Out of Account"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Sign Out</span>
+              </button>
+            )}
           </div>
         </div>
 

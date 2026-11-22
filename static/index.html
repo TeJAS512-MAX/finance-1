@@ -58,6 +58,180 @@
 </head>
 <body class="min-h-screen flex flex-col bg-darkbg text-slate-100 selection:bg-brand-500/30">
 
+  <!-- ============================================================== -->
+  <!-- FULL SCREEN USER LOGIN / ONBOARDING VIEW                       -->
+  <!-- ============================================================== -->
+  <div id="login-screen" class="fixed inset-0 z-50 bg-[#070b14] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+    <!-- Ambient Blur -->
+    <div class="fixed top-1/4 -left-32 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="fixed bottom-1/4 -right-32 w-96 h-96 bg-accentcyan/10 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="w-full max-w-4xl bg-cardbg/95 border border-panelborder rounded-3xl shadow-2xl backdrop-blur-xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 relative z-10">
+      
+      <!-- Left Branding Panel (5 cols) -->
+      <div class="lg:col-span-5 p-8 bg-gradient-to-b from-slate-900 via-slate-950 to-[#070b14] border-b lg:border-b-0 lg:border-r border-panelborder flex flex-col justify-between">
+        <div class="space-y-6">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-500 to-accentcyan flex items-center justify-center font-bold text-white text-base shadow-lg shadow-brand-500/20">
+              AP
+            </div>
+            <div>
+              <span class="font-bold text-white text-lg tracking-tight block">AetherPravah</span>
+              <span class="text-[11px] text-slate-400 font-mono">AI Finance Twin for Indian MSMEs</span>
+            </div>
+          </div>
+
+          <div>
+            <h1 class="text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug">
+              Intelligent Money Intelligence for Your Business
+            </h1>
+            <p class="mt-2 text-xs text-slate-400 leading-relaxed">
+              Track cash runway, forecast GST liabilities on the 20th, and manage debtor collections in plain conversational English.
+            </p>
+          </div>
+
+          <div class="space-y-3 pt-1 text-xs">
+            <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-900/60 border border-panelborder">
+              <i data-lucide="sparkles" class="w-4 h-4 text-brand-400 shrink-0 mt-0.5"></i>
+              <div>
+                <strong class="text-white block font-semibold">Conversational AI Chat</strong>
+                <span class="text-[11px] text-slate-400">Add invoices, log bills, and record payments directly by talking.</span>
+              </div>
+            </div>
+            <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-900/60 border border-panelborder">
+              <i data-lucide="landmark" class="w-4 h-4 text-dangerrose shrink-0 mt-0.5"></i>
+              <div>
+                <strong class="text-white block font-semibold">GST 2.0 & Section 39 Radar</strong>
+                <span class="text-[11px] text-slate-400">Never get caught off guard by tax liabilities on unpaid invoices.</span>
+              </div>
+            </div>
+            <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-900/60 border border-panelborder">
+              <i data-lucide="trending-up" class="w-4 h-4 text-accentcyan shrink-0 mt-0.5"></i>
+              <div>
+                <strong class="text-white block font-semibold">Predictive 30-Day Runway</strong>
+                <span class="text-[11px] text-slate-400">Stress-test customer delays and capex before you spend.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-6 border-t border-panelborder flex items-center gap-2 text-[11px] text-slate-500 font-mono">
+          <span class="w-2 h-2 rounded-full bg-brand-400 animate-pulse"></span>
+          <span>Strict Rupee Conservation Active</span>
+        </div>
+      </div>
+
+      <!-- Right Form Panel (7 cols) -->
+      <div class="lg:col-span-7 p-8 flex flex-col justify-center bg-slate-950/70">
+        
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 id="login-title" class="text-lg font-bold text-white">Sign In to Your Business</h2>
+            <p id="login-subtitle" class="text-xs text-slate-400">Access your live accounts and financial twin</p>
+          </div>
+
+          <button onclick="loginWithDemoUser()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-500/15 hover:bg-brand-500/25 text-brand-300 border border-brand-500/30 text-xs font-semibold transition" title="Instant access with pre-configured company">
+            <i data-lucide="zap" class="w-3.5 h-3.5 fill-current"></i>
+            <span>1-Click Demo</span>
+          </button>
+        </div>
+
+        <!-- Tab Switcher -->
+        <div class="grid grid-cols-2 p-1 rounded-2xl bg-slate-900 border border-panelborder text-xs mb-4">
+          <button id="tab-login-btn" onclick="toggleAuthTab('signin')" class="py-2 rounded-xl font-semibold transition bg-slate-800 text-white shadow-sm border border-slate-700">
+            Sign In
+          </button>
+          <button id="tab-register-btn" onclick="toggleAuthTab('register')" class="py-2 rounded-xl font-semibold transition text-slate-400 hover:text-white">
+            Register Business
+          </button>
+        </div>
+
+        <div id="login-error" class="hidden mb-4 p-3 rounded-xl bg-dangerrose/10 border border-dangerrose/30 text-dangerrose text-xs flex items-center gap-2">
+          <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+          <span id="login-error-text">Authentication failed</span>
+        </div>
+
+        <!-- SIGN IN FORM -->
+        <form id="form-signin" onsubmit="handleStaticLogin(event)" class="space-y-4 text-xs">
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Email Address or Username</label>
+            <input id="input-login-email" type="text" required placeholder="e.g. rajesh@apexsolutions.in or demo" class="w-full bg-slate-900 border border-panelborder focus:border-brand-500 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none" />
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-slate-300 font-medium">Password</label>
+              <button type="button" onclick="loginWithDemoUser()" class="text-[11px] text-accentcyan hover:underline">Use demo password?</button>
+            </div>
+            <input id="input-login-password" type="password" required placeholder="Enter password" class="w-full bg-slate-900 border border-panelborder focus:border-brand-500 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none font-mono" />
+          </div>
+          <button type="submit" class="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-brand-600/30">
+            <span>Sign In to Financial Twin</span>
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </form>
+
+        <!-- REGISTER FORM -->
+        <form id="form-register" onsubmit="handleStaticRegister(event)" class="hidden space-y-3 text-xs">
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Owner Name *</label>
+              <input id="input-reg-name" type="text" required placeholder="e.g. Rahul Sharma" class="w-full bg-slate-900 border border-panelborder focus:border-brand-500 rounded-xl px-3 py-2 text-white focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Company Name *</label>
+              <input id="input-reg-company" type="text" required placeholder="e.g. Apex Industrial" class="w-full bg-slate-900 border border-panelborder focus:border-brand-500 rounded-xl px-3 py-2 text-white focus:outline-none" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Email *</label>
+              <input id="input-reg-email" type="email" required placeholder="e.g. rahul@apex.in" class="w-full bg-slate-900 border border-panelborder focus:border-brand-500 rounded-xl px-3 py-2 text-white focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Password *</label>
+              <input id="input-reg-password" type="password" required placeholder="6+ characters" class="w-full bg-slate-900 border border-panelborder focus:border-brand-500 rounded-xl px-3 py-2 text-white focus:outline-none font-mono" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Industry Type</label>
+              <select id="input-reg-type" class="w-full bg-slate-900 border border-panelborder focus:border-brand-500 rounded-xl px-3 py-2 text-white focus:outline-none">
+                <option value="Trading & Distribution">Trading & Distribution</option>
+                <option value="Manufacturing & Fabrication">Manufacturing & Fabrication</option>
+                <option value="Garments & Textiles">Garments & Textiles</option>
+                <option value="IT & Digital Services">IT & Digital Services</option>
+                <option value="Logistics & Transport">Logistics & Transport</option>
+                <option value="Retail & E-Commerce">Retail & E-Commerce</option>
+                <option value="Healthcare & Pharma">Healthcare & Pharma</option>
+                <option value="Construction & Infra">Construction & Infra</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">City & State</label>
+              <input id="input-reg-city" type="text" required placeholder="e.g. Mumbai, MH" class="w-full bg-slate-900 border border-panelborder focus:border-brand-500 rounded-xl px-3 py-2 text-white focus:outline-none" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">GSTIN (Optional)</label>
+              <input id="input-reg-gstin" type="text" maxlength="15" placeholder="e.g. 27AAACU1234M1Z5" class="w-full bg-slate-900 border border-panelborder focus:border-brand-500 rounded-xl px-3 py-2 text-white focus:outline-none font-mono uppercase" />
+            </div>
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Starting Bank Cash (₹)</label>
+              <input id="input-reg-cash" type="number" step="1000" placeholder="350000" value="350000" class="w-full bg-slate-900 border border-panelborder focus:border-brand-500 rounded-xl px-3 py-2 text-white focus:outline-none font-mono" />
+            </div>
+          </div>
+          <button type="submit" class="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-lg shadow-brand-600/30 mt-1">
+            <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+            <span>Create Account & Launch Twin</span>
+          </button>
+        </form>
+
+      </div>
+
+    </div>
+  </div>
+
   <!-- TOP EXECUTIVE COMMAND BAR -->
   <header class="h-16 border-b border-panelborder bg-cardbg/80 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between shrink-0 z-20">
     <div class="flex items-center gap-4">
@@ -117,6 +291,20 @@
       <div id="kpi-genome" class="px-3 py-1 rounded-xl border border-dangerrose/30 bg-dangerrose/10 text-dangerrose text-xs font-mono flex items-center gap-1.5 font-bold">
         <span class="w-2 h-2 rounded-full bg-current animate-pulse"></span>
         <span id="kpi-genome-text">38 / 100</span>
+      </div>
+
+      <!-- User Profile Badge & Logout -->
+      <div id="header-user-badge" class="flex items-center gap-2 pl-2 border-l border-panelborder text-xs">
+        <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-800/80 border border-panelborder">
+          <div class="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 font-bold flex items-center justify-center text-[10px]" id="header-user-initials">
+            RS
+          </div>
+          <span class="text-slate-200 font-medium" id="header-user-name">Rajesh Sharma</span>
+        </div>
+        <button onclick="handleUserLogout()" class="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 text-xs font-medium border border-panelborder hover:border-rose-800/40 transition flex items-center gap-1.5" title="Sign Out">
+          <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+          <span class="hidden md:inline">Sign Out</span>
+        </button>
       </div>
     </div>
   </header>
@@ -715,17 +903,165 @@
     let currentState = null;
     let currentSingularity = null;
     let cashflowChart = null;
+    let currentUser = null;
+
+    // 0. Auth & Session Management
+    function toggleAuthTab(tab) {
+      const err = document.getElementById('login-error');
+      if (err) err.classList.add('hidden');
+      if (tab === 'signin') {
+        document.getElementById('form-signin').classList.remove('hidden');
+        document.getElementById('form-register').classList.add('hidden');
+        document.getElementById('tab-login-btn').className = 'py-2 rounded-xl font-semibold transition bg-slate-800 text-white shadow-sm border border-slate-700';
+        document.getElementById('tab-register-btn').className = 'py-2 rounded-xl font-semibold transition text-slate-400 hover:text-white';
+        document.getElementById('login-title').innerText = 'Sign In to Your Business';
+        document.getElementById('login-subtitle').innerText = 'Access your live accounts and financial twin';
+      } else {
+        document.getElementById('form-signin').classList.add('hidden');
+        document.getElementById('form-register').classList.remove('hidden');
+        document.getElementById('tab-register-btn').className = 'py-2 rounded-xl font-semibold transition bg-slate-800 text-white shadow-sm border border-slate-700';
+        document.getElementById('tab-login-btn').className = 'py-2 rounded-xl font-semibold transition text-slate-400 hover:text-white';
+        document.getElementById('login-title').innerText = 'Create Business Profile';
+        document.getElementById('login-subtitle').innerText = 'Set up your company parameters and launch your AI twin';
+      }
+    }
+
+    async function loginWithDemoUser() {
+      await performLogin('demo@aetherpravah.com', 'password123');
+    }
+
+    async function handleStaticLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('input-login-email').value.trim();
+      const password = document.getElementById('input-login-password').value;
+      await performLogin(email, password);
+    }
+
+    async function performLogin(email, password) {
+      const err = document.getElementById('login-error');
+      const errText = document.getElementById('login-error-text');
+      err.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password: password || 'pass123' })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          completeLoginSession(data.user);
+        } else {
+          const errData = await res.json();
+          errText.innerText = errData.detail || 'Authentication failed. Please verify credentials.';
+          err.classList.remove('hidden');
+        }
+      } catch (err) {
+        completeLoginSession({
+          name: 'Rajesh Sharma',
+          email: email || 'demo@aetherpravah.com',
+          company_name: 'Apex Solutions Enterprise',
+          city: 'Mumbai, Maharashtra',
+          gstin: '27AAACU1234M1Z5'
+        });
+      }
+    }
+
+    async function handleStaticRegister(e) {
+      e.preventDefault();
+      const err = document.getElementById('login-error');
+      const errText = document.getElementById('login-error-text');
+      err.classList.add('hidden');
+
+      const payload = {
+        name: document.getElementById('input-reg-name').value.trim(),
+        company_name: document.getElementById('input-reg-company').value.trim(),
+        email: document.getElementById('input-reg-email').value.trim(),
+        password: document.getElementById('input-reg-password').value,
+        business_type: document.getElementById('input-reg-type').value,
+        city: document.getElementById('input-reg-city').value.trim(),
+        gstin: document.getElementById('input-reg-gstin').value.trim().toUpperCase() || '27AAACU1234M1Z5',
+        bank_cash: parseFloat(document.getElementById('input-reg-cash').value) || 350000,
+        tax_vault: 25000,
+        monthly_burn: 80000
+      };
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          completeLoginSession(data.user);
+        } else {
+          const errData = await res.json();
+          errText.innerText = errData.detail || 'Registration failed.';
+          err.classList.remove('hidden');
+        }
+      } catch (err) {
+        completeLoginSession(payload);
+      }
+    }
+
+    function completeLoginSession(user) {
+      currentUser = user;
+      localStorage.setItem('aether_user', JSON.stringify(user));
+      document.getElementById('login-screen').classList.add('hidden');
+
+      // Update header user badge
+      if (document.getElementById('header-user-name')) {
+        document.getElementById('header-user-name').innerText = user.name || "Business Owner";
+      }
+      if (document.getElementById('header-user-initials')) {
+        const initials = (user.name || "BO").slice(0, 2).toUpperCase();
+        document.getElementById('header-user-initials').innerText = initials;
+      }
+
+      // Initialize workspace
+      initWorkspace();
+    }
+
+    function handleUserLogout() {
+      if (!confirm("Are you sure you want to sign out?")) return;
+      localStorage.removeItem('aether_user');
+      currentUser = null;
+      document.getElementById('login-screen').classList.remove('hidden');
+    }
 
     // 1. Initialize
     window.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
+      const savedUser = localStorage.getItem('aether_user');
+      if (savedUser) {
+        try {
+          currentUser = JSON.parse(savedUser);
+          document.getElementById('login-screen').classList.add('hidden');
+          if (document.getElementById('header-user-name')) {
+            document.getElementById('header-user-name').innerText = currentUser.name || "Business Owner";
+          }
+          if (document.getElementById('header-user-initials')) {
+            document.getElementById('header-user-initials').innerText = (currentUser.name || "BO").slice(0, 2).toUpperCase();
+          }
+          await initWorkspace();
+        } catch (e) {
+          localStorage.removeItem('aether_user');
+          document.getElementById('login-screen').classList.remove('hidden');
+        }
+      } else {
+        document.getElementById('login-screen').classList.remove('hidden');
+      }
+    });
+
+    async function initWorkspace() {
       await fetchAndRenderState();
       await loadForecastData();
       await loadGstPlanData();
       await loadLedgerData();
       await runEmiSimulation();
       addInitialGreeting();
-    });
+    }
 
     // 2. Fetch State from API
     async function fetchAndRenderState() {
