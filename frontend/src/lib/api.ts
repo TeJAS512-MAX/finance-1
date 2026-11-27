@@ -10,7 +10,8 @@ import {
   ProfitModelResponse,
 } from "./types";
 
-const BACKEND_URL = "http://localhost:8000";
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_AETHER_API_URL || "http://localhost:8000";
 
 export interface BackendStateResponse {
   state: BusinessState;
@@ -219,10 +220,10 @@ export async function fetchForecastApi(params?: {
   spend_day?: number;
 }): Promise<ForecastResponse> {
   const q = new URLSearchParams();
-  if (params?.delay_days !== undefined) q.set("delay_days", String(params.delay_days));
-  if (params?.discount_pct !== undefined) q.set("discount_pct", String(params.discount_pct));
-  if (params?.expense_cut_pct !== undefined) q.set("expense_cut_pct", String(params.expense_cut_pct));
-  if (params?.planned_spend !== undefined) q.set("planned_spend", String(params.planned_spend));
+  if (params?.delay_days !== undefined) q.set("delay", String(params.delay_days));
+  if (params?.discount_pct !== undefined) q.set("discount", String(params.discount_pct));
+  if (params?.expense_cut_pct !== undefined) q.set("cost_cut", String(params.expense_cut_pct));
+  if (params?.planned_spend !== undefined) q.set("spend", String(params.planned_spend));
   if (params?.spend_day !== undefined) q.set("spend_day", String(params.spend_day));
 
   const res = await fetch(`${BACKEND_URL}/api/forecast?${q.toString()}`, { cache: "no-store" });
@@ -247,7 +248,7 @@ export async function fetchLedgerApi(): Promise<LedgerResponse> {
 // 11. Fetch Loan EMI Calculation
 export async function fetchEmiApi(principal: number, rateAnnual: number, tenureMonths: number): Promise<EmiResponse> {
   const res = await fetch(
-    `${BACKEND_URL}/api/emi?principal=${principal}&rate_annual=${rateAnnual}&tenure_months=${tenureMonths}`,
+    `${BACKEND_URL}/api/emi?principal=${principal}&rate=${rateAnnual}&months=${tenureMonths}`,
     { cache: "no-store" }
   );
   if (!res.ok) throw new Error(`EMI error: ${res.statusText}`);
@@ -257,7 +258,7 @@ export async function fetchEmiApi(principal: number, rateAnnual: number, tenureM
 // 12. Fetch GST Calculator
 export async function fetchGstCalcApi(amount: number, rate: number, mode: "gross" | "net"): Promise<GstCalcResponse> {
   const res = await fetch(
-    `${BACKEND_URL}/api/gst-calc?amount=${amount}&rate=${rate}&mode=${mode}`,
+    `${BACKEND_URL}/api/gst-calc?amount=${amount}&rate=${rate}&inclusive=${mode === "gross"}`,
     { cache: "no-store" }
   );
   if (!res.ok) throw new Error(`GST calc error: ${res.statusText}`);
@@ -267,7 +268,7 @@ export async function fetchGstCalcApi(amount: number, rate: number, mode: "gross
 // 13. Fetch Profit & Business Model
 export async function fetchProfitModelApi(sales: number, cogsPct: number, fixedCosts: number, emi: number): Promise<ProfitModelResponse> {
   const res = await fetch(
-    `${BACKEND_URL}/api/profit-model?sales=${sales}&cogs_pct=${cogsPct}&fixed_costs=${fixedCosts}&emi=${emi}`,
+    `${BACKEND_URL}/api/profit-model?monthly_sales=${sales}&cogs_pct=${cogsPct}&running_costs=${fixedCosts}&emis=${emi}`,
     { cache: "no-store" }
   );
   if (!res.ok) throw new Error(`Profit model error: ${res.statusText}`);

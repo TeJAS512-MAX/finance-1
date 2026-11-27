@@ -16,9 +16,11 @@ fi
 
 export PYTHONPATH=.
 
-echo "[*] Starting Python Causal Engine (port 8000)..."
-.venv/bin/python3 -m uvicorn backend.api.server:app --host 0.0.0.0 --port 8000 &
+echo "[*] Starting Python Causal Engine (port 8001)..."
+.venv/bin/python3 -m uvicorn backend.api.server:app --host 127.0.0.1 --port 8001 &
 
-echo "[*] Starting Next.js 3D Web Experience (port 3000)..."
+echo "[*] Starting Next.js 3D Web Experience (port 3001)..."
+export NEXT_PUBLIC_AETHER_API_URL=http://localhost:8001
+export NEXT_PUBLIC_MARKET_APP_URL=http://localhost:3000
 cd frontend
-npm run dev
+npm run dev -- --port 3001

@@ -147,6 +147,7 @@ $env:PYTHONPATH="." ; pytest evaluation/ -s
   ```powershell
   powershell -ExecutionPolicy Bypass -File launch.ps1
   ```
+  The finance app opens at http://localhost:3001 and its API at http://localhost:8001. The dashboard's **Market Intelligence** button opens http://localhost:3000; run your Market Intelligence app separately to use it.
 - **Linux / macOS**:
   ```bash
   chmod +x launch.sh && ./launch.sh
@@ -156,14 +157,18 @@ $env:PYTHONPATH="." ; pytest evaluation/ -s
 - **Frontend (Next.js 14 + Three.js 3D Experience)**:
   ```bash
   cd frontend
-  npm run dev
-  # Accessible at http://localhost:3000
+  $env:NEXT_PUBLIC_AETHER_API_URL="http://localhost:8001"
+  $env:NEXT_PUBLIC_MARKET_APP_URL="http://localhost:3000"
+  npm run dev -- --port 3001
+  # Accessible at http://localhost:3001
   ```
 - **Backend (Python Causal Engine & API)**:
   ```bash
-  $env:PYTHONPATH="." ; python -m uvicorn backend.api.server:app --host 0.0.0.0 --port 8000 --reload
-  # Accessible at http://localhost:8000
+  $env:PYTHONPATH="." ; python -m uvicorn backend.api.server:app --host 127.0.0.1 --port 8001 --reload
+  # Accessible at http://localhost:8001
   ```
+
+`NEXT_PUBLIC_MARKET_APP_URL` can be set to the URL where your Market Intelligence frontend is running.
 
 ---
 

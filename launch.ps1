@@ -15,10 +15,12 @@ if (-not (Test-Path ".venv\Scripts\python.exe")) {
 
 $env:PYTHONPATH = "."
 
-Write-Host "[*] Starting Python Causal Engine (port 8000)..." -ForegroundColor Cyan
-Start-Process -FilePath ".venv\Scripts\python.exe" -ArgumentList "-m uvicorn backend.api.server:app --host 0.0.0.0 --port 8000" -WindowStyle Hidden
+Write-Host "[*] Starting Python Causal Engine (port 8001)..." -ForegroundColor Cyan
+Start-Process -FilePath ".venv\Scripts\python.exe" -ArgumentList "-m uvicorn backend.api.server:app --host 127.0.0.1 --port 8001" -WindowStyle Hidden
 
-Write-Host "[*] Starting Next.js 3D Web Experience (port 3000)..." -ForegroundColor Green
+Write-Host "[*] Starting Next.js 3D Web Experience (port 3001)..." -ForegroundColor Green
+$env:NEXT_PUBLIC_AETHER_API_URL = "http://localhost:8001"
+$env:NEXT_PUBLIC_MARKET_APP_URL = "http://localhost:3000"
 Set-Location "$ScriptDir\frontend"
-Start-Process "http://localhost:3000"
-npm run dev
+Start-Process "http://localhost:3001"
+npm run dev -- --port 3001

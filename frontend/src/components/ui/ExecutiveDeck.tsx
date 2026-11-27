@@ -28,6 +28,7 @@ import {
   X,
   Plus,
   LogOut,
+  ExternalLink,
 } from "lucide-react";
 import { UserAuthData } from "./LoginPage";
 import { useAetherStore } from "@/lib/store";
@@ -53,6 +54,9 @@ import {
   LedgerCreditorItem,
 } from "@/lib/types";
 import { playUiSound } from "./AudioController";
+
+const MARKET_APP_URL =
+  process.env.NEXT_PUBLIC_MARKET_APP_URL || "http://localhost:3000";
 
 // Helper for Indian Currency formatting
 function fmtInr(num: number | undefined | null): string {
@@ -464,6 +468,16 @@ export default function ExecutiveDeck({ user, onLogout }: ExecutiveDeckProps) {
 
           {/* User Badge & Logout */}
           <div className="flex items-center gap-2 pl-2 sm:border-l border-slate-800">
+            <a
+              href={MARKET_APP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-cyan-950/40 text-slate-300 hover:text-accentcyan text-xs font-medium border border-slate-800 hover:border-cyan-800/40 transition flex items-center gap-1.5"
+              title="Open Market Intelligence"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Market Intelligence</span>
+            </a>
             <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-800/80 border border-slate-700/80 text-xs">
               <div className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 font-bold flex items-center justify-center text-[10px]">
                 {(user?.name || (state?.business as any)?.owner_name || "BO").slice(0, 2).toUpperCase()}

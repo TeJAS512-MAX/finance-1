@@ -21,6 +21,9 @@ import {
   AlertCircle
 } from "lucide-react";
 
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_AETHER_API_URL || "http://localhost:8000";
+
 export interface UserAuthData {
   name: string;
   email: string;
@@ -60,7 +63,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setIsLoading(true);
     setErrorMsg(null);
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: "demo@aetherpravah.com", password: "password123" })
@@ -104,7 +107,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setErrorMsg(null);
 
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: loginEmail, password: loginPassword || "password123" })
@@ -135,7 +138,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setErrorMsg(null);
 
     try {
-      const res = await fetch("/api/auth/register", {
+      const res = await fetch(`${BACKEND_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
