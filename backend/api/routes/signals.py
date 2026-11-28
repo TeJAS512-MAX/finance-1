@@ -120,9 +120,17 @@ async def list_signals():
         results = await asyncio.gather(*tasks, return_exceptions=True)
         signals = [r for r in results if isinstance(r, dict)]
         signals.sort(key=lambda x: x["confidence"], reverse=True)
+        try:
+            from intelligence.swing_alpha import get_swing_status
+
+            swing_model = get_swing_status()
+        except Exception:
+            swing_model = {"state": "unavailable", "swing_oos_ready": False}
+
         return {
             "signals": signals,
             "direction_model": direction_model,
+            "swing_model": swing_model,
             "scanned_at": datetime.now().isoformat(),
             "source": "Upstox Official API (Real-time NSE)"
         }
@@ -131,9 +139,25 @@ async def list_signals():
         return {
             "signals": [],
             "direction_model": {"state": "unavailable"},
+            "swing_model": {"state": "unavailable", "swing_oos_ready": False},
             "scanned_at": datetime.now().isoformat(),
             "source": "Upstox Official API (Real-time NSE)"
         }
+
+
+@router.get("/swing", summary="Top 15-day CNC delivery swing alpha picks")
+async def list_swing_signals():
+    """Return latest ranked 15-trading-day CNC delivery opportunities and OOS readiness status."""
+    from core.config import get_settings
+    from intelligence.swing_alpha import get_swing_status, score_latest_swing_universe
+
+    capital = get_settings().paper_trading_initial_capital
+    scored = score_latest_swing_universe(capital=capital)
+    return {
+        **scored,
+        "swing_model": get_swing_status(),
+    }
+
 
 @router.get("/{thesis_id}", summary="Get trade thesis detail")
 async def get_thesis(thesis_id: str):

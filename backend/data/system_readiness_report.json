@@ -1,6 +1,9 @@
 {
-  "evaluated_at": "2026-11-28T09:20:07.217836+00:00",
+  "evaluated_at": "2026-11-28T10:29:39.934202+00:00",
   "paper_ready": true,
+  "swing_oos_ready": true,
+  "intraday_oos_ready": false,
+  "recommended_strategy": "swing_15d_cnc_delivery",
   "live_capital_ready": false,
   "live_trading_enabled": false,
   "blocking_reasons": [
@@ -18,6 +21,7 @@
     "live_broker_transport_ready": true,
     "analytics_token_valid": false,
     "trading_access_token_valid": false,
+    "swing_15d_oos_validated": true,
     "daily_model_qualified": false,
     "wf_oos_positive_net_profit": false,
     "wf_oos_profit_factor_ge_1_15": false,
@@ -39,6 +43,74 @@
   "intraday_model": {
     "approval_threshold": 0.58,
     "feature_count": 18
+  },
+  "swing_15d_model": {
+    "state": "validated_oos",
+    "swing_oos_ready": true,
+    "architecture": "long_only_15d_cnc_ridge_staggered_5d",
+    "data_through": "2026-11-27T00:00:00+05:30",
+    "symbols_count": 37,
+    "strategy_rules": {
+      "holding_horizon_sessions": 15,
+      "rebalance_step_sessions": 5,
+      "max_positions_per_tranche": 5,
+      "max_per_sector": 2,
+      "total_deployed_pct": 50.0,
+      "delivery_round_trip_cost_pct": 0.32,
+      "product": "D"
+    },
+    "summary": {
+      "folds_evaluated": 6,
+      "folds_profitable": 5,
+      "combined_net_profit": 31479.43,
+      "combined_benchmark_profit": 22281.81,
+      "combined_outperformance_vs_benchmark": 9197.62,
+      "combined_profit_factor": 1.5,
+      "worst_fold_max_drawdown_pct": 14.08,
+      "mean_daily_spearman_ic": 0.0424,
+      "combined_excess_alpha_95pct_ci_pct": [
+        0.29,
+        0.565
+      ],
+      "combined_period_pnl_95pct_ci": [
+        71.85,
+        110.88
+      ]
+    },
+    "blind_holdout": {
+      "start": "2025-11-03T00:00:00+05:30",
+      "end": "2026-11-05T00:00:00+05:30",
+      "scored_sessions": 250,
+      "mean_daily_spearman_ic": 0.0727,
+      "mean_net_profit": 764.93,
+      "min_offset_net_profit": 373.56,
+      "max_offset_net_profit": 1283.67,
+      "mean_win_rate_pct": 44.03,
+      "mean_profit_factor": 1.08,
+      "worst_offset_max_drawdown": 4064.69,
+      "worst_offset_max_drawdown_pct": 8.13,
+      "mean_trades_per_offset": 238.4,
+      "mean_excess_alpha_pct": 0.484,
+      "excess_alpha_95pct_ci_pct": [
+        0.131,
+        0.85
+      ],
+      "period_pnl_95pct_ci": [
+        -30.0,
+        63.57
+      ],
+      "benchmark_equal_weight_profit": -734.75
+    },
+    "gates": {
+      "combined_oos_net_profit_positive": true,
+      "combined_oos_profit_factor_ge_1_25": true,
+      "combined_excess_alpha_95pct_ci_positive": true,
+      "combined_period_pnl_95pct_ci_positive": true,
+      "blind_holdout_net_profit_positive": true,
+      "blind_holdout_all_offsets_profitable": true,
+      "blind_holdout_excess_alpha_ci_positive": true,
+      "blind_holdout_max_dd_within_10pct": true
+    }
   },
   "daily_model": {
     "state": "withheld",

@@ -18,6 +18,7 @@ from dotenv import find_dotenv, load_dotenv
 from core.config import get_settings
 from intelligence.ml_filter import MLQualityFilter
 from intelligence.stock_direction import get_candidate_status
+from intelligence.swing_alpha import bootstrap_mean_ci, get_swing_status
 
 READINESS_REPORT_PATH = Path(__file__).parent.parent / "data" / "system_readiness_report.json"
 
@@ -42,18 +43,6 @@ def _jwt_expiry_status(token: str | None) -> dict[str, Any]:
         }
     except Exception:
         return {"present": True, "expired": False, "expires_at": None}
-
-
-def _bootstrap_mean_ci(values: list[float], iterations: int = 2000) -> list[float] | None:
-    if len(values) < 2:
-        return None
-    arr = np.asarray(values, dtype=float)
-    rng = np.random.default_rng(42)
-    means = np.empty(iterations, dtype=float)
-    for idx in range(iterations):
-        means[idx] = rng.choice(arr, size=len(arr), replace=True).mean()
-    low, high = np.percentile(means, [2.5, 97.5])
-    return [round(float(low), 2), round(float(high), 2)]
 
 
 def evaluate_walk_forward_intraday(
@@ -134,7 +123,7 @@ def evaluate_walk_forward_intraday(
         if total_trades > 0
         else 0.0
     )
-    pnl_ci = _bootstrap_mean_ci(all_oos_pnls)
+    pnl_ci = bootstrap_mean_ci(all_oos_pnls)
 
     return {
         "folds": folds,
@@ -164,6 +153,7 @@ def evaluate_system_readiness(
     settings = get_settings()
     flt = MLQualityFilter()
     daily_status = get_candidate_status()
+    swing_status = get_swing_status()
     live_transport_ready = True  # Native async httpx Upstox REST fallback always available
 
     wf_oos: dict[str, Any] | None = None
@@ -182,6 +172,7 @@ def evaluate_system_readiness(
         getattr(m, "n_jobs", 1) == 1 for m in getattr(flt, "models", {}).values()
     )
 
+    swing_oos_ready = bool(swing_status.get("swing_oos_ready", False))
     checks = {
         "intraday_ml_loaded": bool(flt.is_loaded and len(flt.models) == 4),
         "intraday_single_thread_inference": bool(models_single_threaded),
@@ -189,6 +180,7 @@ def evaluate_system_readiness(
         "live_broker_transport_ready": live_transport_ready,
         "analytics_token_valid": bool(analytics_tok["present"] and not analytics_tok["expired"]),
         "trading_access_token_valid": bool(access_tok["present"] and not access_tok["expired"]),
+        "swing_15d_oos_validated": swing_oos_ready,
         "daily_model_qualified": daily_status.get("state") == "qualified_research",
     }
 
@@ -206,18 +198,29 @@ def evaluate_system_readiness(
         checks["wf_oos_95pct_ci_excludes_zero"] = False
         checks["wf_oos_drawdown_within_5pct"] = False
 
+    intraday_oos_ready = bool(
+        checks["wf_oos_positive_net_profit"]
+        and checks["wf_oos_profit_factor_ge_1_15"]
+        and checks["wf_oos_95pct_ci_excludes_zero"]
+    )
     paper_ready = (
         checks["intraday_ml_loaded"]
         and checks["intraday_single_thread_inference"]
         and checks["emergency_kill_switch_clear"]
-        and checks["wf_oos_drawdown_within_5pct"]
+        and (checks["wf_oos_drawdown_within_5pct"] or swing_oos_ready)
     )
     live_capital_ready = all(checks.values())
+    recommended_strategy = (
+        "swing_15d_cnc_delivery" if swing_oos_ready else ("intraday_30m" if intraday_oos_ready else "paper_only")
+    )
 
     blocking_reasons = [name for name, passed in checks.items() if not passed]
     report = {
         "evaluated_at": datetime.now(timezone.utc).isoformat(),
         "paper_ready": paper_ready,
+        "swing_oos_ready": swing_oos_ready,
+        "intraday_oos_ready": intraday_oos_ready,
+        "recommended_strategy": recommended_strategy,
         "live_capital_ready": live_capital_ready,
         "live_trading_enabled": settings.live_trading_enabled,
         "blocking_reasons": blocking_reasons,
@@ -230,6 +233,7 @@ def evaluate_system_readiness(
             "approval_threshold": getattr(flt, "approval_threshold", None),
             "feature_count": len(getattr(flt, "feature_cols", [])),
         },
+        "swing_15d_model": swing_status,
         "daily_model": daily_status,
         "walk_forward_oos": wf_oos,
     }

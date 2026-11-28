@@ -223,6 +223,7 @@ class LiveBroker(BrokerProvider):
         price: Optional[float] = None,
         stop_price: Optional[float] = None,
         tag: Optional[str] = None,
+        product: str = "I",
     ) -> Dict[str, Any]:
         """
         Places a real order on the exchange using Upstox after fail-closed safety checks.
@@ -240,14 +241,15 @@ class LiveBroker(BrokerProvider):
 
         transaction_type = 'BUY' if direction == "BUY" else 'SELL'
         order_type_upstox = 'MARKET' if order_type == "MARKET" else 'LIMIT'
+        upstox_product = "D" if str(product).upper() in {"D", "CNC", "DELIVERY"} else "I"
 
-        audit("LIVE_ORDER_INITIATED", ticker=ticker, direction=direction, quantity=quantity)
+        audit("LIVE_ORDER_INITIATED", ticker=ticker, direction=direction, quantity=quantity, product=upstox_product)
         
         try:
             if self.order_api is not None and upstox_client is not None:
                 body = upstox_client.PlaceOrderRequest(
                     quantity=int(quantity),
-                    product='I',
+                    product=upstox_product,
                     validity='DAY',
                     price=price if price and order_type_upstox == 'LIMIT' else 0.0,
                     instrument_token=ticker,
@@ -264,7 +266,7 @@ class LiveBroker(BrokerProvider):
             else:
                 payload = {
                     "quantity": int(quantity),
-                    "product": "I",
+                    "product": upstox_product,
                     "validity": "DAY",
                     "price": price if price and order_type_upstox == "LIMIT" else 0.0,
                     "instrument_token": ticker,

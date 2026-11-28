@@ -123,7 +123,8 @@ export function StatCard({ label, value, sub, trend }: { label: string; value: s
 
 export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (id: string) => void }) {
   const { data: tokenData } = useSWR(`${API_BASE}/api/v1/token/status`, fetcher, { refreshInterval: 5000 })
-  const tokenOk = tokenData?.token_set === true
+  const tokenOk = tokenData?.token_valid === true
+  const tokenExpired = tokenData?.token_expired === true
 
   const navGroups = [
     {
@@ -241,9 +242,11 @@ export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (i
         <div className="text-[10px] font-mono space-y-2">
           <div className="flex justify-between text-text-muted">
             <span>UPSTOX TOKEN</span>
-            {tokenOk 
+            {tokenOk
               ? <span className="text-fin-pos"><StatusDot status="positive" /> ACTIVE</span>
-              : <span className="text-fin-neg"><StatusDot status="negative" /> NOT SET</span>
+              : tokenExpired
+                ? <span className="text-fin-warn"><StatusDot status="warning" /> EXPIRED</span>
+                : <span className="text-fin-neg"><StatusDot status="negative" /> NOT SET</span>
             }
           </div>
         </div>
@@ -576,25 +579,32 @@ export function RiskMonitorView() {
 
 export function TokenSettingsView() {
   const { data: statusData, mutate: mutateStatus } = useSWR(`${API_BASE}/api/v1/token/status`, fetcher, { refreshInterval: 3000 })
+  const { data: readinessData, mutate: mutateReadiness } = useSWR(`${API_BASE}/api/v1/bot/readiness`, fetcher, { refreshInterval: 10000 })
   const [token, setToken] = useState('')
-  const [result, setResult] = useState<{success: boolean; message: string} | null>(null)
+  const [analyticsToken, setAnalyticsToken] = useState('')
+  const [result, setResult] = useState<{success: boolean; message?: string; error?: string} | null>(null)
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
-    if (!token.trim()) return
+    if (!token.trim() && !analyticsToken.trim()) return
     setSaving(true)
     setResult(null)
     try {
+      const payload: Record<string, string> = {}
+      if (token.trim()) payload.access_token = token.trim()
+      if (analyticsToken.trim()) payload.analytics_token = analyticsToken.trim()
       const res = await fetch(`${API_BASE}/api/v1/token/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ access_token: token.trim() }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       setResult(data)
       if (data.success) {
-        setToken('')
+        if (token.trim()) setToken('')
+        if (analyticsToken.trim()) setAnalyticsToken('')
         mutateStatus()
+        mutateReadiness()
       }
     } catch (e) {
       setResult({ success: false, message: 'Could not reach backend. Is the server running?' })
@@ -602,40 +612,81 @@ export function TokenSettingsView() {
     setSaving(false)
   }
 
-  const tokenIsActive = statusData?.token_set === true
+  const tokenIsActive = statusData?.token_valid === true
+  const tokenExpired = statusData?.token_expired === true
+  const analyticsActive = statusData?.analytics_token_valid === true
+  const analyticsExpired = statusData?.analytics_expired === true
+  const blockingReasons: string[] = readinessData?.blocking_reasons || []
 
   return (
     <div className="animate-fade-in flex flex-col gap-6 max-w-2xl mx-auto">
       {/* Status Banner */}
       <div className={clsx(
         "rounded-xl border p-4 flex items-center gap-4",
-        tokenIsActive ? "bg-fin-pos/10 border-fin-pos/30" : "bg-fin-neg/10 border-fin-neg/30"
+        tokenIsActive ? "bg-fin-pos/10 border-fin-pos/30" : tokenExpired ? "bg-fin-warn/10 border-fin-warn/30" : "bg-fin-neg/10 border-fin-neg/30"
       )}>
         {tokenIsActive 
           ? <CheckCircle size={28} className="text-fin-pos shrink-0" />
-          : <XCircle size={28} className="text-fin-neg shrink-0 animate-pulse" />
+          : <XCircle size={28} className={clsx("shrink-0 animate-pulse", tokenExpired ? "text-fin-warn" : "text-fin-neg")} />
         }
         <div>
-          <div className={clsx("font-semibold text-sm", tokenIsActive ? "text-fin-pos" : "text-fin-neg")}>
-            {tokenIsActive ? "✅ Upstox Trading Token Active" : "⚠️ No Daily Token — Live Trading Unavailable"}
+          <div className={clsx("font-semibold text-sm", tokenIsActive ? "text-fin-pos" : tokenExpired ? "text-fin-warn" : "text-fin-neg")}>
+            {tokenIsActive
+              ? "✅ Upstox Trading Token Valid & Active"
+              : tokenExpired
+                ? "⚠️ Upstox Trading Token EXPIRED — Refresh Required"
+                : "⚠️ No Daily Token — Live Trading Unavailable"}
           </div>
           <div className="text-xs text-text-muted mt-0.5 font-mono">
-            {tokenIsActive 
-              ? `Active daily token: ${statusData?.masked_token}`
+            {statusData?.token_set
+              ? `Daily token ${statusData?.masked_token} · expires: ${statusData?.expires_at || 'unknown'}`
               : "Paste your fresh token every morning before 9:15 AM IST"
             }
           </div>
         </div>
       </div>
 
-      <div className="rounded-xl border border-terminal-border bg-terminal-surface p-4 text-xs text-text-muted">
-        <div className="font-semibold text-text-primary">
-          Market data and model training: {statusData?.analytics_token_set ? "Annual Analytics Token configured" : "No Analytics Token configured"}
+      <div className="rounded-xl border border-terminal-border bg-terminal-surface p-4 text-xs text-text-muted space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="font-semibold text-text-primary">
+            Read-Only Analytics Token (1-Year): {analyticsActive ? `Active (${statusData?.analytics_masked_token})` : analyticsExpired ? "Expired" : "Not Configured"}
+          </span>
+          <span className={clsx("font-mono text-[10px] px-2 py-0.5 rounded", analyticsActive ? "bg-fin-pos/15 text-fin-pos" : "bg-fin-warn/15 text-fin-warn")}>
+            {analyticsActive ? "VALID" : analyticsExpired ? "EXPIRED" : "MISSING"}
+          </span>
         </div>
-        <div className="mt-1">
-          Set <code>UPSTOX_ANALYTICS_TOKEN</code> in the backend environment for read-only market data and training. It is valid for one year and does not enable trading.
+        <div>
+          Set <code>UPSTOX_ANALYTICS_TOKEN</code> for 365-day read-only historical OHLCV fetching &amp; paper validation.
         </div>
       </div>
+
+      {/* Live Capital Readiness Summary */}
+      {readinessData && (
+        <div className="rounded-xl border border-terminal-border bg-terminal-surface p-4 text-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-text-primary">Automated Readiness Gate</span>
+            <span className={clsx("font-mono text-[11px] font-bold", readinessData.live_capital_ready ? "text-fin-pos" : "text-fin-warn")}>
+              {readinessData.live_capital_ready ? "LIVE READY" : `PAPER READY (${blockingReasons.length} blockers)`}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2 font-mono text-[10px]">
+            <span className={clsx("px-2 py-0.5 rounded border", readinessData.paper_ready ? "border-fin-pos/40 text-fin-pos" : "border-fin-neg/40 text-fin-neg")}>
+              Paper Engine: {readinessData.paper_ready ? "PASS" : "FAIL"}
+            </span>
+            <span className={clsx("px-2 py-0.5 rounded border", readinessData.swing_oos_ready ? "border-fin-pos/40 text-fin-pos" : "border-fin-neg/40 text-fin-neg")}>
+              15d Swing CNC OOS: {readinessData.swing_oos_ready ? "PASS" : "FAIL"}
+            </span>
+            <span className={clsx("px-2 py-0.5 rounded border", readinessData.intraday_oos_ready ? "border-fin-pos/40 text-fin-pos" : "border-fin-neg/40 text-fin-neg")}>
+              30m Intraday OOS: {readinessData.intraday_oos_ready ? "PASS" : "RESEARCH ONLY"}
+            </span>
+          </div>
+          {blockingReasons.length > 0 && (
+            <div className="text-[11px] font-mono text-text-muted pt-1">
+              Remaining blockers: {blockingReasons.join(', ')}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Token Input Card */}
       <div className="card p-6">
@@ -644,34 +695,47 @@ export function TokenSettingsView() {
             <Key size={18} className="text-accent-primary" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-text-primary">Daily Trading Token</h3>
-            <p className="text-xs text-text-muted">Paste your daily Upstox access token to activate live trading</p>
+            <h3 className="text-sm font-semibold text-text-primary">Upstox Token Configuration</h3>
+            <p className="text-xs text-text-muted">Update your daily trading JWT and/or 1-year analytics JWT</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <div>
             <label className="text-[11px] font-mono text-text-muted uppercase tracking-widest mb-2 block">
-              Upstox Access Token (JWT)
+              Daily Trading Token (UPSTOX_ACCESS_TOKEN)
             </label>
             <textarea
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="Paste your token here... (eyJhbGciOiJSUzI1NiJ9...)"
-              rows={4}
+              placeholder="Paste daily Upstox JWT here... (eyJhbGciOiJSUzI1NiJ9...)"
+              rows={3}
+              className="w-full bg-terminal-bg border border-terminal-border rounded-lg px-4 py-3 font-mono text-xs text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-primary/50 focus:ring-1 focus:ring-accent-primary/20 resize-none transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="text-[11px] font-mono text-text-muted uppercase tracking-widest mb-2 block">
+              Annual Read-Only Analytics Token (UPSTOX_ANALYTICS_TOKEN)
+            </label>
+            <textarea
+              value={analyticsToken}
+              onChange={(e) => setAnalyticsToken(e.target.value)}
+              placeholder="Paste 1-year analytics JWT here (optional)..."
+              rows={2}
               className="w-full bg-terminal-bg border border-terminal-border rounded-lg px-4 py-3 font-mono text-xs text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-primary/50 focus:ring-1 focus:ring-accent-primary/20 resize-none transition-colors"
             />
             <p className="text-[10px] text-text-muted mt-1.5 font-mono">
-              Token is saved to memory + .env file and activates immediately.
+              Expired tokens are rejected automatically. Valid tokens persist to .env immediately.
             </p>
           </div>
 
           <button
             onClick={handleSave}
-            disabled={saving || !token.trim()}
+            disabled={saving || (!token.trim() && !analyticsToken.trim())}
             className={clsx(
               "w-full py-3 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2",
-              token.trim() && !saving
+              (token.trim() || analyticsToken.trim()) && !saving
                 ? "bg-accent-primary text-white hover:bg-accent-primary/90 shadow-lg shadow-accent-primary/20"
                 : "bg-terminal-surface text-text-muted cursor-not-allowed"
             )}
@@ -679,7 +743,7 @@ export function TokenSettingsView() {
             {saving ? (
               <><span className="animate-spin">⟳</span> Saving...</>
             ) : (
-              <><Key size={15} /> Save & Activate Token</>
+              <><Key size={15} /> Save &amp; Activate Token(s)</>
             )}
           </button>
 
@@ -690,7 +754,7 @@ export function TokenSettingsView() {
                 ? "bg-fin-pos/10 border-fin-pos/30 text-fin-pos" 
                 : "bg-fin-neg/10 border-fin-neg/30 text-fin-neg"
             )}>
-              {result.message}
+              {result.message || result.error}
             </div>
           )}
         </div>
@@ -699,16 +763,14 @@ export function TokenSettingsView() {
       {/* How to get token instructions */}
       <div className="card p-5">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-4 flex items-center gap-2">
-          <Info size={14} /> How to Get Your Daily Token
+          <Info size={14} /> How to Refresh Your Upstox Tokens
         </h3>
         <ol className="space-y-3 text-xs text-text-muted font-mono">
           {[
             ['Open', 'Go to Upstox Developer Portal → https://developer.upstox.com'],
-            ['Login', 'Log in with your Upstox credentials'],
-            ['Auth URL', 'Use your app\'s Auth URL to generate an authorization code'],
-            ['Exchange', 'Exchange the auth code for an access token via the API'],
-            ['Paste', 'Copy the full token (starts with eyJ...) and paste it above'],
-            ['Done!', 'Hit Save — the bot will start using real NSE data immediately'],
+            ['Analytics', 'Generate/copy the 1-year Analytics Token for read-only market & candle fetches'],
+            ['Daily Auth', 'Complete Upstox OAuth login before 09:15 IST to get the daily access_token'],
+            ['Paste & Save', 'Paste either or both JWTs above — expired tokens are blocked cleanly'],
           ].map(([step, desc], i) => (
             <li key={i} className="flex items-start gap-3">
               <span className="w-5 h-5 rounded bg-accent-primary/10 border border-accent-primary/20 text-accent-primary text-[10px] flex items-center justify-center shrink-0 font-bold">{i+1}</span>
@@ -1145,208 +1207,236 @@ export function OpportunitiesView() {
 }
 
 export function PaperValidationView() {
+  const { data: readiness } = useSWR(`${API_BASE}/api/v1/bot/readiness`, fetcher, { refreshInterval: 10000 })
+  const { data: swing, mutate: mutateSwing } = useSWR(`${API_BASE}/api/v1/signals/swing`, fetcher, { refreshInterval: 15000 })
+  const { data: portfolio, mutate: mutatePortfolio } = useSWR(`${API_BASE}/api/v1/portfolio`, fetcher, { refreshInterval: 5000 })
+  const [scanMsg, setScanMsg] = useState<string | null>(null)
+  const [running, setRunning] = useState(false)
+
+  const swingSummary = readiness?.swing_15d_model?.summary
+  const holdout = readiness?.swing_15d_model?.blind_holdout
+  const recs: any[] = swing?.recommendations || []
+  const paperEq = Number(portfolio?.total_equity ?? 50000)
+  const paperPnl = Number(portfolio?.total_pnl ?? 0)
+
+  const runSwingPaperScan = async (execute: boolean) => {
+    setRunning(true)
+    setScanMsg(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/bot/swing/paper-scan?execute=${execute}`, { method: 'POST' })
+      const body = await res.json()
+      const cnt = body.orders?.length ?? body.recommendations?.length ?? 0
+      setScanMsg(execute ? `Executed ${cnt} paper CNC order(s) (as of ${body.as_of?.slice(0, 10) || 'latest'})` : `Scanned ${cnt} swing candidates`)
+      mutateSwing()
+      mutatePortfolio()
+    } catch {
+      setScanMsg('Failed to reach backend paper scanner')
+    }
+    setRunning(false)
+  }
+
   return (
     <div className="card p-0 overflow-y-auto animate-fade-in flex flex-col h-full shadow-card border-[#151B23] bg-[#0B0F14]">
       <div className="px-5 py-4 border-b border-[#151B23] flex justify-between items-center sticky top-0 bg-[#0B0F14]/90 backdrop-blur z-10">
         <div>
           <h3 className="text-sm font-semibold tracking-wide text-text-primary flex items-center gap-2">
             <ShieldAlert size={16} className="text-fin-warn" />
-            PAPER VALIDATION
+            PAPER VALIDATION &amp; 15D SWING CNC
           </h3>
-          <p className="text-xs text-text-muted mt-1">Live Out-of-Sample Forward Test</p>
+          <p className="text-xs text-text-muted mt-1">
+            Live Paper Account + Ranked 15-Day Delivery Candidates
+            {swing?.stale_days > 0 ? ` · cached data (${swing.stale_days}d old — refresh Upstox tokens)` : ''}
+          </p>
         </div>
-        <div className="flex gap-2">
-          <div className="text-[10px] text-text-secondary bg-[#151B23] px-2 py-1 rounded font-mono border border-terminal-border flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-fin-pos animate-pulse"></span>
-            FROZEN CONFIG: OK
-          </div>
-          <div className="text-[10px] text-text-secondary bg-[#151B23] px-2 py-1 rounded font-mono border border-terminal-border flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-fin-warn"></span>
-            LIVE TRADING: DISABLED
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={() => runSwingPaperScan(true)}
+            disabled={running}
+            className="text-[11px] bg-accent-primary/20 hover:bg-accent-primary/30 text-accent-primary px-3 py-1.5 rounded font-mono border border-accent-primary/40"
+          >
+            {running ? 'Running...' : 'Allocate Paper Swing Tranche'}
+          </button>
+          <div className="text-[10px] text-text-secondary bg-[#151B23] px-2 py-1 rounded font-mono border border-terminal-border">
+            {readiness?.live_trading_enabled ? 'LIVE ENABLED' : 'LIVE DISABLED'}
           </div>
         </div>
       </div>
-      
+
       <div className="p-6 space-y-6">
+        {scanMsg && (
+          <div className="p-3 rounded border border-accent-primary/30 bg-accent-primary/10 text-xs font-mono text-text-primary">
+            {scanMsg}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="p-4 border border-[#151B23] bg-[#0B0F14]/50 rounded">
-            <p className="text-[10px] text-text-secondary uppercase tracking-widest">Days Running</p>
-            <p className="text-xl font-mono mt-1 text-text-primary">0</p>
+            <p className="text-[10px] text-text-secondary uppercase tracking-widest">Paper Equity</p>
+            <p className="text-xl font-mono mt-1 text-text-primary">₹{paperEq.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
           </div>
           <div className="p-4 border border-[#151B23] bg-[#0B0F14]/50 rounded">
-            <p className="text-[10px] text-text-secondary uppercase tracking-widest">Decisions</p>
-            <p className="text-xl font-mono mt-1 text-text-primary">0</p>
+            <p className="text-[10px] text-text-secondary uppercase tracking-widest">Paper P&amp;L</p>
+            <p className={clsx("text-xl font-mono mt-1", pnlColor(paperPnl))}>
+              {paperPnl >= 0 ? '+' : ''}₹{paperPnl.toFixed(2)}
+            </p>
           </div>
           <div className="p-4 border border-[#151B23] bg-[#0B0F14]/50 rounded">
-            <p className="text-[10px] text-text-secondary uppercase tracking-widest">Trades</p>
-            <p className="text-xl font-mono mt-1 text-text-primary">0</p>
+            <p className="text-[10px] text-text-secondary uppercase tracking-widest">Swing 15d OOS PF</p>
+            <p className="text-xl font-mono mt-1 text-fin-pos">{swingSummary?.combined_profit_factor ?? '—'}</p>
           </div>
           <div className="p-4 border border-[#151B23] bg-[#0B0F14]/50 rounded">
-            <p className="text-[10px] text-text-secondary uppercase tracking-widest">PIT Compliance</p>
-            <p className="text-sm font-mono mt-2 text-fin-pos">100% OK</p>
+            <p className="text-[10px] text-text-secondary uppercase tracking-widest">Blind Holdout (250d)</p>
+            <p className={clsx("text-xl font-mono mt-1", (holdout?.mean_net_profit ?? 0) > 0 ? 'text-fin-pos' : 'text-fin-neg')}>
+              {holdout ? `+₹${holdout.mean_net_profit.toFixed(2)}` : '—'}
+            </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-widest border-b border-[#151B23] pb-2">Performance Metrics</h4>
-            <div className="space-y-2 font-mono text-xs">
-              <div className="flex justify-between"><span>AECE Expectancy</span><span className="text-text-muted">—</span></div>
-              <div className="flex justify-between"><span>Profit Factor</span><span className="text-text-muted">—</span></div>
-              <div className="flex justify-between"><span>Net P&L</span><span className="text-text-muted">—</span></div>
-              <div className="flex justify-between"><span>Max Drawdown</span><span className="text-text-muted">—</span></div>
-            </div>
-            <div className="pt-4 border-t border-[#151B23]">
-              <div className="flex justify-between text-xs font-mono text-text-secondary"><span>Catalyst Trades</span><span>—</span></div>
-              <div className="flex justify-between text-xs font-mono text-text-secondary mt-2"><span>No-Catalyst Trades</span><span>—</span></div>
-            </div>
+        <section>
+          <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-widest mb-3">
+            Top-5 Weekly 15-Day CNC Swing Candidates ({swing?.as_of ? swing.as_of.slice(0, 10) : 'Awaiting Data'})
+          </h4>
+          <div className="overflow-x-auto border border-[#151B23] rounded">
+            <table className="w-full text-left text-xs font-mono">
+              <thead>
+                <tr className="border-b border-[#151B23] text-text-muted bg-[#0D1219]">
+                  <th className="py-2 px-3">Symbol</th>
+                  <th className="py-2 px-3">Sector</th>
+                  <th className="py-2 px-3 text-right">Last Close</th>
+                  <th className="py-2 px-3 text-right">Est 15d Net%</th>
+                  <th className="py-2 px-3 text-right">Tranche Qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recs.length > 0 ? recs.map((r) => (
+                  <tr key={r.symbol} className="border-b border-[#151B23]/50">
+                    <td className="py-2 px-3 font-semibold text-text-primary">{r.symbol}</td>
+                    <td className="py-2 px-3 text-text-muted">{r.sector}</td>
+                    <td className="py-2 px-3 text-right">₹{r.last_close}</td>
+                    <td className="py-2 px-3 text-right text-fin-pos">+{r.predicted_15d_net_pct}%</td>
+                    <td className="py-2 px-3 text-right">{r.suggested_qty}</td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan={5} className="py-4 text-center text-text-muted">No swing picks passed hurdle</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
-          
-          <div className="space-y-4">
-            <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-widest border-b border-[#151B23] pb-2">Execution Latency (Critical)</h4>
-            <div className="space-y-2 font-mono text-xs">
-              <div className="flex justify-between"><span>Median Decision Latency</span><span className="text-text-muted">—</span></div>
-              <div className="flex justify-between"><span>P95 Decision Latency</span><span className="text-text-muted">—</span></div>
-              <div className="flex justify-between mt-2"><span>Median Slippage</span><span className="text-text-muted">—</span></div>
-              <div className="flex justify-between"><span>P95 Slippage</span><span className="text-text-muted">—</span></div>
-            </div>
-            <div className="p-3 mt-4 border border-fin-warn/30 bg-fin-warn/5 rounded">
-              <p className="text-[10px] text-fin-warn flex gap-2">
-                <Activity size={14} />
-                If median processing latency exceeds 60s, expectancy edge will completely erode based on historical stress tests.
-              </p>
-            </div>
-          </div>
-        </div>
+        </section>
       </div>
     </div>
   )
 }
 
 export function RobustnessView() {
+  const { data: readiness } = useSWR(`${API_BASE}/api/v1/bot/readiness`, fetcher, { refreshInterval: 10000 })
+  const swing = readiness?.swing_15d_model
+  const intra = readiness?.walk_forward_oos
+  const devFolds: any[] = []
+  const intraFolds: any[] = intra?.folds || []
+  const swingSummary = swing?.summary
+  const holdout = swing?.blind_holdout
+  const checks: Record<string, boolean> = readiness?.checks || {}
+
   return (
     <div className="card p-0 overflow-y-auto animate-fade-in flex flex-col h-full shadow-card border-[#151B23] bg-[#0B0F14]">
       <div className="px-5 py-4 border-b border-[#151B23] flex justify-between items-center sticky top-0 bg-[#0B0F14]/90 backdrop-blur z-10">
         <div>
           <h3 className="text-sm font-semibold tracking-wide text-text-primary flex items-center gap-2">
-            <Activity size={16} className="text-fin-warn" />
-            AECE Robustness Suite v4
+            <Activity size={16} className="text-accent-primary" />
+            Verified Walk-Forward Audit (Real OOS Results)
           </h3>
-          <p className="text-xs text-text-muted mt-1">Degradation Curves & Regime Stress</p>
+          <p className="text-xs text-text-muted mt-1">Zero Synthetic Data · Sourced live from /api/v1/bot/readiness</p>
         </div>
-        <div className="text-[10px] text-text-secondary bg-[#151B23] px-2 py-1 rounded font-mono border border-terminal-border">FINAL HOLDOUT: UNTOUCHED</div>
+        <div className={clsx(
+          "text-[10px] px-2 py-1 rounded font-mono border",
+          readiness?.live_capital_ready ? "bg-fin-pos/10 border-fin-pos/30 text-fin-pos" : "bg-fin-warn/10 border-fin-warn/30 text-fin-warn"
+        )}>
+          {readiness?.live_capital_ready ? "LIVE CAPITAL READY" : "LIVE CAPITAL BLOCKED"}
+        </div>
       </div>
-      
+
       <div className="p-6 space-y-8">
-        {/* Degradation Curve */}
         <section>
-          <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-widest mb-4">1. Execution & Latency Degradation</h4>
+          <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-widest mb-3">
+            1. Track A: 15-Day Long-Only CNC Delivery Swing (Purged 8-Year Dev + 250d Blind Holdout, 0.32% RT Cost)
+          </h4>
+          {swingSummary ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
+              <div className="border border-[#151B23] rounded p-3 bg-[#0B0F14]/50">
+                <p className="text-[10px] text-text-muted uppercase">Combined OOS PnL</p>
+                <p className="text-sm font-bold text-fin-pos mt-1">+₹{swingSummary.combined_net_profit?.toLocaleString('en-IN')}</p>
+              </div>
+              <div className="border border-[#151B23] rounded p-3 bg-[#0B0F14]/50">
+                <p className="text-[10px] text-text-muted uppercase">vs Equal-Wt NIFTY50</p>
+                <p className="text-sm font-bold text-fin-pos mt-1">+₹{swingSummary.combined_outperformance_vs_benchmark?.toLocaleString('en-IN')}</p>
+              </div>
+              <div className="border border-[#151B23] rounded p-3 bg-[#0B0F14]/50">
+                <p className="text-[10px] text-text-muted uppercase">Holdout Excess Alpha CI</p>
+                <p className="text-sm font-bold text-fin-pos mt-1">
+                  {holdout?.excess_alpha_95pct_ci_pct ? `[${holdout.excess_alpha_95pct_ci_pct.join(', ')}]%` : '—'}
+                </p>
+              </div>
+              <div className="border border-[#151B23] rounded p-3 bg-[#0B0F14]/50">
+                <p className="text-[10px] text-text-muted uppercase">Holdout Min Offset PnL</p>
+                <p className="text-sm font-bold text-fin-pos mt-1">
+                  {holdout ? `+₹${holdout.min_offset_net_profit?.toFixed(2)}` : '—'}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-text-muted font-mono">Swing report not generated yet.</p>
+          )}
+        </section>
+
+        <section>
+          <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-widest mb-3">
+            2. Track B: 30m Intraday Auto-Bot (Gap-Aware 3-Fold OOS — Currently Research Only)
+          </h4>
           <div className="overflow-x-auto">
-            <table className="w-full text-left whitespace-nowrap text-xs font-mono">
+            <table className="w-full text-left text-xs font-mono">
               <thead>
                 <tr className="border-b border-[#151B23] text-text-muted">
-                  <th className="py-2">Stress Vector</th>
-                  <th className="py-2 text-right">Expectancy</th>
-                  <th className="py-2 text-right">Impact</th>
-                  <th className="py-2">Status</th>
+                  <th className="py-2">Fold</th>
+                  <th className="py-2 text-right">Phase-1 PnL</th>
+                  <th className="py-2 text-right">Trades</th>
+                  <th className="py-2 text-right">Win Rate</th>
+                  <th className="py-2 text-right">Phase-2A PnL</th>
+                  <th className="py-2 text-right">PF</th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b border-[#151B23]/50">
-                  <td className="py-2 text-text-primary">Baseline (1x Cost, 0s Delay)</td>
-                  <td className="py-2 text-right text-fin-pos">₹17.40</td>
-                  <td className="py-2 text-right text-text-muted">-</td>
-                  <td className="py-2"><span className="text-fin-pos">✅ ROBUST</span></td>
-                </tr>
-                <tr className="border-b border-[#151B23]/50">
-                  <td className="py-2 text-text-secondary">+ 1.5x execution cost</td>
-                  <td className="py-2 text-right text-fin-pos">₹12.20</td>
-                  <td className="py-2 text-right text-fin-neg">-29%</td>
-                  <td className="py-2"><span className="text-fin-pos">✅ ROBUST</span></td>
-                </tr>
-                <tr className="border-b border-[#151B23]/50">
-                  <td className="py-2 text-text-secondary">+ 2.0x execution cost</td>
-                  <td className="py-2 text-right text-fin-pos">₹7.00</td>
-                  <td className="py-2 text-right text-fin-neg">-59%</td>
-                  <td className="py-2"><span className="text-fin-warn">⚠️ MARGINAL</span></td>
-                </tr>
-                <tr className="border-b border-[#151B23]/50">
-                  <td className="py-2 text-text-secondary">+ 3.0x execution cost</td>
-                  <td className="py-2 text-right text-fin-neg">₹-3.40</td>
-                  <td className="py-2 text-right text-fin-neg">-119%</td>
-                  <td className="py-2"><span className="text-fin-neg">❌ BROKEN</span></td>
-                </tr>
-                <tr className="border-b border-[#151B23]/50">
-                  <td className="py-2 text-text-secondary">+ 10s Entry Delay</td>
-                  <td className="py-2 text-right text-fin-pos">₹14.10</td>
-                  <td className="py-2 text-right text-fin-neg">-18%</td>
-                  <td className="py-2"><span className="text-fin-pos">✅ ROBUST</span></td>
-                </tr>
-                <tr className="border-b border-[#151B23]/50">
-                  <td className="py-2 text-text-secondary">+ 60s Entry Delay</td>
-                  <td className="py-2 text-right text-fin-pos">₹3.50</td>
-                  <td className="py-2 text-right text-fin-neg">-79%</td>
-                  <td className="py-2"><span className="text-fin-warn">⚠️ DEGRADED</span></td>
-                </tr>
-                <tr className="border-b border-[#151B23]/50">
-                  <td className="py-2 text-text-secondary">+ 300s Entry Delay</td>
-                  <td className="py-2 text-right text-fin-neg">₹-8.20</td>
-                  <td className="py-2 text-right text-fin-neg">-147%</td>
-                  <td className="py-2"><span className="text-fin-neg">❌ BROKEN</span></td>
-                </tr>
+                {intraFolds.map((f) => (
+                  <tr key={f.fold} className="border-b border-[#151B23]/50">
+                    <td className="py-2 text-text-primary">{f.fold}</td>
+                    <td className="py-2 text-right text-fin-neg">₹{f.phase1_net_profit}</td>
+                    <td className="py-2 text-right">{f.phase2a_trades}</td>
+                    <td className="py-2 text-right">{f.phase2a_win_rate_pct}%</td>
+                    <td className={clsx("py-2 text-right", f.phase2a_net_profit >= 0 ? "text-fin-pos" : "text-fin-neg")}>
+                      ₹{f.phase2a_net_profit}
+                    </td>
+                    <td className="py-2 text-right">{f.phase2a_profit_factor}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
-          <p className="text-[10px] text-text-muted mt-2 max-w-2xl">
-            *Conclusion:* The edge is highly latency-sensitive. A 5-minute entry delay entirely erodes the expectancy, proving the edge relies on acting before the catalyst is fully priced in.
-          </p>
+          {devFolds.length === 0 && intra && (
+            <p className="text-[11px] font-mono text-text-muted mt-2">
+              Combined Intraday OOS: ₹{intra.combined_net_profit} · PF {intra.combined_profit_factor} · Capital preserved vs Phase-1: +₹{intra.capital_preserved_vs_phase1}
+            </p>
+          )}
         </section>
 
-        {/* Regime Stress */}
         <section>
-          <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-widest mb-4">2. Regime Decomposition</h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { name: "Bull Market", exp: "₹19.20", pf: "3.8" },
-              { name: "Bear Market", exp: "₹14.50", pf: "2.9" },
-              { name: "Sideways", exp: "₹6.10", pf: "1.4" },
-              { name: "High Volatility", exp: "₹22.40", pf: "4.1" },
-              { name: "Low Volatility", exp: "₹4.80", pf: "1.2" },
-            ].map(r => (
-              <div key={r.name} className="border border-[#151B23] rounded p-3 bg-[#0B0F14]/50">
-                <p className="text-[10px] text-text-secondary mb-1 uppercase tracking-wider">{r.name}</p>
-                <div className="flex justify-between items-end">
-                  <span className={clsx("text-sm font-bold font-mono", r.exp.startsWith('₹-') ? 'text-fin-neg' : 'text-fin-pos')}>{r.exp}</span>
-                  <span className="text-[10px] text-text-muted font-mono">PF: {r.pf}</span>
-                </div>
+          <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-widest mb-3">3. Gate Checklist</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-mono">
+            {Object.entries(checks).map(([k, ok]) => (
+              <div key={k} className="flex justify-between border border-[#151B23] rounded px-3 py-2 bg-[#0B0F14]/50">
+                <span className="text-text-secondary">{k}</span>
+                <span className={ok ? 'text-fin-pos font-semibold' : 'text-fin-neg font-semibold'}>{ok ? 'PASS' : 'BLOCKED'}</span>
               </div>
             ))}
-          </div>
-        </section>
-
-        {/* Concentration */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-widest mb-4">3. Symbol Leave-One-Out</h4>
-            <div className="space-y-2 font-mono text-xs">
-              <div className="flex justify-between text-text-primary pb-1 border-b border-[#151B23]"><span className="font-semibold">All Symbols</span><span className="text-fin-pos">₹17.40</span></div>
-              <div className="flex justify-between text-text-secondary"><span>(-) RELIANCE</span><span className="text-fin-pos">₹15.80</span></div>
-              <div className="flex justify-between text-text-secondary"><span>(-) TCS</span><span className="text-fin-pos">₹16.90</span></div>
-              <div className="flex justify-between text-text-secondary"><span>(-) HDFCBANK</span><span className="text-fin-pos">₹13.20</span></div>
-              <div className="flex justify-between text-text-secondary"><span>(-) INFY</span><span className="text-fin-pos">₹17.10</span></div>
-            </div>
-            <p className="text-[9px] text-text-muted mt-2">Edge is distributed across symbols.</p>
-          </div>
-          <div>
-            <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-widest mb-4">4. Event Leave-One-Out</h4>
-            <div className="space-y-2 font-mono text-xs">
-              <div className="flex justify-between text-text-primary pb-1 border-b border-[#151B23]"><span className="font-semibold">All Events</span><span className="text-fin-pos">₹17.40</span></div>
-              <div className="flex justify-between text-text-secondary"><span>(-) Earnings</span><span className="text-fin-pos">₹8.50</span></div>
-              <div className="flex justify-between text-text-secondary"><span>(-) Contracts</span><span className="text-fin-pos">₹15.10</span></div>
-              <div className="flex justify-between text-text-secondary"><span>(-) Regulatory</span><span className="text-fin-pos">₹16.50</span></div>
-              <div className="flex justify-between text-text-secondary"><span>(-) Management</span><span className="text-fin-pos">₹17.00</span></div>
-            </div>
-            <p className="text-[9px] text-text-muted mt-2">Earnings shocks are a major contributor, but not the sole edge.</p>
           </div>
         </section>
       </div>

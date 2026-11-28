@@ -47,3 +47,52 @@ async def get_readiness():
     from intelligence.readiness import get_readiness_snapshot
 
     return get_readiness_snapshot()
+
+
+@router.post("/swing/paper-scan")
+async def run_swing_paper_scan(execute: bool = False):
+    """Score top-5 15d CNC delivery picks and optionally place paper orders in PaperBroker."""
+    from core.config import get_settings
+    from intelligence.swing_alpha import score_latest_swing_universe
+    from trading.paper_broker import PaperBroker
+
+    settings = get_settings()
+    if engine.broker is None:
+        engine.broker = PaperBroker(initial_capital=settings.paper_trading_initial_capital)
+
+    if execute and not engine.broker.is_paper:
+        return {
+            "status": "blocked",
+            "reason": "PAPER_ONLY_ENDPOINT",
+            "orders": [],
+        }
+
+    acct = await engine.broker.get_account()
+    equity = float(acct.get("total_equity") or settings.paper_trading_initial_capital)
+    scored = score_latest_swing_universe(capital=equity)
+    placed: list[dict] = []
+
+    if execute and scored.get("status") == "ok":
+        existing = {p["symbol"].upper() for p in await engine.broker.get_positions()}
+        for rec in scored.get("recommendations", []):
+            sym = rec["symbol"].upper()
+            qty = int(rec.get("suggested_qty", 0))
+            if qty <= 0 or sym in existing:
+                continue
+            res = await engine.broker.place_order(
+                ticker=sym,
+                direction="BUY",
+                quantity=qty,
+                order_type="MARKET",
+                price=float(rec["last_close"]),
+                tag="swing_15d_cnc",
+            )
+            placed.append({"symbol": sym, "qty": qty, "result": res})
+            if res.get("status") == "FILLED":
+                existing.add(sym)
+
+    return {
+        **scored,
+        "executed": execute,
+        "orders": placed,
+    }
