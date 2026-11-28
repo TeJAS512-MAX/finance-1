@@ -2,16 +2,16 @@ from __future__ import annotations
 import re
 from datetime import date, timedelta
 from typing import Dict, Any, List, Optional
-from backend.models.schemas import AetherPravahState
-from backend.finance.calculators import (
+from schemas.finance import AetherPravahState
+from finance.calculators import (
     calculate_emi, loan_summary, debt_service_verdict, profit_model,
     fmt_inr, fmt_compact, extract_amounts, extract_days, extract_rate_pct, extract_tenure_months
 )
-from backend.finance.forecast import run_forecast, Scenario
-from backend.finance.gst_plan import build_gst_plan
-from backend.finance import ledger
-from backend.finance.knowledge import find_topic
-from backend.finance.defaults import finance_defaults
+from finance.forecast import run_forecast, Scenario
+from finance.gst_plan import build_gst_plan
+from finance import ledger
+from finance.knowledge import find_topic
+from finance.defaults import finance_defaults
 
 DEFAULT_SUGGESTIONS = [
     "How is my money?",

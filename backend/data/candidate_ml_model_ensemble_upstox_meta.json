@@ -1,0 +1,11 @@
+{
+  "approval_threshold": 0.4,
+  "training_mode": "aggressive",
+  "training_rows": 22521,
+  "validation_rows": 5631,
+  "validation_accuracy": 0.6457,
+  "class_balance": {
+    "wins": 8789,
+    "losses": 19363
+  }
+}

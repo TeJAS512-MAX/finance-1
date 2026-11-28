@@ -1,0 +1,27 @@
+{
+    "status": "FROZEN",
+    "frozen_at": "2026-09-28T23:25:00Z",
+    "git_commit": "c4d7b2a9e8f1",
+    "model_version": "v2.1_AECE",
+    "feature_version": "v1.4",
+    "event_radar_version": "v3.0_PIT",
+    "strategy_parameters": {
+        "ml_probability_threshold": 0.60,
+        "max_portfolio_leverage": 5.0,
+        "max_positions": 3,
+        "slippage_bps": 5,
+        "commission_max_inr": 20.0
+    },
+    "watchlist": [
+        "RELIANCE",
+        "INFY",
+        "TCS",
+        "SBIN",
+        "ZOMATO",
+        "ITC",
+        "ICICIBANK",
+        "WIPRO"
+    ],
+    "database_schema_version": "1.2",
+    "dataset_version": "final_holdout_1"
+}

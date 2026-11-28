@@ -1,0 +1,142 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base ────────────────────────────────────────────────── */
+:root {
+  --bg-primary:    #0F1115;
+  --bg-surface:    #14161A;
+  --bg-card:       #1A1D24;
+  --bg-card-hover: #22252E;
+  --border:        #2B2F3A;
+  
+  --text-primary:  #E8EAED;
+  --text-secondary:#9CA3AF;
+  --text-muted:    #6B7280;
+  
+  --accent-primary:#3B72E5;
+  
+  --fin-pos:       #2E9E66;
+  --fin-neg:       #CC4B4B;
+  --fin-warn:      #C29038;
+  --fin-neut:      #868E96;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  font-size: 13px; /* Slightly smaller for dense institutional feel */
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Typography Utility ──────────────────────────────────── */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 4px; height: 4px; }
+::-webkit-scrollbar-track  { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ── Utility classes ─────────────────────────────────────── */
+@layer components {
+  .card {
+    @apply bg-terminal-card border border-terminal-border rounded-[8px] p-4 shadow-card transition-colors duration-150;
+  }
+  .card:hover {
+    @apply bg-terminal-cardHover;
+  }
+
+  .card-sm {
+    @apply bg-terminal-card border border-terminal-border rounded-[6px] p-3 shadow-card;
+  }
+
+  /* Institutional tables */
+  .table-header {
+    @apply text-[10px] text-text-muted uppercase tracking-wider font-semibold bg-terminal-surface border-b border-terminal-border;
+  }
+  .table-row {
+    @apply border-b border-terminal-border hover:bg-terminal-cardHover transition-colors text-[13px];
+  }
+
+  /* Minimal badges/status */
+  .status-dot {
+    @apply w-1.5 h-1.5 rounded-full inline-block mr-1.5;
+  }
+  
+  .status-badge {
+    @apply inline-flex items-center text-[11px] font-mono tracking-wide text-text-secondary;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply bg-accent-primary hover:bg-[#3d75db] text-white px-3 py-1.5 rounded-[4px]
+           text-[13px] font-medium transition-colors duration-150;
+  }
+
+  .btn-ghost {
+    @apply text-text-secondary hover:text-text-primary hover:bg-terminal-surface border border-transparent hover:border-terminal-border
+           px-3 py-1.5 rounded-[4px] text-[13px] transition-colors duration-150;
+  }
+
+  /* Sidebar */
+  .sidebar-link {
+    @apply flex items-center gap-3 px-3 py-2 rounded-[6px] text-[13px] font-medium
+           text-text-secondary hover:text-text-primary hover:bg-terminal-card
+           transition-colors duration-150 cursor-pointer;
+  }
+  .sidebar-link-active {
+    @apply sidebar-link text-text-primary bg-terminal-surface;
+    /* Subtle blue indicator line */
+    box-shadow: inset 2px 0 0 0 var(--accent-primary);
+  }
+}
+
+/* ── Animations ──────────────────────────────────────────── */
+.animate-fade-in  { animation: fadeIn  0.2s ease-in-out; }
+.animate-slide-up { animation: slideUp 0.3s ease-out; }
+
+/* ── Chart overrides ─────────────────────────────────────── */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical   line { stroke: var(--border) !important; stroke-dasharray: none !important; opacity: 0.5; }
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ── SME Finance Hub Utilities ───────────────────────────── */
+.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-feature-settings: 'tnum' on, 'zero' on;
+}
+.glass-panel {
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.glass-card {
+  background: rgba(17, 23, 38, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+.glow-emerald { box-shadow: 0 0 35px -5px rgba(16, 185, 129, 0.25); }
+.glow-cyan    { box-shadow: 0 0 35px -5px rgba(34, 211, 238, 0.3); }
+.glow-rose    { box-shadow: 0 0 35px -5px rgba(244, 63, 94, 0.35); }
+.glow-amber   { box-shadow: 0 0 35px -5px rgba(245, 158, 11, 0.3); }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

@@ -1,8 +1,8 @@
 from __future__ import annotations
 from datetime import date, timedelta
 from typing import Dict, Any, List
-from backend.models.schemas import AetherPravahState
-from backend.finance.calculators import fmt_compact, fmt_inr
+from schemas.finance import AetherPravahState
+from finance.calculators import fmt_compact, fmt_inr
 
 def generate_reminder_draft(inv_number: str, customer_name: str, amount: float, days_overdue: int, due_date: date) -> Dict[str, Any]:
     """Generates professional WhatsApp and Email reminder copy."""

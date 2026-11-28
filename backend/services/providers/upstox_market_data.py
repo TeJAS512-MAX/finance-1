@@ -1,0 +1,336 @@
+"""
+services/providers/upstox_market_data.py — Upstox Official Market Data Provider.
+
+Uses the official Upstox Developer API v2 to fetch:
+  - Real-time OHLC candle data (no delays, direct from NSE)
+  - Live quotes via the Market Quote API
+  - Historical candles for technical analysis
+
+This is the recommended provider for live NSE market data.
+Prefers UPSTOX_ANALYTICS_TOKEN, with UPSTOX_ACCESS_TOKEN as a fallback.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import os
+from datetime import date, datetime, timedelta, timezone
+from urllib.parse import quote
+from zoneinfo import ZoneInfo
+from typing import Any, Dict, List, Optional
+
+import httpx
+
+# ── Upstox API v2 base URL ──────────────────────────────────────────────────
+UPSTOX_BASE = "https://api.upstox.com/v2"
+UPSTOX_V3_BASE = "https://api.upstox.com/v3"
+
+# Instrument key map: symbol → Upstox instrument_key
+# These are official NSE_EQ instrument keys from Upstox's instrument master
+INSTRUMENT_KEYS: Dict[str, str] = {
+    "RELIANCE":   "NSE_EQ|INE002A01018",
+    "SBIN":       "NSE_EQ|INE062A01020",
+    "TCS":        "NSE_EQ|INE467B01029",
+    "INFY":       "NSE_EQ|INE009A01021",
+    "ZOMATO":     "NSE_EQ|INE758T01015",
+    "ITC":        "NSE_EQ|INE154A01025",
+    "ICICIBANK":  "NSE_EQ|INE090A01021",
+    "WIPRO":      "NSE_EQ|INE075A01022",
+    "HDFCBANK":   "NSE_EQ|INE040A01034",
+    "BAJFINANCE": "NSE_EQ|INE296A01024",
+}
+MARKET_CONTEXT_INSTRUMENT_KEYS: Dict[str, str] = {
+    "NIFTY50": "NSE_INDEX|Nifty 50",
+}
+
+# Upstox candle interval mapping
+INTERVAL_MAP = {
+    "1m":  "1minute",
+    "5m":  "5minute",
+    "15m": "15minute",
+    "30m": "30minute",
+    "1h":  "60minute",
+    "1D":  "day",
+    "1W":  "week",
+    "1M":  "month",
+}
+
+
+def get_market_data_token() -> str:
+    return (
+        os.environ.get("UPSTOX_ANALYTICS_TOKEN", "").strip()
+        or os.environ.get("UPSTOX_ACCESS_TOKEN", "").strip()
+    )
+
+
+def _get_headers() -> Dict[str, str]:
+    token = get_market_data_token()
+    if not token:
+        raise ValueError(
+            "No Upstox market-data token is configured. Set UPSTOX_ANALYTICS_TOKEN "
+            "or UPSTOX_ACCESS_TOKEN."
+        )
+    return {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+
+
+async def get_candles(
+    symbol: str,
+    interval: str = "5m",
+    days_back: int = 5,
+) -> List[Dict[str, Any]]:
+    """
+    Fetch OHLCV candles from Upstox for a given symbol.
+    Returns a list of dicts with keys: timestamp, open, high, low, close, volume
+    """
+    instrument_key = INSTRUMENT_KEYS.get(symbol.upper())
+    if not instrument_key:
+        raise ValueError(f"Unknown symbol: {symbol}. Add it to INSTRUMENT_KEYS.")
+
+    upstox_interval = INTERVAL_MAP.get(interval, "5minute")
+
+    # Upstox intraday candle endpoint is date-based and expects a valid range.
+    # Use the market timezone (Asia/Kolkata) to avoid off-by-one day issues.
+    now = datetime.now(timezone.utc).astimezone(ZoneInfo("Asia/Kolkata"))
+    to_date = now.strftime("%Y-%m-%d")
+
+    days_back = max(1, int(days_back))
+    if upstox_interval in {"1minute", "5minute", "15minute", "30minute", "60minute"}:
+        days_back = min(days_back, 30)
+    elif upstox_interval == "day":
+        days_back = min(days_back, 365)
+
+    from_date = (now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days_back)).strftime("%Y-%m-%d")
+
+    # Guard against invalid ranges from timezone/day-boundary drift.
+    if from_date > to_date:
+        from_date = (datetime.strptime(to_date, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    url = f"{UPSTOX_BASE}/historical-candle/{instrument_key}/{upstox_interval}/{to_date}/{from_date}"
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.get(url, headers=_get_headers())
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 400:
+                # Upstox uses 400 for unavailable/unsupported candle windows.
+                # Treat it as an empty result so one symbol cannot abort a scan.
+                return []
+            raise
+        data = response.json()
+
+    candles_raw = data.get("data", {}).get("candles", [])
+    # Upstox format: [timestamp, open, high, low, close, volume, oi]
+    candles = []
+    for c in candles_raw:
+        candles.append({
+            "timestamp": c[0],
+            "open":      float(c[1]),
+            "high":      float(c[2]),
+            "low":       float(c[3]),
+            "close":     float(c[4]),
+            "volume":    int(c[5]),
+        })
+
+    # Return in chronological order (oldest first)
+    return list(reversed(candles))
+
+
+async def get_daily_history_v3(
+    symbol: str,
+    days_back: int = 3650,
+) -> List[Dict[str, Any]]:
+    """Fetch daily history from Upstox V3, which supports up to a decade."""
+    normalized_symbol = symbol.upper()
+    instrument_key = (
+        INSTRUMENT_KEYS.get(normalized_symbol)
+        or MARKET_CONTEXT_INSTRUMENT_KEYS.get(normalized_symbol)
+    )
+    if not instrument_key:
+        raise ValueError(f"Unknown symbol: {symbol}. Add it to INSTRUMENT_KEYS.")
+    if not 1 <= days_back <= 3650:
+        raise ValueError("days_back must be between 1 and 3650 for Upstox V3 daily candles.")
+
+    now = datetime.now(timezone.utc).astimezone(ZoneInfo("Asia/Kolkata"))
+    to_date = now.strftime("%Y-%m-%d")
+    from_date = (now.date() - timedelta(days=days_back)).strftime("%Y-%m-%d")
+    encoded_key = quote(instrument_key, safe="")
+    url = (
+        f"{UPSTOX_V3_BASE}/historical-candle/{encoded_key}/days/1/"
+        f"{to_date}/{from_date}"
+    )
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        response = await client.get(url, headers=_get_headers())
+        response.raise_for_status()
+        data = response.json()
+
+    candles = [
+        {
+            "timestamp": candle[0],
+            "open": float(candle[1]),
+            "high": float(candle[2]),
+            "low": float(candle[3]),
+            "close": float(candle[4]),
+            "volume": int(candle[5]),
+        }
+        for candle in data.get("data", {}).get("candles", [])
+    ]
+    return sorted(candles, key=lambda candle: candle["timestamp"])
+
+
+async def get_live_quote(symbol: str) -> Dict[str, Any]:
+    """
+    Fetch the latest live market quote for a symbol via Upstox Market Quote API.
+    Returns LTP, OHLC, volume, circuit limits.
+    """
+    instrument_key = INSTRUMENT_KEYS.get(symbol.upper())
+    if not instrument_key:
+        raise ValueError(f"Unknown symbol: {symbol}")
+
+    url = f"{UPSTOX_BASE}/market-quote/quotes"
+    params = {"instrument_key": instrument_key}
+
+    async with httpx.AsyncClient(timeout=8.0) as client:
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        data = response.json()
+
+    quote_data = data.get("data", {}).get(instrument_key, {})
+    ohlc = quote_data.get("ohlc", {})
+
+    return {
+        "symbol":         symbol,
+        "instrument_key": instrument_key,
+        "ltp":            quote_data.get("last_price", 0.0),
+        "open":           ohlc.get("open", 0.0),
+        "high":           ohlc.get("high", 0.0),
+        "low":            ohlc.get("low", 0.0),
+        "close":          ohlc.get("close", 0.0),
+        "volume":         quote_data.get("volume", 0),
+        "avg_price":      quote_data.get("average_price", 0.0),
+        "upper_circuit":  quote_data.get("upper_circuit_limit", 0.0),
+        "lower_circuit":  quote_data.get("lower_circuit_limit", 0.0),
+        "timestamp":      datetime.now(timezone.utc).isoformat(),
+        "source":         "Upstox Official API (Real-time NSE)",
+    }
+
+
+async def compute_features(symbol: str, interval: str = "5m") -> Dict[str, Any]:
+    """
+    Fetch live candles from Upstox and compute a full feature set for the AI.
+    Features: RSI (14), SMA (20), EMA (9/21), ATR (14), Volume Ratio, Momentum, VWAP.
+    """
+    import pandas as pd
+    import numpy as np
+
+    candles = await get_candles(symbol, interval=interval, days_back=5)
+    if not candles:
+        raise ValueError(f"No candle data returned for {symbol}. Market may be closed or token expired.")
+    if len(candles) < 20:
+        raise ValueError(f"Not enough candle data for {symbol} ({len(candles)} candles)")
+
+    df = pd.DataFrame(candles)
+    idx = len(df) - 1
+    
+    # Basic series
+    close = df["close"]
+    high = df["high"]
+    low = df["low"]
+    volume = df["volume"]
+
+    # 1. RSI (14)
+    delta = close.diff()
+    gain = delta.where(delta > 0, 0.0).rolling(14).mean()
+    loss = (-delta.where(delta < 0, 0.0)).rolling(14).mean()
+    rs = gain / loss
+    rsi_series = 100 - (100 / (1 + rs))
+
+    # 2. Moving Averages
+    sma20 = close.rolling(20).mean()
+    ema9 = close.ewm(span=9, adjust=False).mean()
+    ema21 = close.ewm(span=21, adjust=False).mean()
+
+    # 3. True Range and ATR (14)
+    prev_close = close.shift(1)
+    tr1 = high - low
+    tr2 = (high - prev_close).abs()
+    tr3 = (low - prev_close).abs()
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    atr14 = tr.rolling(14).mean()
+
+    # 4. Volume Ratio (current volume / 20-period avg volume)
+    avg_vol_20 = volume.rolling(20).mean()
+    vol_ratio = volume / avg_vol_20
+
+    # 5. Momentum (10-bar price rate of change)
+    momentum_10 = (close - close.shift(10)) / close.shift(10) * 100
+    volatility = atr14 / close * 100
+    trend_strength = (ema9 - ema21) / close * 100
+    range_pct = (high - low) / close * 100
+    return_5 = close.pct_change(5) * 100
+    return_20 = close.pct_change(20) * 100
+
+    # 6. VWAP (Intraday)
+    # Convert timestamps to datetime to group by day
+    df['dt'] = pd.to_datetime(df['timestamp'])
+    df['date'] = df['dt'].dt.date
+    df['typical_price'] = (high + low + close) / 3
+    df['vp'] = df['typical_price'] * volume
+    
+    # Cumulative sum grouped by day for VWAP
+    df['cum_vp'] = df.groupby('date')['vp'].cumsum()
+    df['cum_vol'] = df.groupby('date')['volume'].cumsum()
+    df['vwap'] = df['cum_vp'] / df['cum_vol']
+
+    # 7. Consecutive Candles Analysis
+    is_green = df['close'] > df['open']
+    is_red = df['close'] < df['open']
+    
+    # Check if the last 2 and last 3 confirmed candles are all green or all red
+    # idx = -2 is the latest confirmed candle, idx = -3 is the one before, idx = -4 before that
+    latest_3_green = is_green.iloc[-3] and is_green.iloc[-2] and is_green.iloc[-1]
+    latest_3_red = is_red.iloc[-3] and is_red.iloc[-2] and is_red.iloc[-1]
+
+    latest_2_green = is_green.iloc[-2] and is_green.iloc[-1]
+    latest_2_red = is_red.iloc[-2] and is_red.iloc[-1]
+
+    # last_valid_idx should be the newest confirmed candle; this is the index used for the output payload.
+    idx = len(df) - 1
+
+    return {
+        "symbol":       symbol,
+        "ltp":          float(close.iloc[idx]),
+        # Canonical OHLC names consumed by the opportunity scorer.  Retain
+        # candle_* aliases for callers that use the explicit names.
+        "open":         float(df['open'].iloc[idx]),
+        "close":        float(close.iloc[idx]),
+        "candle_open":  float(df['open'].iloc[idx]),
+        "candle_close": float(close.iloc[idx]),
+        "latest_3_green": bool(latest_3_green),
+        "latest_3_red":   bool(latest_3_red),
+        "latest_2_green": bool(latest_2_green),
+        "latest_2_red":   bool(latest_2_red),
+        "rsi":          float(rsi_series.iloc[idx]),
+        "prev_rsi":     float(rsi_series.iloc[idx - 1]) if idx > 0 else float(rsi_series.iloc[idx]),
+        "sma20":        float(sma20.iloc[idx]),
+        "ema9":         float(ema9.iloc[idx]),
+        "ema21":        float(ema21.iloc[idx]),
+        "atr14":        float(atr14.iloc[idx]),
+        "vol_ratio":    float(vol_ratio.iloc[idx]),
+        "momentum":     float(momentum_10.iloc[idx]),
+        "volatility":   float(volatility.iloc[idx]),
+        "trend_strength": float(trend_strength.iloc[idx]),
+        "range_pct":    float(range_pct.iloc[idx]),
+        "return_5":     float(return_5.iloc[idx]),
+        "return_20":    float(return_20.iloc[idx]),
+        "vwap":         float(df['vwap'].iloc[idx]),
+        "timestamp":    str(df['timestamp'].iloc[idx]),  # PIT compliance key
+        "candle_count": len(candles),
+        "source":       "Upstox Official API (Real-time NSE)",
+        "interval":     interval,
+    }

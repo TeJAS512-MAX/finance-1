@@ -1,0 +1,406 @@
+{
+  "model_type": "zero_return_baseline",
+  "schema_version": 10,
+  "mode": "research_only",
+  "data_source": "Upstox Official API v3",
+  "data_report": {
+    "provider": "Upstox Official API v3",
+    "requested_days": 3650,
+    "requested_symbols": [
+      "RELIANCE",
+      "SBIN",
+      "TCS",
+      "INFY",
+      "ZOMATO",
+      "ITC",
+      "ICICIBANK",
+      "WIPRO",
+      "HDFCBANK",
+      "BAJFINANCE"
+    ],
+    "fetched_symbols": [
+      "HDFCBANK",
+      "ICICIBANK",
+      "INFY",
+      "ITC",
+      "RELIANCE",
+      "SBIN",
+      "TCS",
+      "WIPRO",
+      "ZOMATO"
+    ],
+    "failed_symbols": {
+      "BAJFINANCE": "HTTPStatusError: Client error '400 Bad Request' for url 'https://api.upstox.com/v3/historical-candle/NSE_EQ%7CINE296A01024/days/1/2026-11-27/2016-11-29'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400"
+    },
+    "data_start_by_symbol": {
+      "HDFCBANK": "2016-11-29T09:15:00+05:30",
+      "ICICIBANK": "2016-11-29T09:15:00+05:30",
+      "INFY": "2016-11-29T09:15:00+05:30",
+      "ITC": "2016-11-29T09:15:00+05:30",
+      "RELIANCE": "2016-11-29T00:00:00+05:30",
+      "SBIN": "2016-11-29T09:15:00+05:30",
+      "TCS": "2016-11-29T09:15:00+05:30",
+      "WIPRO": "2016-11-29T09:15:00+05:30",
+      "ZOMATO": "2021-07-23T00:00:00+05:30"
+    },
+    "data_end_by_symbol": {
+      "HDFCBANK": "2026-11-26T00:00:00+05:30",
+      "ICICIBANK": "2026-11-26T00:00:00+05:30",
+      "INFY": "2026-11-26T00:00:00+05:30",
+      "ITC": "2026-11-26T00:00:00+05:30",
+      "RELIANCE": "2026-11-26T00:00:00+05:30",
+      "SBIN": "2026-11-26T00:00:00+05:30",
+      "TCS": "2026-11-26T00:00:00+05:30",
+      "WIPRO": "2026-11-26T00:00:00+05:30",
+      "ZOMATO": "2026-11-26T00:00:00+05:30"
+    },
+    "requested_market_context": [
+      "NIFTY50"
+    ],
+    "fetched_market_context": [
+      "NIFTY50"
+    ],
+    "failed_market_context": {},
+    "market_context_data_ranges": {
+      "NIFTY50": {
+        "start": "2016-11-29T00:00:00+05:30",
+        "end": "2026-11-26T00:00:00+05:30"
+      }
+    },
+    "fetched_at": "2026-11-27T06:09:43.516000+00:00"
+  },
+  "eligible_for_live_display": false,
+  "historical_gates_passed": false,
+  "historical_promotion_enabled": false,
+  "promotion_checks": {
+    "walk_forward_mae_beats_zero_return_baseline": false,
+    "validation_mae_beats_zero_return_baseline": false,
+    "validation_paper_profit_target_reached": false,
+    "validation_drawdown_within_limit": true,
+    "walk_forward_paper_profit_per_session_positive": false,
+    "holdout_mae_improvement_interval_excludes_zero": false,
+    "holdout_paper_profit_target_reached": false,
+    "historical_promotion_enabled": false
+  },
+  "paper_backtest": {
+    "strategy": "Long-only; enter at next session open and exit at its close",
+    "initial_capital": 50000.0,
+    "profit_target": 500.0,
+    "target_equity": 50500.0,
+    "max_drawdown_limit": 1000.0,
+    "max_position_pct": 10.0,
+    "commission_pct_per_side": 0.03,
+    "slippage_pct_per_side": 0.05,
+    "sessions_in_holdout": 90,
+    "sessions_evaluated": 90,
+    "trades": 0,
+    "win_rate": 0.0,
+    "total_costs": 0.0,
+    "final_equity": 50000.0,
+    "net_profit": 0.0,
+    "max_drawdown": 0.0,
+    "profit_target_reached": false,
+    "max_drawdown_reached": false,
+    "stop_reason": "holdout_complete",
+    "exclusions": "Taxes and exchange/regulatory fees are not modeled."
+  },
+  "execution_costs": {
+    "commission_pct_per_side": 0.03,
+    "slippage_pct_per_side": 0.05
+  },
+  "evaluation_design": {
+    "pre_test_training_sessions": 2387,
+    "holdout_test_sessions": 90,
+    "validation_fraction_of_training_window": 0.3,
+    "paper_profit_target": 500.0,
+    "paper_max_drawdown": 1000.0
+  },
+  "target": "next-session open-to-close return after configured commission and slippage; trade only when predicted net return is positive",
+  "features": [
+    "rsi",
+    "trend_strength",
+    "return_1",
+    "momentum_10",
+    "volatility_pct",
+    "range_pct",
+    "return_5",
+    "return_20",
+    "volume_ratio",
+    "candle_body_pct",
+    "overnight_gap_pct",
+    "realized_volatility_20",
+    "nifty_return_1",
+    "nifty_return_5",
+    "nifty_return_20",
+    "nifty_realized_volatility_20",
+    "symbol__HDFCBANK",
+    "symbol__ICICIBANK",
+    "symbol__INFY",
+    "symbol__ITC",
+    "symbol__RELIANCE",
+    "symbol__SBIN",
+    "symbol__TCS",
+    "symbol__WIPRO",
+    "symbol__ZOMATO"
+  ],
+  "shadow_challenger_models": [
+    "extra_trees_regression",
+    "hist_gradient_boosting_regression",
+    "random_forest_regression",
+    "ridge_regression",
+    "tree_voting_regression",
+    "zero_return_baseline"
+  ],
+  "market_context_symbols": [
+    "NIFTY50"
+  ],
+  "trained_symbols": [
+    "HDFCBANK",
+    "ICICIBANK",
+    "INFY",
+    "ITC",
+    "RELIANCE",
+    "SBIN",
+    "TCS",
+    "WIPRO",
+    "ZOMATO"
+  ],
+  "date_ranges": {
+    "train": {
+      "start": "2016-11-29T00:00:00+05:30",
+      "end": "2023-08-23T00:00:00+05:30",
+      "samples": 13864,
+      "unique_dates": 1670
+    },
+    "validation": {
+      "start": "2023-08-25T00:00:00+05:30",
+      "end": "2026-07-15T00:00:00+05:30",
+      "samples": 6435,
+      "unique_dates": 715
+    },
+    "test": {
+      "start": "2026-07-17T00:00:00+05:30",
+      "end": "2026-11-25T00:00:00+05:30",
+      "samples": 810,
+      "unique_dates": 90
+    }
+  },
+  "artifact_training": {
+    "samples": 21109,
+    "through": "2026-11-26T00:00:00+05:30",
+    "symbols": 9,
+    "generated_at": "2026-11-27T06:11:20.556482+00:00"
+  },
+  "target_summary_pct": {
+    "mean": -0.2081,
+    "median": -0.2339,
+    "positive_fraction": 0.4162
+  },
+  "walk_forward_mae_pct": {
+    "ridge_regression": [
+      1.253,
+      1.2907,
+      1.0897
+    ],
+    "random_forest_regression": [
+      1.2508,
+      1.2883,
+      1.083
+    ],
+    "extra_trees_regression": [
+      1.247,
+      1.285,
+      1.0845
+    ],
+    "hist_gradient_boosting_regression": [
+      1.2935,
+      1.3062,
+      1.0919
+    ],
+    "tree_voting_regression": [
+      1.2575,
+      1.2885,
+      1.0831
+    ],
+    "zero_return_baseline": [
+      1.268,
+      1.3098,
+      1.0988
+    ]
+  },
+  "walk_forward_paper_profit_per_session": {
+    "ridge_regression": [
+      -13.3639,
+      -69.9,
+      28.6427
+    ],
+    "random_forest_regression": [
+      -5.2271,
+      -43.4225,
+      -48.7168
+    ],
+    "extra_trees_regression": [
+      -0.3742,
+      -0.4196,
+      -11.5239
+    ],
+    "hist_gradient_boosting_regression": [
+      -16.9986,
+      -64.1857,
+      -48.1692
+    ],
+    "tree_voting_regression": [
+      -9.9048,
+      -50.125,
+      -46.456
+    ],
+    "zero_return_baseline": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "selected_model": "zero_return_baseline",
+  "selected_model_beats_walk_forward_zero_return_baseline_by_mae": false,
+  "selected_model_beats_validation_zero_return_baseline_by_mae": false,
+  "selected_model_positive_walk_forward_paper_profit": false,
+  "best_walk_forward_baseline": "zero_return_baseline",
+  "validation": {
+    "mae_pct": 1.0025,
+    "rmse_pct": 1.3885,
+    "r2": -0.0197,
+    "trade_signals": 0,
+    "mean_predicted_net_return_pct": 0.0,
+    "beats_zero_return_baseline_by_mae": false,
+    "paper_backtest": {
+      "strategy": "Long-only; enter at next session open and exit at its close",
+      "initial_capital": 50000.0,
+      "profit_target": 500.0,
+      "target_equity": 50500.0,
+      "max_drawdown_limit": 1000.0,
+      "max_position_pct": 10.0,
+      "commission_pct_per_side": 0.03,
+      "slippage_pct_per_side": 0.05,
+      "sessions_in_holdout": 715,
+      "sessions_evaluated": 715,
+      "trades": 0,
+      "win_rate": 0.0,
+      "total_costs": 0.0,
+      "final_equity": 50000.0,
+      "net_profit": 0.0,
+      "max_drawdown": 0.0,
+      "profit_target_reached": false,
+      "max_drawdown_reached": false,
+      "stop_reason": "holdout_complete",
+      "exclusions": "Taxes and exchange/regulatory fees are not modeled."
+    },
+    "baselines": {
+      "zero_return_baseline": {
+        "mae_pct": 1.0025,
+        "rmse_pct": 1.3885,
+        "r2": -0.0197,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": 0.0
+      }
+    }
+  },
+  "test": {
+    "mae_pct": 1.0996,
+    "rmse_pct": 1.4559,
+    "r2": -0.0051,
+    "trade_signals": 0,
+    "mean_predicted_net_return_pct": 0.0,
+    "by_symbol": {
+      "HDFCBANK": {
+        "samples": 90,
+        "mae_pct": 1.0035,
+        "rmse_pct": 1.3556,
+        "r2": -0.0022,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": 0.0
+      },
+      "ICICIBANK": {
+        "samples": 90,
+        "mae_pct": 0.8746,
+        "rmse_pct": 1.1985,
+        "r2": -0.0119,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": 0.0
+      },
+      "INFY": {
+        "samples": 90,
+        "mae_pct": 1.1588,
+        "rmse_pct": 1.4443,
+        "r2": -0.0205,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": 0.0
+      },
+      "ITC": {
+        "samples": 90,
+        "mae_pct": 1.0626,
+        "rmse_pct": 1.416,
+        "r2": -0.0079,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": 0.0
+      },
+      "RELIANCE": {
+        "samples": 90,
+        "mae_pct": 0.9863,
+        "rmse_pct": 1.3056,
+        "r2": -0.006,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": 0.0
+      },
+      "SBIN": {
+        "samples": 90,
+        "mae_pct": 1.0296,
+        "rmse_pct": 1.3005,
+        "r2": -0.0111,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": 0.0
+      },
+      "TCS": {
+        "samples": 90,
+        "mae_pct": 1.3028,
+        "rmse_pct": 1.6902,
+        "r2": -0.0093,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": 0.0
+      },
+      "WIPRO": {
+        "samples": 90,
+        "mae_pct": 1.1121,
+        "rmse_pct": 1.5763,
+        "r2": -0.0008,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": 0.0
+      },
+      "ZOMATO": {
+        "samples": 90,
+        "mae_pct": 1.3662,
+        "rmse_pct": 1.7241,
+        "r2": -0.0004,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": 0.0
+      }
+    },
+    "baselines": {
+      "zero_return_baseline": {
+        "mae_pct": 1.0996,
+        "rmse_pct": 1.4559,
+        "r2": -0.0051,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": 0.0
+      }
+    },
+    "best_baseline": "zero_return_baseline",
+    "mae_improvement_vs_zero_return_baseline_95pct_ci": [
+      0.0,
+      0.0
+    ],
+    "out_of_sample_beats_zero_return_baseline_with_95pct_confidence": false
+  },
+  "top_feature_importance": {},
+  "shadow_candidate_saved": true,
+  "shadow_candidate_file": "stock_direction_shadow_candidate.joblib"
+}

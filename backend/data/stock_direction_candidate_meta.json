@@ -1,0 +1,578 @@
+{
+  "model_type": "hist_gradient_boosting",
+  "schema_version": 3,
+  "mode": "research_only",
+  "data_source": "Upstox Official API",
+  "data_report": {
+    "provider": "Upstox Official API",
+    "requested_days": 365,
+    "requested_symbols": [
+      "RELIANCE",
+      "SBIN",
+      "TCS",
+      "INFY",
+      "ZOMATO",
+      "ITC",
+      "ICICIBANK",
+      "WIPRO",
+      "HDFCBANK",
+      "BAJFINANCE"
+    ],
+    "fetched_symbols": [
+      "HDFCBANK",
+      "ICICIBANK",
+      "INFY",
+      "ITC",
+      "RELIANCE",
+      "SBIN",
+      "TCS",
+      "WIPRO",
+      "ZOMATO"
+    ],
+    "failed_symbols": {
+      "BAJFINANCE": "Only 0 completed daily candles were returned."
+    },
+    "data_start_by_symbol": {
+      "RELIANCE": "2025-11-27T00:00:00+05:30",
+      "SBIN": "2025-11-27T00:00:00+05:30",
+      "TCS": "2025-11-27T00:00:00+05:30",
+      "INFY": "2025-11-27T00:00:00+05:30",
+      "ZOMATO": "2025-11-27T00:00:00+05:30",
+      "ITC": "2025-11-27T00:00:00+05:30",
+      "ICICIBANK": "2025-11-27T00:00:00+05:30",
+      "WIPRO": "2025-11-27T00:00:00+05:30",
+      "HDFCBANK": "2025-11-27T00:00:00+05:30"
+    },
+    "data_end_by_symbol": {
+      "RELIANCE": "2026-11-26T00:00:00+05:30",
+      "SBIN": "2026-11-26T00:00:00+05:30",
+      "TCS": "2026-11-26T00:00:00+05:30",
+      "INFY": "2026-11-26T00:00:00+05:30",
+      "ZOMATO": "2026-11-26T00:00:00+05:30",
+      "ITC": "2026-11-26T00:00:00+05:30",
+      "ICICIBANK": "2026-11-26T00:00:00+05:30",
+      "WIPRO": "2026-11-26T00:00:00+05:30",
+      "HDFCBANK": "2026-11-26T00:00:00+05:30"
+    },
+    "fetched_at": "2026-11-27T04:06:22.265638+00:00"
+  },
+  "eligible_for_live_display": true,
+  "target": "direction of the next daily close relative to the latest completed daily close",
+  "features": [
+    "rsi",
+    "trend_strength",
+    "return_1",
+    "momentum_10",
+    "volatility_pct",
+    "range_pct",
+    "return_5",
+    "return_20",
+    "volume_ratio",
+    "candle_body_pct",
+    "overnight_gap_pct",
+    "realized_volatility_20"
+  ],
+  "trained_symbols": [
+    "HDFCBANK",
+    "ICICIBANK",
+    "INFY",
+    "ITC",
+    "RELIANCE",
+    "SBIN",
+    "TCS",
+    "WIPRO",
+    "ZOMATO"
+  ],
+  "date_ranges": {
+    "train": {
+      "start": "2025-11-26T18:30:00+00:00",
+      "end": "2026-07-01T18:30:00+00:00",
+      "samples": 1309,
+      "unique_dates": 146
+    },
+    "validation": {
+      "start": "2026-07-05T18:30:00+00:00",
+      "end": "2026-09-08T18:30:00+00:00",
+      "samples": 429,
+      "unique_dates": 48
+    },
+    "test": {
+      "start": "2026-09-10T18:30:00+00:00",
+      "end": "2026-11-24T18:30:00+00:00",
+      "samples": 449,
+      "unique_dates": 50
+    }
+  },
+  "artifact_training": {
+    "samples": 2205,
+    "through": "2026-11-25T18:30:00+00:00",
+    "symbols": 9,
+    "generated_at": "2026-11-27T04:07:00.243236+00:00"
+  },
+  "class_distribution": {
+    "DOWN": 1159,
+    "UP": 1046
+  },
+  "walk_forward_balanced_accuracy": {
+    "logistic_regression": [
+      0.4813,
+      0.4936,
+      0.4915
+    ],
+    "random_forest": [
+      0.5277,
+      0.5279,
+      0.4702
+    ],
+    "extra_trees": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "hist_gradient_boosting": [
+      0.5398,
+      0.543,
+      0.4598
+    ],
+    "majority_baseline": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "momentum_baseline": [
+      0.5151,
+      0.4626,
+      0.5501
+    ]
+  },
+  "selected_model": "hist_gradient_boosting",
+  "selected_model_beats_walk_forward_baselines": true,
+  "best_walk_forward_baseline": "momentum_baseline",
+  "validation": {
+    "accuracy": 0.4848,
+    "balanced_accuracy": 0.4771,
+    "macro_f1": 0.4759,
+    "precision_by_direction": {
+      "DOWN": 0.5238,
+      "UP": 0.4294
+    },
+    "recall_by_direction": {
+      "DOWN": 0.5665,
+      "UP": 0.3878
+    },
+    "confusion_matrix_down_up": [
+      [
+        132,
+        101
+      ],
+      [
+        120,
+        76
+      ]
+    ],
+    "prediction_counts": {
+      "DOWN": 252,
+      "UP": 177
+    },
+    "baselines": {
+      "majority_baseline": {
+        "accuracy": 0.5431,
+        "balanced_accuracy": 0.5,
+        "macro_f1": 0.352,
+        "precision_by_direction": {
+          "DOWN": 0.5431,
+          "UP": 0.0
+        },
+        "recall_by_direction": {
+          "DOWN": 1.0,
+          "UP": 0.0
+        },
+        "confusion_matrix_down_up": [
+          [
+            233,
+            0
+          ],
+          [
+            196,
+            0
+          ]
+        ],
+        "prediction_counts": {
+          "DOWN": 429,
+          "UP": 0
+        }
+      },
+      "momentum_baseline": {
+        "accuracy": 0.4779,
+        "balanced_accuracy": 0.4739,
+        "macro_f1": 0.4739,
+        "precision_by_direction": {
+          "DOWN": 0.5193,
+          "UP": 0.4286
+        },
+        "recall_by_direction": {
+          "DOWN": 0.5193,
+          "UP": 0.4286
+        },
+        "confusion_matrix_down_up": [
+          [
+            121,
+            112
+          ],
+          [
+            112,
+            84
+          ]
+        ],
+        "prediction_counts": {
+          "DOWN": 233,
+          "UP": 196
+        }
+      }
+    }
+  },
+  "test": {
+    "accuracy": 0.5501,
+    "balanced_accuracy": 0.555,
+    "macro_f1": 0.5474,
+    "precision_by_direction": {
+      "DOWN": 0.5222,
+      "UP": 0.5922
+    },
+    "recall_by_direction": {
+      "DOWN": 0.6589,
+      "UP": 0.4511
+    },
+    "confusion_matrix_down_up": [
+      [
+        141,
+        73
+      ],
+      [
+        129,
+        106
+      ]
+    ],
+    "prediction_counts": {
+      "DOWN": 270,
+      "UP": 179
+    },
+    "by_symbol": {
+      "HDFCBANK": {
+        "samples": 50,
+        "accuracy": 0.48,
+        "balanced_accuracy": 0.4734,
+        "macro_f1": 0.4724,
+        "precision_by_direction": {
+          "DOWN": 0.4286,
+          "UP": 0.5172
+        },
+        "recall_by_direction": {
+          "DOWN": 0.3913,
+          "UP": 0.5556
+        },
+        "confusion_matrix_down_up": [
+          [
+            9,
+            14
+          ],
+          [
+            12,
+            15
+          ]
+        ],
+        "prediction_counts": {
+          "DOWN": 21,
+          "UP": 29
+        }
+      },
+      "ICICIBANK": {
+        "samples": 50,
+        "accuracy": 0.66,
+        "balanced_accuracy": 0.6659,
+        "macro_f1": 0.6599,
+        "precision_by_direction": {
+          "DOWN": 0.6071,
+          "UP": 0.7273
+        },
+        "recall_by_direction": {
+          "DOWN": 0.7391,
+          "UP": 0.5926
+        },
+        "confusion_matrix_down_up": [
+          [
+            17,
+            6
+          ],
+          [
+            11,
+            16
+          ]
+        ],
+        "prediction_counts": {
+          "DOWN": 28,
+          "UP": 22
+        }
+      },
+      "INFY": {
+        "samples": 50,
+        "accuracy": 0.54,
+        "balanced_accuracy": 0.529,
+        "macro_f1": 0.5246,
+        "precision_by_direction": {
+          "DOWN": 0.5625,
+          "UP": 0.5
+        },
+        "recall_by_direction": {
+          "DOWN": 0.6667,
+          "UP": 0.3913
+        },
+        "confusion_matrix_down_up": [
+          [
+            18,
+            9
+          ],
+          [
+            14,
+            9
+          ]
+        ],
+        "prediction_counts": {
+          "DOWN": 32,
+          "UP": 18
+        }
+      },
+      "ITC": {
+        "samples": 50,
+        "accuracy": 0.52,
+        "balanced_accuracy": 0.5321,
+        "macro_f1": 0.4792,
+        "precision_by_direction": {
+          "DOWN": 0.5,
+          "UP": 0.6
+        },
+        "recall_by_direction": {
+          "DOWN": 0.8333,
+          "UP": 0.2308
+        },
+        "confusion_matrix_down_up": [
+          [
+            20,
+            4
+          ],
+          [
+            20,
+            6
+          ]
+        ],
+        "prediction_counts": {
+          "DOWN": 40,
+          "UP": 10
+        }
+      },
+      "RELIANCE": {
+        "samples": 49,
+        "accuracy": 0.5102,
+        "balanced_accuracy": 0.5228,
+        "macro_f1": 0.5084,
+        "precision_by_direction": {
+          "DOWN": 0.4074,
+          "UP": 0.6364
+        },
+        "recall_by_direction": {
+          "DOWN": 0.5789,
+          "UP": 0.4667
+        },
+        "confusion_matrix_down_up": [
+          [
+            11,
+            8
+          ],
+          [
+            16,
+            14
+          ]
+        ],
+        "prediction_counts": {
+          "DOWN": 27,
+          "UP": 22
+        }
+      },
+      "SBIN": {
+        "samples": 50,
+        "accuracy": 0.54,
+        "balanced_accuracy": 0.5312,
+        "macro_f1": 0.5308,
+        "precision_by_direction": {
+          "DOWN": 0.4545,
+          "UP": 0.6071
+        },
+        "recall_by_direction": {
+          "DOWN": 0.4762,
+          "UP": 0.5862
+        },
+        "confusion_matrix_down_up": [
+          [
+            10,
+            11
+          ],
+          [
+            12,
+            17
+          ]
+        ],
+        "prediction_counts": {
+          "DOWN": 22,
+          "UP": 28
+        }
+      },
+      "TCS": {
+        "samples": 50,
+        "accuracy": 0.64,
+        "balanced_accuracy": 0.633,
+        "macro_f1": 0.625,
+        "precision_by_direction": {
+          "DOWN": 0.6176,
+          "UP": 0.6875
+        },
+        "recall_by_direction": {
+          "DOWN": 0.8077,
+          "UP": 0.4583
+        },
+        "confusion_matrix_down_up": [
+          [
+            21,
+            5
+          ],
+          [
+            13,
+            11
+          ]
+        ],
+        "prediction_counts": {
+          "DOWN": 34,
+          "UP": 16
+        }
+      },
+      "WIPRO": {
+        "samples": 50,
+        "accuracy": 0.5,
+        "balanced_accuracy": 0.4887,
+        "macro_f1": 0.4833,
+        "precision_by_direction": {
+          "DOWN": 0.5312,
+          "UP": 0.4444
+        },
+        "recall_by_direction": {
+          "DOWN": 0.6296,
+          "UP": 0.3478
+        },
+        "confusion_matrix_down_up": [
+          [
+            17,
+            10
+          ],
+          [
+            15,
+            8
+          ]
+        ],
+        "prediction_counts": {
+          "DOWN": 32,
+          "UP": 18
+        }
+      },
+      "ZOMATO": {
+        "samples": 50,
+        "accuracy": 0.56,
+        "balanced_accuracy": 0.5673,
+        "macro_f1": 0.5484,
+        "precision_by_direction": {
+          "DOWN": 0.5294,
+          "UP": 0.625
+        },
+        "recall_by_direction": {
+          "DOWN": 0.75,
+          "UP": 0.3846
+        },
+        "confusion_matrix_down_up": [
+          [
+            18,
+            6
+          ],
+          [
+            16,
+            10
+          ]
+        ],
+        "prediction_counts": {
+          "DOWN": 34,
+          "UP": 16
+        }
+      }
+    },
+    "baselines": {
+      "majority_baseline": {
+        "accuracy": 0.4766,
+        "balanced_accuracy": 0.5,
+        "macro_f1": 0.3228,
+        "precision_by_direction": {
+          "DOWN": 0.4766,
+          "UP": 0.0
+        },
+        "recall_by_direction": {
+          "DOWN": 1.0,
+          "UP": 0.0
+        },
+        "confusion_matrix_down_up": [
+          [
+            214,
+            0
+          ],
+          [
+            235,
+            0
+          ]
+        ],
+        "prediction_counts": {
+          "DOWN": 449,
+          "UP": 0
+        }
+      },
+      "momentum_baseline": {
+        "accuracy": 0.4543,
+        "balanced_accuracy": 0.4533,
+        "macro_f1": 0.4533,
+        "precision_by_direction": {
+          "DOWN": 0.4279,
+          "UP": 0.4786
+        },
+        "recall_by_direction": {
+          "DOWN": 0.4299,
+          "UP": 0.4766
+        },
+        "confusion_matrix_down_up": [
+          [
+            92,
+            122
+          ],
+          [
+            123,
+            112
+          ]
+        ],
+        "prediction_counts": {
+          "DOWN": 215,
+          "UP": 234
+        }
+      }
+    },
+    "best_baseline": "momentum_baseline",
+    "balanced_accuracy_delta_vs_best_baseline_95pct_ci": [
+      0.0361,
+      0.1688
+    ],
+    "out_of_sample_beats_baseline_with_95pct_confidence": true
+  },
+  "top_feature_importance": {}
+}

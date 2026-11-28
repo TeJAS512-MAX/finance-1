@@ -1,0 +1,206 @@
+version: "3.9"
+
+# ============================================================
+# Market Intelligence AI — Docker Compose
+# ============================================================
+
+services:
+
+  # ── PostgreSQL with pgvector ───────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: mi_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-market_intelligence}
+      POSTGRES_USER: ${POSTGRES_USER:-mi_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mi_user} -d ${POSTGRES_DB:-market_intelligence}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ──────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: mi_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-} --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI Backend ────────────────────────────────────────
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: mi_backend
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../backend:/app
+      - backend_logs:/var/log/market-intelligence
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+
+  # ── Celery Worker ──────────────────────────────────────────
+  celery_worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: mi_celery_worker
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+    volumes:
+      - ../backend:/app
+      - backend_logs:/var/log/market-intelligence
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A core.celery_app worker --loglevel=info --concurrency=4 -Q default,data_ingestion,analysis,alerts
+
+  # ── Celery Beat (Scheduler) ─────────────────────────────────
+  celery_beat:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: mi_celery_beat
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+    volumes:
+      - ../backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A core.celery_app beat --loglevel=info --scheduler redbeat.RedBeatScheduler
+
+  # ── Celery Flower (Monitoring) ─────────────────────────────
+  flower:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: mi_flower
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/1}
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    command: celery -A core.celery_app flower --port=5555
+
+  # ── Next.js Frontend ───────────────────────────────────────
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: mi_frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_WS_URL: ws://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    command: npm run dev
+
+  # ── MLflow ────────────────────────────────────────────────
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.12.1
+    container_name: mi_mlflow
+    restart: unless-stopped
+    environment:
+      MLFLOW_BACKEND_STORE_URI: postgresql://${POSTGRES_USER:-mi_user}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-market_intelligence}
+      MLFLOW_ARTIFACT_ROOT: /mlartifacts
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_artifacts:/mlartifacts
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      mlflow server
+        --backend-store-uri postgresql://${POSTGRES_USER:-mi_user}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-market_intelligence}
+        --default-artifact-root /mlartifacts
+        --host 0.0.0.0
+        --port 5000
+
+  # ── pgAdmin (Dev only) ────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: mi_pgadmin
+    restart: unless-stopped
+    profiles:
+      - dev
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@local.dev
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+  redis_data:
+  backend_logs:
+  mlflow_artifacts:
+  pgadmin_data:
+
+networks:
+  default:
+    name: market_intelligence_net

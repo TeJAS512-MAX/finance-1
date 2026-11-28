@@ -1,0 +1,329 @@
+{
+  "architecture": "regime_aware_cross_sectional_ranker",
+  "schema_version": 1,
+  "base_feature_schema_version": 10,
+  "mode": "research_only",
+  "eligible_for_live_display": false,
+  "live_trading_enabled": false,
+  "historical_test_is_descriptive_only": true,
+  "market_context_symbols": [
+    "NIFTY50"
+  ],
+  "trained_symbols": [
+    "HDFCBANK",
+    "ICICIBANK",
+    "INFY",
+    "ITC",
+    "RELIANCE",
+    "SBIN",
+    "TCS",
+    "WIPRO",
+    "ZOMATO"
+  ],
+  "features": [
+    "rsi",
+    "trend_strength",
+    "return_1",
+    "momentum_10",
+    "volatility_pct",
+    "range_pct",
+    "return_5",
+    "return_20",
+    "volume_ratio",
+    "candle_body_pct",
+    "overnight_gap_pct",
+    "realized_volatility_20",
+    "nifty_return_1",
+    "nifty_return_5",
+    "nifty_return_20",
+    "nifty_realized_volatility_20",
+    "symbol__HDFCBANK",
+    "symbol__ICICIBANK",
+    "symbol__INFY",
+    "symbol__ITC",
+    "symbol__RELIANCE",
+    "symbol__SBIN",
+    "symbol__TCS",
+    "symbol__WIPRO",
+    "symbol__ZOMATO",
+    "market_uptrend_regime",
+    "market_high_volatility_regime"
+  ],
+  "regime_volatility_threshold": 0.9564313785783702,
+  "execution_costs": {
+    "commission_pct_per_side": 0.03,
+    "slippage_pct_per_side": 0.05
+  },
+  "artifact_training": {
+    "samples": 21127,
+    "through": "2026-11-26T00:00:00+05:30",
+    "generated_at": "2026-11-27T06:49:07.353141+00:00"
+  },
+  "data_source": "Upstox Official API v3",
+  "data_report": {
+    "provider": "Upstox Official API v3",
+    "requested_days": 3650,
+    "requested_symbols": [
+      "RELIANCE",
+      "SBIN",
+      "TCS",
+      "INFY",
+      "ZOMATO",
+      "ITC",
+      "ICICIBANK",
+      "WIPRO",
+      "HDFCBANK",
+      "BAJFINANCE"
+    ],
+    "fetched_symbols": [
+      "HDFCBANK",
+      "ICICIBANK",
+      "INFY",
+      "ITC",
+      "RELIANCE",
+      "SBIN",
+      "TCS",
+      "WIPRO",
+      "ZOMATO"
+    ],
+    "failed_symbols": {
+      "BAJFINANCE": "HTTPStatusError: Client error '400 Bad Request' for url 'https://api.upstox.com/v3/historical-candle/NSE_EQ%7CINE296A01024/days/1/2026-11-27/2016-11-29'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400"
+    },
+    "data_start_by_symbol": {
+      "HDFCBANK": "2016-11-29T09:15:00+05:30",
+      "ICICIBANK": "2016-11-29T09:15:00+05:30",
+      "INFY": "2016-11-29T09:15:00+05:30",
+      "ITC": "2016-11-29T09:15:00+05:30",
+      "RELIANCE": "2016-11-29T00:00:00+05:30",
+      "SBIN": "2016-11-29T09:15:00+05:30",
+      "TCS": "2016-11-29T09:15:00+05:30",
+      "WIPRO": "2016-11-29T09:15:00+05:30",
+      "ZOMATO": "2021-07-23T00:00:00+05:30"
+    },
+    "data_end_by_symbol": {
+      "HDFCBANK": "2026-11-26T00:00:00+05:30",
+      "ICICIBANK": "2026-11-26T00:00:00+05:30",
+      "INFY": "2026-11-26T00:00:00+05:30",
+      "ITC": "2026-11-26T00:00:00+05:30",
+      "RELIANCE": "2026-11-26T00:00:00+05:30",
+      "SBIN": "2026-11-26T00:00:00+05:30",
+      "TCS": "2026-11-26T00:00:00+05:30",
+      "WIPRO": "2026-11-26T00:00:00+05:30",
+      "ZOMATO": "2026-11-26T00:00:00+05:30"
+    },
+    "requested_market_context": [
+      "NIFTY50"
+    ],
+    "fetched_market_context": [
+      "NIFTY50"
+    ],
+    "failed_market_context": {},
+    "market_context_data_ranges": {
+      "NIFTY50": {
+        "start": "2016-11-29T00:00:00+05:30",
+        "end": "2026-11-26T00:00:00+05:30"
+      }
+    },
+    "fetched_at": "2026-11-27T06:09:43.516000+00:00"
+  },
+  "objective": "Rank symbols by predicted next-session cross-sectional excess return; trade only the top-ranked symbol when predicted after-cost absolute return is positive.",
+  "risk_limits": {
+    "paper_profit_target": 500.0,
+    "paper_max_drawdown": 1000.0,
+    "max_position_size_pct": 10.0
+  },
+  "date_ranges": {
+    "train": {
+      "start": "2016-11-29T00:00:00+05:30",
+      "end": "2023-08-23T00:00:00+05:30",
+      "samples": 13864,
+      "sessions": 1670
+    },
+    "validation": {
+      "start": "2023-08-25T00:00:00+05:30",
+      "end": "2026-07-15T00:00:00+05:30",
+      "samples": 6435,
+      "sessions": 715
+    },
+    "test": {
+      "start": "2026-07-17T00:00:00+05:30",
+      "end": "2026-11-25T00:00:00+05:30",
+      "samples": 810,
+      "sessions": 90
+    }
+  },
+  "validation": {
+    "samples": 6435,
+    "sessions": 715,
+    "absolute_return_mae_pct": 0.9839,
+    "zero_return_baseline_mae_pct": 1.0025,
+    "ranking": {
+      "sessions_ranked": 715,
+      "mean_session_spearman_correlation": 0.0162,
+      "top_one_mean_net_return_pct": -0.0123,
+      "top_one_positive_return_fraction": 0.0252,
+      "top_one_vs_no_trade_mean_return_difference_95pct_ci_pct": [
+        -0.0393,
+        0.0129
+      ],
+      "top_one_vs_5day_momentum_mean_return_difference_95pct_ci_pct": [
+        0.1694,
+        0.4293
+      ]
+    },
+    "top_one_paper_backtest": {
+      "strategy": "Long-only; enter at next session open and exit at its close",
+      "initial_capital": 50000.0,
+      "profit_target": 500.0,
+      "target_equity": 50500.0,
+      "max_drawdown_limit": 1000.0,
+      "max_position_pct": 10.0,
+      "commission_pct_per_side": 0.03,
+      "slippage_pct_per_side": 0.05,
+      "sessions_in_holdout": 715,
+      "sessions_evaluated": 715,
+      "trades": 45,
+      "win_rate": 0.4,
+      "total_costs": 313.76,
+      "final_equity": 49661.36,
+      "net_profit": -338.64,
+      "max_drawdown": 520.17,
+      "profit_target_reached": false,
+      "max_drawdown_reached": false,
+      "stop_reason": "holdout_complete",
+      "exclusions": "Taxes and exchange/regulatory fees are not modeled."
+    },
+    "five_day_momentum_baseline_paper_backtest": {
+      "strategy": "Long-only; enter at next session open and exit at its close",
+      "initial_capital": 50000.0,
+      "profit_target": 500.0,
+      "target_equity": 50500.0,
+      "max_drawdown_limit": 1000.0,
+      "max_position_pct": 10.0,
+      "commission_pct_per_side": 0.03,
+      "slippage_pct_per_side": 0.05,
+      "sessions_in_holdout": 715,
+      "sessions_evaluated": 66,
+      "trades": 60,
+      "win_rate": 0.35,
+      "total_costs": 443.0,
+      "final_equity": 49050.8,
+      "net_profit": -949.2,
+      "max_drawdown": 1031.47,
+      "profit_target_reached": false,
+      "max_drawdown_reached": true,
+      "stop_reason": "max_drawdown_reached",
+      "exclusions": "Taxes and exchange/regulatory fees are not modeled."
+    },
+    "no_trade_baseline_paper_backtest": {
+      "strategy": "Long-only; enter at next session open and exit at its close",
+      "initial_capital": 50000.0,
+      "profit_target": 500.0,
+      "target_equity": 50500.0,
+      "max_drawdown_limit": 1000.0,
+      "max_position_pct": 10.0,
+      "commission_pct_per_side": 0.03,
+      "slippage_pct_per_side": 0.05,
+      "sessions_in_holdout": 715,
+      "sessions_evaluated": 715,
+      "trades": 0,
+      "win_rate": 0.0,
+      "total_costs": 0.0,
+      "final_equity": 50000.0,
+      "net_profit": 0.0,
+      "max_drawdown": 0.0,
+      "profit_target_reached": false,
+      "max_drawdown_reached": false,
+      "stop_reason": "holdout_complete",
+      "exclusions": "Taxes and exchange/regulatory fees are not modeled."
+    }
+  },
+  "historical_test": {
+    "samples": 810,
+    "sessions": 90,
+    "absolute_return_mae_pct": 1.0815,
+    "zero_return_baseline_mae_pct": 1.0996,
+    "ranking": {
+      "sessions_ranked": 90,
+      "mean_session_spearman_correlation": -0.0157,
+      "top_one_mean_net_return_pct": 0.004,
+      "top_one_positive_return_fraction": 0.0111,
+      "top_one_vs_no_trade_mean_return_difference_95pct_ci_pct": [
+        -0.0143,
+        0.0263
+      ],
+      "top_one_vs_5day_momentum_mean_return_difference_95pct_ci_pct": [
+        -0.2382,
+        0.3945
+      ]
+    },
+    "top_one_paper_backtest": {
+      "strategy": "Long-only; enter at next session open and exit at its close",
+      "initial_capital": 50000.0,
+      "profit_target": 500.0,
+      "target_equity": 50500.0,
+      "max_drawdown_limit": 1000.0,
+      "max_position_pct": 10.0,
+      "commission_pct_per_side": 0.03,
+      "slippage_pct_per_side": 0.05,
+      "sessions_in_holdout": 90,
+      "sessions_evaluated": 90,
+      "trades": 2,
+      "win_rate": 0.5,
+      "total_costs": 14.04,
+      "final_equity": 50021.65,
+      "net_profit": 21.65,
+      "max_drawdown": 16.71,
+      "profit_target_reached": false,
+      "max_drawdown_reached": false,
+      "stop_reason": "holdout_complete",
+      "exclusions": "Taxes and exchange/regulatory fees are not modeled."
+    },
+    "five_day_momentum_baseline_paper_backtest": {
+      "strategy": "Long-only; enter at next session open and exit at its close",
+      "initial_capital": 50000.0,
+      "profit_target": 500.0,
+      "target_equity": 50500.0,
+      "max_drawdown_limit": 1000.0,
+      "max_position_pct": 10.0,
+      "commission_pct_per_side": 0.03,
+      "slippage_pct_per_side": 0.05,
+      "sessions_in_holdout": 90,
+      "sessions_evaluated": 59,
+      "trades": 52,
+      "win_rate": 0.3077,
+      "total_costs": 377.5,
+      "final_equity": 49333.8,
+      "net_profit": -666.2,
+      "max_drawdown": 1050.14,
+      "profit_target_reached": false,
+      "max_drawdown_reached": true,
+      "stop_reason": "max_drawdown_reached",
+      "exclusions": "Taxes and exchange/regulatory fees are not modeled."
+    },
+    "no_trade_baseline_paper_backtest": {
+      "strategy": "Long-only; enter at next session open and exit at its close",
+      "initial_capital": 50000.0,
+      "profit_target": 500.0,
+      "target_equity": 50500.0,
+      "max_drawdown_limit": 1000.0,
+      "max_position_pct": 10.0,
+      "commission_pct_per_side": 0.03,
+      "slippage_pct_per_side": 0.05,
+      "sessions_in_holdout": 90,
+      "sessions_evaluated": 90,
+      "trades": 0,
+      "win_rate": 0.0,
+      "total_costs": 0.0,
+      "final_equity": 50000.0,
+      "net_profit": 0.0,
+      "max_drawdown": 0.0,
+      "profit_target_reached": false,
+      "max_drawdown_reached": false,
+      "stop_reason": "holdout_complete",
+      "exclusions": "Taxes and exchange/regulatory fees are not modeled."
+    }
+  },
+  "promotion": "None; require an independent prospective shadow evaluation.",
+  "backtest_exclusions": "Taxes and exchange/regulatory fees are not modeled; historical test results are descriptive only and cannot authorize promotion."
+}

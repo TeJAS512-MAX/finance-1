@@ -1,0 +1,51 @@
+# ============================================================
+# Backend Requirements — Market Intelligence AI
+# ============================================================
+
+# ── Web Framework ────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+python-multipart==0.0.9
+httpx==0.27.0
+
+# ── Pydantic ─────────────────────────────────────────────────
+pydantic==2.7.1
+pydantic-settings==2.2.1
+email-validator==2.1.1
+
+# ── Database ─────────────────────────────────────────────────
+motor==3.7.1
+
+# ── Cache / Queue ─────────────────────────────────────────────
+redis==5.0.4
+celery==5.4.0
+kombu==5.3.7
+
+# ── Security ─────────────────────────────────────────────────
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+cryptography==42.0.8
+
+# ── Logging / Observability ───────────────────────────────────
+structlog==24.4.0
+
+# ── Data / ML ─────────────────────────────────────────────────
+pandas==3.0.6
+numpy==2.4.6
+scikit-learn==1.8.0
+joblib==1.5.3
+yfinance==1.7.0
+networkx>=3.2.0
+
+# ── NLP / LLM ────────────────────────────────────────────────
+openai==1.30.1
+anthropic==0.28.0
+google-generativeai==0.5.4
+tiktoken==0.7.0
+
+# ── Data Ingestion ────────────────────────────────────────────
+feedparser==6.0.11             # RSS feeds
+beautifulsoup4==4.12.3
+lxml==5.2.2
+aiohttp==3.9.5
+requests==2.32.2

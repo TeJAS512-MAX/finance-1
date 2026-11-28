@@ -2,8 +2,8 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field
-from backend.models.schemas import AetherPravahState
-from backend.finance.calculators import fmt_compact, fmt_inr
+from schemas.finance import AetherPravahState
+from finance.calculators import fmt_compact, fmt_inr
 
 class Scenario(BaseModel):
     horizon: int = Field(default=45, ge=14, le=90)

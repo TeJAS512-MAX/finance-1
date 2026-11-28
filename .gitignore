@@ -1,15 +1,100 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-.venv/
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+.Python
 env/
 venv/
+.venv/
+ENV/
+.mypy_cache/
+.ruff_cache/
 .pytest_cache/
-.DS_Store
+.coverage
+htmlcov/
 *.log
 
-# Frontend Next.js build artifacts
-frontend/node_modules/
-frontend/.next/
-frontend/out/
-frontend/.vercel/
+# Environment
+.env
+.env.*
+!.env.example
+
+# Secrets & credentials
+*.pem
+*.key
+*.crt
+secrets/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Node / Frontend
+node_modules/
+.next/
+out/
+.npm
+*.tsbuildinfo
+
+# Database
+*.db
+*.sqlite
+*.dump
+
+# MLflow artifacts
+mlruns/
+mlartifacts/
+
+# Docker volumes
+postgres_data/
+redis_data/
+mongo_data/
+mongodb_data/
+
+# Logs
+logs/
+*.log
+audit_*.log
+
+# Model artifacts (tracked by MLflow separately)
+*.pkl
+*.joblib
+*.pt
+*.pth
+checkpoints/
+
+# Test artifacts
+test_results/
+coverage.xml
+
+# Data files (use proper storage, not git)
+data/raw/
+data/processed/
+*.csv
+*.parquet
+*.feather
+
+# Alembic (keep versions, ignore pyc)
+backend/alembic/versions/__pycache__/
+
+# Test / coverage / local caches & debug dumps
+.pytest_cache/
+.coverage
+coverage_html/
+.next.bak-*/
+signals.json
+status.json
+status2.json
+temp_recent_files.txt
+backend/data/historical_candles*.json
