@@ -342,3 +342,33 @@ def test_causal_cusum_threshold_has_no_future_leakage():
 
     prefix_len = min(20, len(df_orig), len(df_shock))
     assert (df_orig["cusum_event"].iloc[:prefix_len].values == df_shock["cusum_event"].iloc[:prefix_len].values).all()
+
+
+def test_gap_down_stop_fills_at_open_not_stop_price(monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    from backtesting import engine as eng
+
+    base = datetime(2026, 1, 1, 9, 15, tzinfo=timezone.utc)
+    candles = []
+    for i in range(45):
+        px = 100.0 + (i % 5) * 0.4
+        candles.append({
+            "timestamp": (base + timedelta(minutes=30 * i)).isoformat(),
+            "open": px - 0.1, "high": px + 1.0, "low": px - 1.0, "close": px, "volume": 10000.0,
+        })
+    # Trigger entry cleanly on bar -2, then gap down well below ATR stop on bar -1
+    candles[-2].update({"open": 99.0, "high": 101.0, "low": 98.5, "close": 100.0})
+    candles[-1].update({"open": 88.0, "high": 89.0, "low": 87.5, "close": 88.5})
+
+    monkeypatch.setattr(
+        eng.opportunity_ranker,
+        "score",
+        lambda f: {
+            **f,
+            "opportunity_score": 80.0 if abs(float(f["open"]) - 99.0) < 0.01 else 0.0,
+            "candidate_direction": "LONG" if abs(float(f["open"]) - 99.0) < 0.01 else "NO_TRADE",
+        },
+    )
+    res = eng.run_backtest({"TEST": candles}, use_phase1=True, use_ml_filter=False, initial_capital=50_000.0)
+    assert res["total_trades"] >= 1
+    assert res["trade_pnls"][-1] < -200.0

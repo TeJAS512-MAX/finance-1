@@ -1,0 +1,109 @@
+{
+  "evaluated_at": "2026-11-28T09:08:58.358247+00:00",
+  "paper_ready": true,
+  "live_capital_ready": false,
+  "live_trading_enabled": false,
+  "blocking_reasons": [
+    "live_broker_sdk_installed",
+    "analytics_token_valid",
+    "trading_access_token_valid",
+    "daily_model_qualified",
+    "wf_oos_positive_net_profit",
+    "wf_oos_profit_factor_ge_1_15",
+    "wf_oos_95pct_ci_excludes_zero"
+  ],
+  "checks": {
+    "intraday_ml_loaded": true,
+    "intraday_single_thread_inference": true,
+    "emergency_kill_switch_clear": true,
+    "live_broker_sdk_installed": false,
+    "analytics_token_valid": false,
+    "trading_access_token_valid": false,
+    "daily_model_qualified": false,
+    "wf_oos_positive_net_profit": false,
+    "wf_oos_profit_factor_ge_1_15": false,
+    "wf_oos_95pct_ci_excludes_zero": false,
+    "wf_oos_drawdown_within_5pct": true
+  },
+  "tokens": {
+    "upstox_analytics": {
+      "present": false,
+      "expired": true,
+      "expires_at": null
+    },
+    "upstox_access": {
+      "present": true,
+      "expired": true,
+      "expires_at": "2026-09-30T22:00:00+00:00"
+    }
+  },
+  "intraday_model": {
+    "approval_threshold": 0.58,
+    "feature_count": 18
+  },
+  "daily_model": {
+    "state": "withheld",
+    "model": "ridge_regression",
+    "data_source": "Upstox Official API v3",
+    "trained_through": "2026-11-27T00:00:00+05:30",
+    "target": "next-session open-to-close return after configured commission and slippage; trade only when predicted net return is positive",
+    "requires_market_context": true,
+    "test_mae_pct": 1.0302,
+    "baseline_mae_pct": 1.0487,
+    "mae_improvement_95pct_ci": [
+      0.0005,
+      0.0363
+    ],
+    "paper_net_profit": 0.0
+  },
+  "walk_forward_oos": {
+    "folds": [
+      {
+        "fold": "fold_1_40_to_60",
+        "calibrated_threshold": 0.58,
+        "phase1_trades": 204,
+        "phase1_net_profit": -1957.71,
+        "phase2a_trades": 91,
+        "phase2a_win_rate_pct": 32.97,
+        "phase2a_net_profit": -531.17,
+        "phase2a_max_drawdown": 597.43,
+        "phase2a_profit_factor": 0.52
+      },
+      {
+        "fold": "fold_2_60_to_80",
+        "calibrated_threshold": 0.58,
+        "phase1_trades": 199,
+        "phase1_net_profit": -916.7,
+        "phase2a_trades": 23,
+        "phase2a_win_rate_pct": 65.22,
+        "phase2a_net_profit": 131.3,
+        "phase2a_max_drawdown": 39.9,
+        "phase2a_profit_factor": 2.14
+      },
+      {
+        "fold": "fold_3_80_to_100",
+        "calibrated_threshold": 0.58,
+        "phase1_trades": 185,
+        "phase1_net_profit": -1584.79,
+        "phase2a_trades": 39,
+        "phase2a_win_rate_pct": 38.46,
+        "phase2a_net_profit": -78.11,
+        "phase2a_max_drawdown": 152.78,
+        "phase2a_profit_factor": 0.84
+      }
+    ],
+    "folds_evaluated": 3,
+    "folds_profitable": 1,
+    "combined_trades": 153,
+    "combined_win_rate_pct": 39.22,
+    "combined_net_profit": -477.98,
+    "combined_profit_factor": 0.72,
+    "worst_fold_max_drawdown": 597.43,
+    "mean_trade_pnl_95pct_ci": [
+      -6.7,
+      0.56
+    ],
+    "phase1_combined_net_profit": -4459.2,
+    "capital_preserved_vs_phase1": 3981.22
+  }
+}

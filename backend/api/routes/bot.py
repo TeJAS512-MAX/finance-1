@@ -40,3 +40,10 @@ async def get_journal():
     return {
         "journal": engine.trade_journal
     }
+
+
+@router.get("/readiness")
+async def get_readiness():
+    from intelligence.readiness import get_readiness_snapshot
+
+    return get_readiness_snapshot()

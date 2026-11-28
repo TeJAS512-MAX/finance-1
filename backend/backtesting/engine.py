@@ -322,17 +322,25 @@ def run_backtest(
                 hit_sl = False
                 hit_tp = False
                 if direction == "LONG":
-                    if row_dict['low'] <= sl: hit_sl = True
-                    elif row_dict['high'] >= tp: hit_tp = True
+                    if row_dict['low'] <= sl:
+                        hit_sl = True
+                        sl_fill = min(float(row_dict['open']), float(sl))
+                    elif row_dict['high'] >= tp:
+                        hit_tp = True
+                        tp_fill = max(float(row_dict['open']), float(tp))
                 else:
-                    if row_dict['high'] >= sl: hit_sl = True
-                    elif row_dict['low'] <= tp: hit_tp = True
+                    if row_dict['high'] >= sl:
+                        hit_sl = True
+                        sl_fill = max(float(row_dict['open']), float(sl))
+                    elif row_dict['low'] <= tp:
+                        hit_tp = True
+                        tp_fill = min(float(row_dict['open']), float(tp))
                     
                 if hit_sl:
-                    broker.sell(sym, sl, t, "ATR_STOP (intra-candle)")
+                    broker.sell(sym, sl_fill, t, "ATR_STOP (intra-candle)")
                     continue
                 elif hit_tp:
-                    broker.sell(sym, tp, t, "ATR_TP (intra-candle)")
+                    broker.sell(sym, tp_fill, t, "ATR_TP (intra-candle)")
                     continue
                     
                 # 2. Check other conditions at Close
@@ -466,6 +474,14 @@ def run_backtest(
     
     win_rate = len(win_trades) / len(trades) * 100 if trades else 0
     total_pnl = sum(t["net_pnl"] for t in trades)
+    gross_wins = sum(t["net_pnl"] for t in win_trades)
+    gross_losses = abs(sum(t["net_pnl"] for t in loss_trades))
+    profit_factor = round(gross_wins / gross_losses, 2) if gross_losses > 0 else (round(gross_wins, 2) if gross_wins > 0 else 0.0)
+    peak_eq = broker.initial_capital
+    max_drawdown = 0.0
+    for eq in broker.equity_curve:
+        peak_eq = max(peak_eq, eq)
+        max_drawdown = max(max_drawdown, peak_eq - eq)
     # Generate ML Dataset
     ml_dataset = []
     if use_phase1:
@@ -502,7 +518,10 @@ def run_backtest(
         "win_rate_pct": round(win_rate, 2),
         "net_profit": round(total_pnl, 2),
         "final_capital": round(broker.cash, 2),
+        "max_drawdown": round(max_drawdown, 2),
+        "profit_factor": profit_factor,
         "avg_win": round(np.mean([t["net_pnl"] for t in win_trades]), 2) if win_trades else 0,
         "avg_loss": round(np.mean([t["net_pnl"] for t in loss_trades]), 2) if loss_trades else 0,
+        "trade_pnls": [t["net_pnl"] for t in trades],
         "ml_dataset": pd.DataFrame(ml_dataset) if ml_dataset else None
     }

@@ -34,5 +34,7 @@ async def list_orders():
             })
         return {"orders": orders}
 
-    # LiveBroker: return empty for now (would need Upstox order history API)
-    return {"orders": [], "note": "Live broker order history not yet wired."}
+    # LiveBroker exposes get_orders() when real trading is active
+    if hasattr(broker, "get_orders"):
+        return {"orders": await broker.get_orders(), "mode": "Live"}
+    return {"orders": [], "note": "Live broker order history not available."}

@@ -183,3 +183,35 @@ def test_paper_broker_provider_name() -> None:
     from trading.paper_broker import PaperBroker
     broker = PaperBroker()
     assert "paper" in broker.provider_name.lower()
+
+
+@pytest.mark.asyncio
+async def test_live_broker_refuses_orders_and_cancels_when_live_disabled(monkeypatch) -> None:
+    """Defense-in-depth: LiveBroker itself refuses order placement/cancellation if live_trading_enabled is False."""
+    from types import SimpleNamespace
+    from trading import live_broker as lb_mod
+
+    monkeypatch.setenv("UPSTOX_ACCESS_TOKEN", "dummy-token")
+    monkeypatch.setattr(
+        lb_mod,
+        "get_settings",
+        lambda: SimpleNamespace(live_trading_enabled=False, emergency_kill_switch_active=False),
+    )
+    broker = lb_mod.LiveBroker(api_key="k", api_secret="s", redirect_uri="https://127.0.0.1")
+    res = await broker.place_order(ticker="NSE_EQ|INE002A01018", direction="BUY", quantity=1, order_type="MARKET", price=100.0)
+    assert res["status"] == "REJECTED"
+    assert res["reason"] == "LIVE_TRADING_DISABLED"
+    assert await broker.cancel_order("ORD123") is False
+
+
+@pytest.mark.asyncio
+async def test_readiness_endpoint_reports_honest_trust_gates(client) -> None:
+    """GET /api/v1/bot/readiness exposes structured paper and live-capital checks."""
+    resp = await client.get("/api/v1/bot/readiness")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "paper_ready" in body
+    assert "live_capital_ready" in body
+    assert body["live_trading_enabled"] is False
+    assert isinstance(body["blocking_reasons"], list)
+    assert "checks" in body

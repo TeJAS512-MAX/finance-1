@@ -213,14 +213,14 @@ class MLQualityFilter:
         validation_target = validation_df["target"].to_numpy()
 
         # Calibrate approval threshold strictly on chronological validation set.
-        # Restrict standard balanced mode to >= 0.56 so round-trip slippage + brokerage
-        # (~0.20%) does not erode marginal high-frequency signals.
+        # Restrict standard balanced mode to high-conviction >= 0.58 so round-trip
+        # slippage, brokerage (~0.20%), and overnight gap slippage do not erode signals.
         candidate_thresholds = (
-            (0.56, 0.58, 0.60)
+            (0.58, 0.59, 0.60)
             if mode == "standard"
-            else (0.35, 0.37, 0.39, 0.41, 0.45)
+            else (0.37, 0.39, 0.41, 0.45)
         )
-        min_signals = max(10, int(len(validation_df) * 0.002))
+        min_signals = 5
         best_threshold = candidate_thresholds[0]
         best_score = float("-inf")
         for th in candidate_thresholds:
@@ -230,8 +230,8 @@ class MLQualityFilter:
                 continue
             win_rate_sel = float(validation_target[selected].mean())
             expected_r = win_rate_sel * 2.5 - (1.0 - win_rate_sel) * 1.5 - 0.25
-            total_utility = expected_r * np.sqrt(min(count, 200))
-            if total_utility > best_score:
+            total_utility = expected_r * np.log1p(count)
+            if expected_r > 0 and total_utility > best_score:
                 best_score = total_utility
                 best_threshold = float(th)
 

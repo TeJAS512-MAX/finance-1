@@ -7,6 +7,23 @@ from risk.risk_manager import RiskManager
 from services.providers.upstox_market_data import get_live_quote
 
 
+SYMBOL_SECTORS: Dict[str, str] = {
+    "TCS": "IT", "INFY": "IT", "WIPRO": "IT", "HCLTECH": "IT", "TECHM": "IT",
+    "SBIN": "BANKING_FINANCE", "ICICIBANK": "BANKING_FINANCE", "HDFCBANK": "BANKING_FINANCE",
+    "BAJFINANCE": "BANKING_FINANCE", "AXISBANK": "BANKING_FINANCE", "KOTAKBANK": "BANKING_FINANCE",
+    "BAJAJFINSV": "BANKING_FINANCE",
+    "RELIANCE": "ENERGY_POWER", "NTPC": "ENERGY_POWER", "POWERGRID": "ENERGY_POWER",
+    "COALINDIA": "ENERGY_POWER", "ONGC": "ENERGY_POWER",
+    "MARUTI": "AUTO", "M&M": "AUTO",
+    "ITC": "CONSUMER", "TITAN": "CONSUMER", "ASIANPAINT": "CONSUMER",
+    "HINDUNILVR": "CONSUMER", "NESTLEIND": "CONSUMER", "ZOMATO": "CONSUMER", "TRENT": "CONSUMER",
+    "SUNPHARMA": "PHARMA", "DRREDDY": "PHARMA", "CIPLA": "PHARMA",
+    "LT": "METALS_IND", "ULTRACEMCO": "METALS_IND", "TATASTEEL": "METALS_IND",
+    "JSWSTEEL": "METALS_IND", "ADANIPORTS": "METALS_IND", "GRASIM": "METALS_IND", "BEL": "METALS_IND",
+    "BHARTIARTL": "TELECOM",
+}
+
+
 class AITradingEngine:
     def __init__(self):
         self.is_running = False
@@ -158,17 +175,19 @@ class AITradingEngine:
                 except Exception as e:
                     self.add_log("WARN", f"  ⚠ RSS Ingestion failed: {e}")
 
-                # ── STEP 1: Fetch features for ALL symbols in parallel ─────────
+                # ── STEP 1: Fetch features for ALL symbols with concurrency bound ─────────
                 processing_start_time = datetime.now(timezone.utc)
+                sem = asyncio.Semaphore(6)
                 async def fetch(sym):
-                    try:
-                        return await compute_features(sym, interval="30m")
-                    except Exception as e:
-                        message = str(e)
-                        if "No candle data returned" in message:
+                    async with sem:
+                        try:
+                            return await compute_features(sym, interval="30m")
+                        except Exception as e:
+                            message = str(e)
+                            if "No candle data returned" in message:
+                                return None
+                            self.add_log("WARN", f"  ⚠ {sym}: data fetch failed — {e}")
                             return None
-                        self.add_log("WARN", f"  ⚠ {sym}: data fetch failed — {e}")
-                        return None
 
                 raw_results = await asyncio.gather(*[fetch(s) for s in INSTRUMENTS])
                 all_features = [r for r in raw_results if r is not None]
@@ -180,22 +199,26 @@ class AITradingEngine:
 
                 self.add_log("INFO", f"📊 Got data for {len(all_features)}/{len(INSTRUMENTS)} symbols")
 
-                # Mark paper positions to the newest observed price before
-                # evaluating exits.  Without this, PaperBroker keeps the entry
-                # fill as ``last_price`` forever and stops/targets cannot fire.
+                # Mark open paper positions to the newest observed price before
+                # evaluating exits. Only query live quotes for held tickers to stay
+                # within Upstox rate limits, falling back to candle close on error/0.
                 if getattr(broker, "is_paper", False):
+                    held_positions = await broker.get_positions()
+                    held_tickers = {p.get("ticker", p.get("symbol", "")) for p in held_positions}
                     for feat in all_features:
-                        try:
-                            # Use REAL-TIME quotes for execution engine
-                            live_q = await get_live_quote(feat["symbol"])
-                            live_ltp = live_q.get("ltp", feat.get("ltp"))
-                            if live_ltp and live_ltp > 0:
-                                broker.update_price(INSTRUMENTS.get(feat["symbol"], feat["symbol"]), live_ltp)
-                        except Exception:
-                            # fallback to candle close
-                            quote = feat.get("ltp")
-                            if quote and quote > 0:
-                                broker.update_price(INSTRUMENTS.get(feat["symbol"], feat["symbol"]), quote)
+                        token_key = INSTRUMENTS.get(feat["symbol"], feat["symbol"])
+                        fallback_ltp = feat.get("ltp")
+                        if token_key in held_tickers or feat["symbol"] in held_tickers:
+                            try:
+                                live_q = await get_live_quote(feat["symbol"])
+                                live_ltp = live_q.get("ltp")
+                                px = live_ltp if (live_ltp and live_ltp > 0) else fallback_ltp
+                            except Exception:
+                                px = fallback_ltp
+                        else:
+                            px = fallback_ltp
+                        if px and px > 0:
+                            broker.update_price(token_key, px)
 
                 # ── STEP 2: Run strategy_v1 (SHADOW — no execution) ───────────
                 self.add_log("INFO", "🔶 [BASELINE v1] Running shadow RSI/SMA evaluation...")
@@ -231,8 +254,10 @@ class AITradingEngine:
                             
                     valid_features.append(f)
 
+                # Evaluate Phase-2A ML scores across non-held watchlist setups
                 scored = [opportunity_ranker.score(f) for f in valid_features]
                 ranked = opportunity_ranker.rank(scored)
+                max_positions = min(5, max(1, int(self.manifest.get("strategy_parameters", {}).get("max_positions", 3))))
 
                 for r in ranked[:5]:   # Log top 5 only
                     self.add_log(
@@ -243,21 +268,39 @@ class AITradingEngine:
                     )
 
                 best = opportunity_ranker.best_candidate(ranked, min_score=40.0)
+                if best is None and getattr(ml_filter, "is_loaded", False):
+                    # Also screen trend-active setups directly via ML Tribunal when rule threshold didn't match
+                    ml_screened = []
+                    for f in valid_features:
+                        if f["close"] == f["open"] and f.get("vol_ratio", 1.0) <= 1.0:
+                            continue
+                        for cdir in ("LONG", "SHORT"):
+                            cand = {**f, "candidate_direction": cdir, "direction": cdir}
+                            p = ml_filter.predict(cand)
+                            if p >= float(getattr(ml_filter, "approval_threshold", 0.58)):
+                                ml_screened.append({**cand, "opportunity_score": round(p * 100, 1), "_ml_prob": p})
+                    if ml_screened:
+                        ml_screened.sort(key=lambda x: x["_ml_prob"], reverse=True)
+                        best = ml_screened[0]
 
                 # ── STEP 4: Log strategy comparison ───────────────────────────
                 if best:
                     v1_on_best  = v1_decisions.get(best["symbol"], {})
                     self.add_log("INFO", f"  ┌── STRATEGY COMPARISON for {best['symbol']} ──")
                     self.add_log("INFO", f"  │ v1 decision:     {v1_on_best.get('direction','?')} | conf={v1_on_best.get('confidence', 0):.1f}% | would_execute={v1_on_best.get('would_execute', False)}")
-                    self.add_log("INFO", f"  │ Phase-1 decision: {best['candidate_direction']} | score={best['opportunity_score']:.1f}/100")
+                    self.add_log("INFO", f"  │ Phase-2A setup:  {best['candidate_direction']} | score={best['opportunity_score']:.1f}/100")
                     self.add_log("INFO", f"  └────────────────────────────────────────────")
                 else:
-                    self.add_log("INFO", "  [p1] No symbol cleared the 40-point opportunity threshold. Sitting out.")
+                    self.add_log("INFO", "  [p2a] No symbol cleared opportunity or ML threshold. Sitting out.")
                     self.add_log("INFO", f"  [v1] Would have traded: {v1_would_buys or 'NONE'}")
 
-                # ── STEP 5: Execute Phase-1 trade (if candidate found) ─────────
-                if best and best["candidate_direction"] in ("LONG", "SHORT") and self._exit_plans:
-                    self.add_log("INFO", f"⏳ Holding {len(self._exit_plans)} position(s). Skipping new entry until exits are evaluated.")
+                # ── STEP 5: Execute trade up to max_positions concurrent slots ──
+                open_tokens = set(self._exit_plans.keys())
+                if best and INSTRUMENTS.get(best["symbol"], best["symbol"]) in open_tokens:
+                    best = None
+                if best and len(open_tokens) >= max_positions:
+                    self.add_log("INFO", f"⏳ Holding {len(open_tokens)}/{max_positions} max positions. Waiting for exit slot.")
+                    best = None
 
                 # Evaluate Circuit Breaker
                 if self.consecutive_losses >= 3:
@@ -268,7 +311,7 @@ class AITradingEngine:
                     self.add_log("INFO", "Skipping SHORT candidate: Cash equity paper trading is long-only.")
                     best = None
 
-                if best and best["candidate_direction"] in ("LONG", "SHORT") and not self._exit_plans:
+                if best and best["candidate_direction"] in ("LONG", "SHORT") and len(open_tokens) < max_positions:
                     
                     # --- Phase 2A: ML Quality Filter ---
                     prob = ml_filter.predict(best)
@@ -375,7 +418,7 @@ class AITradingEngine:
                                 "thesis": analysis
                             }
 
-                if best and best["candidate_direction"] in ("LONG", "SHORT") and not self._exit_plans:
+                if best and best["candidate_direction"] in ("LONG", "SHORT") and len(self._exit_plans) < max_positions:
                     sym      = best["symbol"]
                     
                     # Fetch real-time quote for execution sizing and limits
@@ -462,7 +505,16 @@ class AITradingEngine:
                                 except Exception:
                                     price_age = 0.0
                                 
-                                # 3. Wire RiskManager
+                                # 3. Wire RiskManager with real sector exposure calculation
+                                trade_sector = SYMBOL_SECTORS.get(sym, "OTHER")
+                                sector_notional = 0.0
+                                for p in current_positions:
+                                    p_tk = p.get("ticker", p.get("symbol", ""))
+                                    p_sym = next((k for k, v in INSTRUMENTS.items() if v == p_tk or k == p_tk), p.get("symbol", ""))
+                                    if SYMBOL_SECTORS.get(p_sym, "OTHER") == trade_sector:
+                                        sector_notional += abs(float(p.get("quantity", 0)) * float(p.get("current_price", p.get("avg_price", 0))))
+                                sector_current_pct = (sector_notional / total_equity * 100.0) if total_equity > 0 else 0.0
+
                                 risk_decision = self.risk_manager.evaluate_trade(
                                     ticker=token,
                                     direction="BUY" if direction == "LONG" else "SELL",
@@ -472,8 +524,8 @@ class AITradingEngine:
                                     portfolio_positions=portfolio_positions_map,
                                     portfolio_cash=buying_power,
                                     portfolio_drawdown=account.get("drawdown_pct", 0.0),
-                                    sector="NIFTY", # To be mapped properly per instrument
-                                    sector_current_pct=0.0,
+                                    sector=trade_sector,
+                                    sector_current_pct=sector_current_pct,
                                     daily_realised_loss_pct=abs(self.daily_realised_loss) / total_equity * 100 if total_equity > 0 else 0,
                                     price_age_seconds=max(0, price_age),
                                     is_live=not getattr(broker, "is_paper", False),
@@ -528,14 +580,18 @@ class AITradingEngine:
                     if plan:
                         if plan.get("pending"):
                             continue
-                            
-                        decision = exit_engine.should_exit(
-                            position=pos,
-                            current_price=current_price,
-                            exits=plan,
-                            current_features=feats,
-                            entry_time=etime,
-                        )
+
+                        now_ist_clock = datetime.now(zoneinfo.ZoneInfo("Asia/Kolkata")).time()
+                        if now_ist_clock.hour > 15 or (now_ist_clock.hour == 15 and now_ist_clock.minute >= 15):
+                            decision = {"exit": True, "reason": "NSE_EOD_SQUAREOFF (15:15 IST)", "urgency": "SOFT"}
+                        else:
+                            decision = exit_engine.should_exit(
+                                position=pos,
+                                current_price=current_price,
+                                exits=plan,
+                                current_features=feats,
+                                entry_time=etime,
+                            )
                         if decision["exit"]:
                             urgency_emoji = "🛑" if decision["urgency"] == "HARD" else "🎯"
                             self.add_log(
