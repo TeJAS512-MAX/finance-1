@@ -90,13 +90,19 @@ app.add_exception_handler(Exception, generic_exception_handler)
 
 from api.routes import health, signals, portfolio, bot, orders, news, finance
 from api.routes.token import router as token_router
+from api.routes.auth import router as auth_router
 
 app.include_router(health.router, tags=["Health"])
+app.include_router(auth_router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(signals.router, prefix="/api/v1/signals", tags=["Signals"])
 app.include_router(portfolio.router, prefix="/api/v1/portfolio", tags=["Portfolio"])
 app.include_router(bot.router, prefix="/api/v1/bot", tags=["Bot"])
 app.include_router(orders.router, prefix="/api/v1/orders", tags=["Orders"])
 app.include_router(news.router, prefix="/api/v1/news", tags=["News"])
 app.include_router(token_router, prefix="/api/v1/token", tags=["Token"])
-app.include_router(finance.router, prefix="/api/v1/finance", tags=["SME Finance"])
+
+# SME Finance module — conditionally included based on feature flag
+from core.config import get_settings as _get_settings
+if _get_settings().feature_sme_finance:
+    app.include_router(finance.router, prefix="/api/v1/finance", tags=["SME Finance"])
 # trigger reload

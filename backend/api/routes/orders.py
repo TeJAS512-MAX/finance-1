@@ -32,7 +32,7 @@ async def list_orders():
                 "notional": f.get("notional", 0),
                 "commission": f.get("commission", 0),
             })
-        return {"orders": orders}
+        return {"orders": orders, "mode": "Paper"}
 
     # LiveBroker exposes get_orders() when real trading is active
     if hasattr(broker, "get_orders"):

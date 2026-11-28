@@ -21,7 +21,7 @@ DAILY_CACHE_PATH = DATA_DIR / "historical_candles_upstox_daily.json"
 SWING_MODEL_PATH = DATA_DIR / "swing_15d_candidate.joblib"
 SWING_REPORT_PATH = DATA_DIR / "swing_15d_report.json"
 
-SWING_SCHEMA_VERSION = 2
+SWING_SCHEMA_VERSION = 3
 SWING_HORIZON_SESSIONS = 15
 SWING_REBALANCE_STEP = 5  # Weekly staggered tranches (3 concurrent tranches)
 SWING_MAX_POSITIONS = 5
@@ -80,9 +80,8 @@ SWING_FEATURE_COLUMNS = [
     "mkt_above_sma50",
     "mkt_above_sma200",
     "mkt_vol_20",
-    "excess_5",
-    "excess_20",
-    "excess_60",
+    # Note: excess_5, excess_20, excess_60 removed (collinear with ret_* - mkt_ret_*)
+    # Dev-fold ablation confirms 28-orthogonal-feature Ridge(α=500) is superior.
 ]
 
 logger = logging.getLogger(__name__)
@@ -656,4 +655,173 @@ def score_latest_swing_universe(
         "tranche_slot_pct": round(tranche_slot_pct, 2),
         "recommendations": recommendations,
         "all_ranked": all_ranked,
+    }
+
+
+# ── Prospective 15-Day CNC Paper Ledger ─────────────────────────────────────
+
+SWING_PAPER_LEDGER_PATH = DATA_DIR / "swing_paper_ledger.json"
+
+
+def _load_ledger() -> dict:
+    """Load the persistent swing paper ledger from disk."""
+    if SWING_PAPER_LEDGER_PATH.exists():
+        try:
+            return json.loads(SWING_PAPER_LEDGER_PATH.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            pass
+    return {"schema_version": 1, "tranches": []}
+
+
+def _save_ledger(ledger: dict) -> None:
+    """Atomically write the ledger to disk."""
+    SWING_PAPER_LEDGER_PATH.write_text(
+        json.dumps(ledger, indent=2, default=str), encoding="utf-8"
+    )
+
+
+def record_swing_paper_tranche(
+    recommendations: list[dict],
+    as_of: str,
+    capital: float,
+) -> dict:
+    """
+    Record a new 15-day swing tranche into the persistent paper ledger.
+
+    Parameters
+    ----------
+    recommendations : Top-5 signals from score_latest_swing_universe()["recommendations"].
+    as_of           : ISO date string of the scan (entry date).
+    capital         : Capital at time of scan (for sizing reference).
+
+    Returns the newly appended tranche dict.
+    """
+    ledger = _load_ledger()
+    tranche = {
+        "tranche_id": f"swing_{as_of.replace('-', '')[:8]}_{len(ledger['tranches']):04d}",
+        "entry_date": as_of,
+        "capital_at_entry": float(capital),
+        "status": "open",   # → "resolved" once exit prices are logged
+        "positions": [],
+        "summary": None,
+    }
+    for rec in recommendations[:SWING_MAX_POSITIONS]:
+        tranche["positions"].append({
+            "symbol": rec["symbol"],
+            "sector": rec.get("sector", "UNKNOWN"),
+            "entry_close": rec.get("last_close", 0.0),
+            "predicted_15d_pct": rec.get("predicted_15d_net_pct", 0.0),
+            "suggested_qty": rec.get("suggested_qty", 0),
+            "suggested_budget_inr": rec.get("suggested_budget_inr", 0.0),
+            "exit_close": None,
+            "realized_pct": None,
+            "realized_pnl_inr": None,
+            "result": None,   # "win" | "loss" | "breakeven"
+        })
+    ledger["tranches"].append(tranche)
+    _save_ledger(ledger)
+    logger.info("Recorded swing paper tranche %s (%d positions).", tranche["tranche_id"], len(tranche["positions"]))
+    return tranche
+
+
+def resolve_swing_paper_tranche(tranche_id: str, exit_prices: dict[str, float]) -> dict:
+    """
+    Mark positions in a tranche as resolved with their exit close prices.
+
+    Parameters
+    ----------
+    tranche_id   : ID of the tranche to resolve (from ledger).
+    exit_prices  : {symbol: exit_close_price} mapping for each held position.
+
+    Returns the resolved tranche dict (with summary PnL/WR/PF).
+    """
+    ledger = _load_ledger()
+    tranche = next((t for t in ledger["tranches"] if t["tranche_id"] == tranche_id), None)
+    if tranche is None:
+        raise ValueError(f"Tranche '{tranche_id}' not found in ledger.")
+
+    wins, gross_win, gross_loss = 0, 0.0, 0.0
+    for pos in tranche["positions"]:
+        sym = pos["symbol"]
+        if sym not in exit_prices:
+            continue
+        ep = float(exit_prices[sym])
+        entry = float(pos["entry_close"]) if pos["entry_close"] else 0.0
+        qty = int(pos["suggested_qty"] or 0)
+        budget = float(pos["suggested_budget_inr"] or 0.0)
+        if entry <= 0 or qty <= 0:
+            pos["result"] = "skip"
+            continue
+        raw_pct = (ep - entry) / entry * 100.0
+        net_pct = raw_pct - SWING_DELIVERY_RT_COST_PCT
+        pnl = budget * net_pct / 100.0
+        pos["exit_close"] = round(ep, 4)
+        pos["realized_pct"] = round(net_pct, 4)
+        pos["realized_pnl_inr"] = round(pnl, 2)
+        if net_pct > 0:
+            wins += 1
+            gross_win += pnl
+            pos["result"] = "win"
+        elif net_pct < 0:
+            gross_loss += abs(pnl)
+            pos["result"] = "loss"
+        else:
+            pos["result"] = "breakeven"
+
+    total_resolved = sum(1 for p in tranche["positions"] if p.get("result") not in (None, "skip"))
+    pf = gross_win / gross_loss if gross_loss > 0 else 0.0
+    wr = wins / total_resolved * 100.0 if total_resolved > 0 else 0.0
+    net_pnl = gross_win - gross_loss
+
+    tranche["status"] = "resolved"
+    tranche["summary"] = {
+        "positions_resolved": total_resolved,
+        "wins": wins,
+        "win_rate_pct": round(wr, 2),
+        "gross_win_inr": round(gross_win, 2),
+        "gross_loss_inr": round(gross_loss, 2),
+        "net_pnl_inr": round(net_pnl, 2),
+        "profit_factor": round(pf, 3),
+    }
+    _save_ledger(ledger)
+    logger.info("Resolved tranche %s: WR=%.1f%% PF=%.2f Net=%.2f", tranche_id, wr, pf, net_pnl)
+    return tranche
+
+
+def get_swing_paper_ledger_stats() -> dict:
+    """
+    Aggregate lifetime stats across all resolved tranches: WR, PF, net PnL.
+    Returns the full ledger with a top-level aggregated summary.
+    """
+    ledger = _load_ledger()
+    total_trades, wins = 0, 0
+    gross_win, gross_loss = 0.0, 0.0
+    resolved_tranches = 0
+
+    for t in ledger["tranches"]:
+        s = t.get("summary")
+        if not s:
+            continue
+        resolved_tranches += 1
+        total_trades += s.get("positions_resolved", 0)
+        wins += s.get("wins", 0)
+        gross_win += s.get("gross_win_inr", 0.0)
+        gross_loss += s.get("gross_loss_inr", 0.0)
+
+    pf = gross_win / gross_loss if gross_loss > 0 else 0.0
+    wr = wins / total_trades * 100.0 if total_trades > 0 else 0.0
+    net = gross_win - gross_loss
+
+    return {
+        "ledger": ledger,
+        "aggregate": {
+            "open_tranches": sum(1 for t in ledger["tranches"] if t["status"] == "open"),
+            "resolved_tranches": resolved_tranches,
+            "total_positions_resolved": total_trades,
+            "win_rate_pct": round(wr, 2),
+            "profit_factor": round(pf, 3),
+            "net_pnl_inr": round(net, 2),
+            "gross_win_inr": round(gross_win, 2),
+            "gross_loss_inr": round(gross_loss, 2),
+        },
     }

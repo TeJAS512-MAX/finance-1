@@ -50,10 +50,11 @@ async def get_readiness():
 
 
 @router.post("/swing/paper-scan")
-async def run_swing_paper_scan(execute: bool = False):
-    """Score top-5 15d CNC delivery picks and optionally place paper orders in PaperBroker."""
+async def run_swing_paper_scan(execute: bool = False, record: bool = False):
+    """Score top-5 15d CNC delivery picks, optionally place paper orders, and optionally
+    record the tranche into the persistent prospective paper ledger."""
     from core.config import get_settings
-    from intelligence.swing_alpha import score_latest_swing_universe
+    from intelligence.swing_alpha import record_swing_paper_tranche, score_latest_swing_universe
     from trading.paper_broker import PaperBroker
 
     settings = get_settings()
@@ -91,8 +92,42 @@ async def run_swing_paper_scan(execute: bool = False):
             if res.get("status") == "FILLED":
                 existing.add(sym)
 
+    # Record prospective tranche into the paper ledger
+    recorded_tranche = None
+    if record and scored.get("status") == "ok" and scored.get("recommendations"):
+        recorded_tranche = record_swing_paper_tranche(
+            recommendations=scored["recommendations"],
+            as_of=scored.get("as_of", ""),
+            capital=equity,
+        )
+
     return {
         **scored,
         "executed": execute,
         "orders": placed,
+        "ledger_tranche": recorded_tranche,
     }
+
+
+@router.get("/swing/ledger")
+async def get_swing_ledger():
+    """Return the full prospective 15-day CNC paper ledger with aggregate stats."""
+    from intelligence.swing_alpha import get_swing_paper_ledger_stats
+
+    return get_swing_paper_ledger_stats()
+
+
+@router.post("/swing/ledger/{tranche_id}/resolve")
+async def resolve_swing_ledger_tranche(tranche_id: str, exit_prices: dict):
+    """
+    Resolve a specific open tranche with actual exit prices.
+    Body: {"SYMBOL1": 1234.50, "SYMBOL2": 2345.00, ...}
+    """
+    from intelligence.swing_alpha import resolve_swing_paper_tranche
+
+    try:
+        tranche = resolve_swing_paper_tranche(tranche_id, exit_prices)
+        return {"status": "resolved", "tranche": tranche}
+    except ValueError as exc:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=str(exc))

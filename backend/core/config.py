@@ -137,6 +137,14 @@ class Settings(BaseSettings):
     feature_sentiment_analysis: bool = True
     feature_backtesting: bool = True
     feature_paper_trading: bool = True
+    feature_sme_finance: bool = True  # Set False to hide Tax/Finance in standalone Stock-AI B2B mode
+
+    # ── B2B API Auth ───────────────────────────────────────────
+    # When api_auth_enabled=True (or app_env="production"), all trading/AI
+    # routes require either Authorization: Bearer <JWT> or X-API-Key: <key>.
+    # Format: comma-separated "key:role" pairs, e.g. "abc123:admin,xyz456:viewer"
+    api_auth_enabled: bool = False  # Explicit opt-in; auto-enforced in production
+    b2b_api_keys: str = ""          # Comma-separated "key:role" B2B client credentials
 
     # ── Notification ──────────────────────────────────────────
     notification_email_enabled: bool = False
