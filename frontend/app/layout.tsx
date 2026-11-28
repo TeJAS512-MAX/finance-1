@@ -2,11 +2,10 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Market Intelligence AI — Research Terminal',
+  title: 'AECE Desk — NSE Quantitative Trading & Portfolio Terminal',
   description:
-    'AI-powered market intelligence and algorithmic trading research platform. ' +
-    'Paper trading only. Not financial advice.',
-  robots: 'noindex, nofollow',   // Private research tool — not for public indexing
+    'Institutional NSE equity research, staggered swing execution, and real-time portfolio risk terminal.',
+  robots: 'noindex, nofollow',
 }
 
 export default function RootLayout({

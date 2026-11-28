@@ -108,10 +108,19 @@ export function KillSwitchBanner({ active }: { active: boolean }) {
 }
 
 export function StatCard({ label, value, sub, trend }: { label: string; value: string; sub?: string; trend?: number }) {
+  const glowClass =
+    trend !== undefined
+      ? trend > 0
+        ? 'glow-card-emerald'
+        : trend < 0
+          ? 'glow-card-rose'
+          : 'glow-card-blue'
+      : 'glow-card-blue'
+
   return (
-    <div className="card flex flex-col gap-1.5 animate-slide-up">
-      <div className="text-[11px] text-text-secondary uppercase tracking-wider font-semibold">{label}</div>
-      <div className="text-xl font-mono text-text-primary tracking-tight">{value}</div>
+    <div className={clsx('glow-card rounded-xl p-4 flex flex-col gap-1.5 animate-slide-up', glowClass)}>
+      <div className="text-[10px] text-text-secondary uppercase tracking-widest font-semibold">{label}</div>
+      <div className="text-xl font-mono font-bold text-text-primary tracking-tight tabular-nums">{value}</div>
       {sub && (
         <div className={clsx('text-[11px] font-medium font-mono', trend !== undefined ? pnlColor(trend) : 'text-text-muted')}>
           {sub}
@@ -195,15 +204,15 @@ export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (i
   ]
 
   return (
-    <aside className="w-56 shrink-0 bg-[#0B0F14] border-r border-[#151B23] flex flex-col h-full z-10">
-      <div className="px-5 py-4 border-b border-[#151B23]">
-        <div className="flex items-center gap-2.5">
-          <div className="w-6 h-6 flex items-center justify-center border border-[#151B23] bg-[#0B0F14] rounded">
-            <BrainCircuit size={14} className="text-[#4F8CFF]" />
+    <aside className="w-60 shrink-0 bg-[#080C14]/90 backdrop-blur-xl border-r border-white/[0.08] flex flex-col h-full z-10">
+      <div className="px-5 py-4 border-b border-white/[0.08]">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 flex items-center justify-center border border-emerald-400/30 bg-gradient-to-br from-emerald-500/20 via-sky-500/15 to-transparent rounded-xl shadow-[0_0_20px_-6px_rgba(16,185,129,0.5)]">
+            <Activity size={16} className="text-emerald-400" />
           </div>
           <div>
-            <div className="text-text-primary font-semibold text-xs tracking-wide">MARKET INTEL</div>
-            <div className="text-[#4F8CFF] text-[10px] tracking-widest mt-0.5">AECE ENGINE</div>
+            <div className="text-text-primary font-bold text-xs tracking-wider">AECE DESK</div>
+            <div className="text-emerald-400/90 font-mono text-[10px] tracking-widest mt-0.5">DIRECT NSE</div>
           </div>
         </div>
       </div>
@@ -217,20 +226,20 @@ export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (i
             <div className="space-y-0.5">
               {group.items.map(({ id, label, icon: Icon }) => (
                 <button
-                  key={id} 
+                  key={id}
                   type="button"
                   onClick={() => onNavigate(id)}
                   className={clsx(
-                    'w-full text-left flex items-center gap-2.5 px-2 py-1.5 rounded cursor-pointer text-xs transition-colors',
-                    active === id 
-                      ? 'bg-[#4F8CFF]/10 text-[#4F8CFF] font-medium' 
-                      : 'text-text-secondary hover:text-text-primary hover:bg-[#151B23]'
+                    'w-full text-left flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer text-xs transition-all duration-200',
+                    active === id
+                      ? 'bg-gradient-to-r from-sky-500/20 via-sky-500/10 to-transparent text-white font-semibold border border-sky-400/30 shadow-[0_0_20px_-6px_rgba(59,130,246,0.5)]'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04] border border-transparent'
                   )}
                 >
-                  <Icon size={13} className={active === id ? 'text-[#4F8CFF]' : 'text-text-muted'} />
+                  <Icon size={13} className={active === id ? 'text-sky-400' : 'text-text-muted'} />
                   <span className="tracking-wide flex-1">{label}</span>
                   {id === 'settings' && (
-                    tokenOk 
+                    tokenOk
                       ? <span title="Token active"><CheckCircle size={10} className="text-fin-pos" /></span>
                       : <span title="No token set"><XCircle size={10} className="text-fin-neg animate-pulse" /></span>
                   )}
@@ -241,7 +250,7 @@ export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (i
         ))}
       </nav>
 
-      <div className="p-4 border-t border-terminal-border bg-terminal-surface/30">
+      <div className="p-4 border-t border-white/[0.08] bg-white/[0.02]">
         <div className="text-[10px] font-mono space-y-2">
           <div className="flex justify-between text-text-muted">
             <span>DATA FEED</span>
@@ -1361,8 +1370,8 @@ export function PaperValidationView() {
   }
 
   return (
-    <div className="card p-0 overflow-y-auto animate-fade-in flex flex-col h-full shadow-card border-[#151B23] bg-[#0B0F14]">
-      <div className="px-5 py-4 border-b border-[#151B23] flex justify-between items-center sticky top-0 bg-[#0B0F14]/90 backdrop-blur z-10">
+    <div className="card p-0 overflow-y-auto animate-fade-in flex flex-col h-full">
+      <div className="px-5 py-4 border-b border-terminal-border flex justify-between items-center sticky top-0 bg-terminal-surface/90 backdrop-blur z-10">
         <div>
           <h3 className="text-sm font-semibold tracking-wide text-text-primary flex items-center gap-2">
             <ShieldAlert size={16} className="text-fin-warn" />
@@ -1395,23 +1404,23 @@ export function PaperValidationView() {
         )}
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-4 border border-[#151B23] bg-[#0B0F14]/50 rounded">
+          <div className="glow-card glow-card-blue rounded-xl p-4">
             <p className="text-[10px] text-text-secondary uppercase tracking-widest">Paper Equity</p>
-            <p className="text-xl font-mono mt-1 text-text-primary">₹{paperEq.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+            <p className="text-xl font-mono font-bold mt-1 text-text-primary">₹{paperEq.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
           </div>
-          <div className="p-4 border border-[#151B23] bg-[#0B0F14]/50 rounded">
+          <div className={clsx('glow-card rounded-xl p-4', paperPnl >= 0 ? 'glow-card-emerald' : 'glow-card-rose')}>
             <p className="text-[10px] text-text-secondary uppercase tracking-widest">Paper P&amp;L</p>
-            <p className={clsx("text-xl font-mono mt-1", pnlColor(paperPnl))}>
-              {paperPnl >= 0 ? '+' : ''}₹{paperPnl.toFixed(2)}
+            <p className={clsx("text-xl font-mono font-bold mt-1", pnlColor(paperPnl))}>
+              {paperPnl >= 0 ? '+' : '-'}₹{Math.abs(paperPnl).toFixed(2)}
             </p>
           </div>
-          <div className="p-4 border border-[#151B23] bg-[#0B0F14]/50 rounded">
+          <div className="glow-card glow-card-emerald rounded-xl p-4">
             <p className="text-[10px] text-text-secondary uppercase tracking-widest">Swing 15d OOS PF</p>
-            <p className="text-xl font-mono mt-1 text-fin-pos">{swingSummary?.combined_profit_factor ?? '—'}</p>
+            <p className="text-xl font-mono font-bold mt-1 text-fin-pos">{swingSummary?.combined_profit_factor ?? '—'}</p>
           </div>
-          <div className="p-4 border border-[#151B23] bg-[#0B0F14]/50 rounded">
+          <div className="glow-card glow-card-amber rounded-xl p-4">
             <p className="text-[10px] text-text-secondary uppercase tracking-widest">Blind Holdout (250d)</p>
-            <p className={clsx("text-xl font-mono mt-1", (holdout?.mean_net_profit ?? 0) > 0 ? 'text-fin-pos' : 'text-fin-neg')}>
+            <p className={clsx("text-xl font-mono font-bold mt-1", (holdout?.mean_net_profit ?? 0) > 0 ? 'text-fin-pos' : 'text-fin-neg')}>
               {holdout ? `+₹${holdout.mean_net_profit.toFixed(2)}` : '—'}
             </p>
           </div>
@@ -1478,8 +1487,8 @@ export function RobustnessView() {
   const checks: Record<string, boolean> = readiness?.checks || {}
 
   return (
-    <div className="card p-0 overflow-y-auto animate-fade-in flex flex-col h-full shadow-card border-[#151B23] bg-[#0B0F14]">
-      <div className="px-5 py-4 border-b border-[#151B23] flex justify-between items-center sticky top-0 bg-[#0B0F14]/90 backdrop-blur z-10">
+    <div className="card p-0 overflow-y-auto animate-fade-in flex flex-col h-full">
+      <div className="px-5 py-4 border-b border-terminal-border flex justify-between items-center sticky top-0 bg-terminal-surface/90 backdrop-blur z-10">
         <div>
           <h3 className="text-sm font-semibold tracking-wide text-text-primary flex items-center gap-2">
             <Activity size={16} className="text-accent-primary" />
@@ -1502,21 +1511,21 @@ export function RobustnessView() {
           </h4>
           {swingSummary ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
-              <div className="border border-[#151B23] rounded p-3 bg-[#0B0F14]/50">
+              <div className="glow-card glow-card-emerald rounded-xl p-3.5">
                 <p className="text-[10px] text-text-muted uppercase">Combined OOS PnL</p>
                 <p className="text-sm font-bold text-fin-pos mt-1">+₹{swingSummary.combined_net_profit?.toLocaleString('en-IN')}</p>
               </div>
-              <div className="border border-[#151B23] rounded p-3 bg-[#0B0F14]/50">
+              <div className="glow-card glow-card-blue rounded-xl p-3.5">
                 <p className="text-[10px] text-text-muted uppercase">vs Equal-Wt NIFTY50</p>
                 <p className="text-sm font-bold text-fin-pos mt-1">+₹{swingSummary.combined_outperformance_vs_benchmark?.toLocaleString('en-IN')}</p>
               </div>
-              <div className="border border-[#151B23] rounded p-3 bg-[#0B0F14]/50">
+              <div className="glow-card glow-card-amber rounded-xl p-3.5">
                 <p className="text-[10px] text-text-muted uppercase">Holdout Excess Alpha CI</p>
                 <p className="text-sm font-bold text-fin-pos mt-1">
                   {holdout?.excess_alpha_95pct_ci_pct ? `[${holdout.excess_alpha_95pct_ci_pct.join(', ')}]%` : '—'}
                 </p>
               </div>
-              <div className="border border-[#151B23] rounded p-3 bg-[#0B0F14]/50">
+              <div className="glow-card glow-card-emerald rounded-xl p-3.5">
                 <p className="text-[10px] text-text-muted uppercase">Holdout Min Offset PnL</p>
                 <p className="text-sm font-bold text-fin-pos mt-1">
                   {holdout ? `+₹${holdout.min_offset_net_profit?.toFixed(2)}` : '—'}

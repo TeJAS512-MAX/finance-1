@@ -28,6 +28,7 @@ import {
   ModelLabView, TradeJournalView, DataQualityView, SystemHealthView,
   AlertsView,
 } from '@/components/market/ExtendedViews'
+import { HeroSlidesCarousel, MarketTickerTape } from '@/components/market/HeroSlidesCarousel'
 
 export default function DashboardPage() {
   const [activePage, setActivePage] = useState('dashboard')
@@ -56,14 +57,18 @@ export default function DashboardPage() {
   const equityCurve = historyData?.history || []
   const pnlBars = historyData?.trades || []
   
-  // Fetch Engine Status & Verified Readiness / Swing Top-5
+  // Fetch Engine Status, Positions, Token Status & Verified Readiness / Swing Top-5
   const { data: engineStatus, mutate: mutateEngineStatus } = useSWR(`${API_BASE}/api/v1/bot/status`, fetcher, { refreshInterval: 2000 })
   const { data: readiness } = useSWR(`${API_BASE}/api/v1/bot/readiness`, fetcher, { refreshInterval: 15000 })
   const { data: swingData } = useSWR(`${API_BASE}/api/v1/signals/swing`, fetcher, { refreshInterval: 15000 })
+  const { data: posData } = useSWR(`${API_BASE}/api/v1/portfolio/positions`, fetcher, { refreshInterval: 5000 })
+  const { data: tokenStatus } = useSWR(`${API_BASE}/api/v1/token/status`, fetcher, { refreshInterval: 10000 })
 
   const swingSummary = readiness?.swing_15d_model?.summary
   const holdout = readiness?.swing_15d_model?.blind_holdout
   const swingRecs = swingData?.recommendations || []
+  const swingRanked = swingData?.all_ranked || []
+  const positionsList = posData?.positions || []
   const deployedPct = portfolioData?.total_equity ? ((portfolioData.total_market_value || 0) / portfolioData.total_equity) * 100 : 0
 
   const portfolio = {
@@ -82,14 +87,20 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col h-screen bg-terminal-bg overflow-hidden text-text-primary">
       <KillSwitchBanner active={systemStatus.emergency_kill_switch_active} />
-      
-      {/* Permanent Paper Trading Banner */}
-      <div className="bg-fin-warn/10 border-b border-fin-warn/30 text-fin-warn px-4 py-2 flex items-center justify-center gap-2 text-xs font-semibold tracking-widest uppercase z-50">
-        <ShieldAlert size={14} />
+
+      {/* Live Execution Mode Banner + Scrolling NSE Ticker */}
+      <div className={clsx(
+        'border-b px-4 py-1.5 flex items-center justify-center gap-2 text-[11px] font-mono font-semibold tracking-widest uppercase z-40',
+        systemStatus.live_trading_enabled
+          ? 'bg-emerald-500/10 border-emerald-400/30 text-emerald-300'
+          : 'bg-amber-500/10 border-amber-400/25 text-amber-300'
+      )}>
+        <ShieldAlert size={13} />
         {systemStatus.live_trading_enabled
-          ? 'LIVE TRADING ENABLED — HARD RISK LIMITS ACTIVE'
-          : 'PAPER TRADING — LIVE EXECUTION DISABLED'}
+          ? 'LIVE EXECUTION ACTIVE — HARD RISK LIMITS ARMED'
+          : 'PAPER TRADING MODE — DIRECT UPSTOX QUOTES · ZERO REAL CAPITAL RISK'}
       </div>
+      <MarketTickerTape items={swingRanked} />
 
       <div className="flex flex-1 overflow-hidden">
         <Sidebar active={activePage} onNavigate={setActivePage} />
@@ -99,12 +110,17 @@ export default function DashboardPage() {
             <ExecutiveDeck onBackToMarket={() => setActivePage('dashboard')} />
           </main>
         ) : (
-        <main className="flex-1 overflow-y-auto px-6 py-5 space-y-6 bg-terminal-bg">
+        <main className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
           {/* ── Header ── */}
-          <header className="flex items-end justify-between border-b border-terminal-border pb-4">
+          <header className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.08] pb-4">
             <div>
-              <h1 className="text-[18px] font-semibold tracking-tight capitalize">{activePage === 'news' ? 'Intelligence' : activePage}</h1>
-              <div className="text-[11px] font-mono text-text-muted mt-1.5 flex items-center gap-1.5">
+              <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-sky-400 mb-1">
+                AECE NSE QUANT DESK
+              </div>
+              <h1 className="text-xl font-bold tracking-tight capitalize text-white">
+                {activePage === 'news' ? 'Intelligence' : activePage.replace(/_/g, ' ')}
+              </h1>
+              <div className="text-[11px] font-mono text-text-muted mt-1 flex items-center gap-1.5">
                 <Clock size={12} />
                 {isMounted ? new Date().toLocaleTimeString('en-IN') : '--:--:--'} IST
               </div>
@@ -169,8 +185,21 @@ export default function DashboardPage() {
             </div>
           </header>
 
+          <div key={activePage} className="animate-page-slide space-y-6">
           {activePage === 'dashboard' && (
             <>
+              <HeroSlidesCarousel
+                equity={portfolio.equity}
+                cash={portfolio.cash}
+                marketValue={portfolio.marketValue}
+                netPnl={portfolio.unrealisedPnl}
+                positionsCount={positionsList.length}
+                swingRecs={swingRecs}
+                readiness={readiness}
+                tokenStatus={tokenStatus}
+                onNavigate={setActivePage}
+              />
+
               {/* ── Portfolio stats ── */}
           <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
@@ -401,6 +430,7 @@ export default function DashboardPage() {
           {activePage === 'bot' && <TradingBotView />}
           {activePage === 'settings' && <TokenSettingsView />}
           {activePage === 'backtest' && <BacktestingView />}
+          </div>
         </main>
         )}
       </div>
