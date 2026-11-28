@@ -389,3 +389,46 @@ async def test_paper_broker_persists_state_when_path_configured(tmp_path):
     assert len(b2.get_fills()) == 1
 
 
+def test_signals_swing_exposes_universe_and_coefs(open_client):
+    resp = open_client.get("/api/v1/signals/swing")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body.get("universe_symbols", [])) >= 67
+    swing_model = body.get("swing_model", {})
+    assert swing_model.get("schema_version") == 3
+    assert len(swing_model.get("dev_folds", [])) == 5
+    assert len(swing_model.get("top_ridge_coefficients", {})) == 28
+
+
+def test_signals_quote_endpoint_unknown_returns_404_and_valid_returns_200(open_client, monkeypatch):
+    bad = open_client.get("/api/v1/signals/quote/NOT_A_REAL_TICKER_XYZ")
+    assert bad.status_code == 404
+
+    async def fake_quote(sym: str):
+        return {
+            "symbol": sym,
+            "instrument_key": "NSE_EQ|INE066F01020",
+            "ltp": 5074.0,
+            "open": 4909.6,
+            "high": 5148.0,
+            "low": 4905.0,
+            "close": 5074.0,
+            "volume": 2412050,
+            "avg_price": 5020.0,
+            "upper_circuit": 5580.0,
+            "lower_circuit": 4560.0,
+            "timestamp": "2026-11-28T13:00:00+00:00",
+            "source": "Upstox Official API (Real-time NSE)",
+        }
+
+    from services.providers import upstox_market_data
+    monkeypatch.setattr(upstox_market_data, "get_live_quote", fake_quote)
+    ok = open_client.get("/api/v1/signals/quote/HAL")
+    assert ok.status_code == 200
+    data = ok.json()
+    assert data["symbol"] == "HAL"
+    assert data["ltp"] == 5074.0
+    assert data["sector"] == "INDUSTRIALS"
+
+
+

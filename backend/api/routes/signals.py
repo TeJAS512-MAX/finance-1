@@ -151,12 +151,36 @@ async def list_swing_signals():
     """Return latest ranked 15-trading-day CNC delivery opportunities and OOS readiness status."""
     from core.config import get_settings
     from intelligence.swing_alpha import get_swing_status, score_latest_swing_universe
+    from services.providers.upstox_market_data import INSTRUMENT_KEYS
 
     capital = get_settings().paper_trading_initial_capital
     scored = score_latest_swing_universe(capital=capital)
     return {
         **scored,
+        "universe_symbols": sorted(INSTRUMENT_KEYS.keys()),
         "swing_model": get_swing_status(),
+    }
+
+
+@router.get("/quote/{symbol}", summary="Fetch live Upstox quote and metadata for any registered NSE symbol", dependencies=[Depends(require_api_access("read:signals"))])
+async def get_symbol_live_quote(symbol: str):
+    """Return live/last-session Upstox market quote, sector, and instrument key for a symbol."""
+    from fastapi import HTTPException
+    from services.providers.upstox_market_data import INSTRUMENT_KEYS, get_live_quote
+    from trading.bot_engine import SYMBOL_SECTORS
+
+    sym = symbol.strip().upper()
+    if sym not in INSTRUMENT_KEYS:
+        raise HTTPException(status_code=404, detail=f"Unknown NSE symbol: {sym}")
+
+    try:
+        quote = await get_live_quote(sym)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Upstox quote unavailable for {sym}: {exc}")
+
+    return {
+        **quote,
+        "sector": SYMBOL_SECTORS.get(sym, "OTHER"),
     }
 
 

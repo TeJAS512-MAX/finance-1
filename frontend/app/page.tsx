@@ -19,9 +19,15 @@ import {
   EquityTooltip, PnlTooltip,
   TradeSignalsView, OrderBookView, PortfolioView, RiskMonitorView,
   TokenSettingsView, NewsSection, TradingBotView, LivePositions,
-  PlaceholderView, AITerminalView, OpportunitiesView,
+  AITerminalView, OpportunitiesView,
   PaperValidationView, RobustnessView,
 } from '@/components/market/MarketViews'
+import {
+  MarketOverviewView, EventRadarView, CompanyIntelView, CausalMapView,
+  ExpectationsView, PricedInView, BacktestingView, StrategyLabView,
+  ModelLabView, TradeJournalView, DataQualityView, SystemHealthView,
+  AlertsView,
+} from '@/components/market/ExtendedViews'
 
 export default function DashboardPage() {
   const [activePage, setActivePage] = useState('dashboard')
@@ -50,19 +56,27 @@ export default function DashboardPage() {
   const equityCurve = historyData?.history || []
   const pnlBars = historyData?.trades || []
   
-  // Fetch Engine Status
+  // Fetch Engine Status & Verified Readiness / Swing Top-5
   const { data: engineStatus, mutate: mutateEngineStatus } = useSWR(`${API_BASE}/api/v1/bot/status`, fetcher, { refreshInterval: 2000 })
-  
+  const { data: readiness } = useSWR(`${API_BASE}/api/v1/bot/readiness`, fetcher, { refreshInterval: 15000 })
+  const { data: swingData } = useSWR(`${API_BASE}/api/v1/signals/swing`, fetcher, { refreshInterval: 15000 })
+
+  const swingSummary = readiness?.swing_15d_model?.summary
+  const holdout = readiness?.swing_15d_model?.blind_holdout
+  const swingRecs = swingData?.recommendations || []
+  const deployedPct = portfolioData?.total_equity ? ((portfolioData.total_market_value || 0) / portfolioData.total_equity) * 100 : 0
+
   const portfolio = {
     mode: portfolioData?.is_paper ? 'paper' : 'live',
     equity: portfolioData?.total_equity || 0,
     cash: portfolioData?.cash || 0,
-    unrealisedPnl: portfolioData?.total_pnl || 0, // In this model, total_pnl is net
+    marketValue: portfolioData?.total_market_value || 0,
+    unrealisedPnl: portfolioData?.total_pnl || 0,
     realisedPnl: 0,
-    dailyReturn: portfolioData?.total_equity ? ((portfolioData.total_equity - portfolioData.initial_capital) / portfolioData.initial_capital) * 100 : 0,
-    drawdown: 0.0,
-    sharpe: 0.0,
-    sortino: 0.0,
+    dailyReturn: portfolioData?.initial_capital ? ((portfolioData.total_equity - portfolioData.initial_capital) / portfolioData.initial_capital) * 100 : 0,
+    drawdown: holdout?.worst_offset_max_drawdown_pct ?? 0.0,
+    pf: swingSummary?.combined_profit_factor ?? 0.0,
+    holdoutNet: holdout?.mean_net_profit ?? 0.0,
   }
 
   return (
@@ -124,9 +138,9 @@ export default function DashboardPage() {
                 <div className={clsx("flex flex-col items-end rounded-lg px-3 py-1.5 border",
                   portfolio.unrealisedPnl >= 0 ? "bg-fin-pos/10 border-fin-pos/30" : "bg-fin-neg/10 border-fin-neg/30"
                 )}>
-                  <span className="text-[9px] text-text-muted font-mono uppercase tracking-widest">Total Net P&L</span>
+                  <span className="text-[9px] text-text-muted font-mono uppercase tracking-widest">Total Net P&amp;L</span>
                   <span className={clsx("text-sm font-mono font-bold", portfolio.unrealisedPnl >= 0 ? "text-fin-pos" : "text-fin-neg")}>
-                    {portfolio.unrealisedPnl >= 0 ? "+" : ""}₹{Math.abs(portfolio.unrealisedPnl ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                    {portfolio.unrealisedPnl >= 0 ? "+" : "-"}₹{Math.abs(portfolio.unrealisedPnl ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                   </span>
                 </div>
 
@@ -160,29 +174,73 @@ export default function DashboardPage() {
               {/* ── Portfolio stats ── */}
           <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
-              label="Total Equity"
-              value={`₹${(portfolio.equity / 1_00_000).toFixed(2)}L`}
-              sub={`${portfolio.dailyReturn >= 0 ? '+' : ''}${portfolio.dailyReturn.toFixed(2)}% TODAY`}
+              label="Paper Equity"
+              value={`₹${portfolio.equity.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+              sub={`${deployedPct.toFixed(1)}% DEPLOYED · CASH ₹${portfolio.cash.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
               trend={portfolio.dailyReturn}
             />
             <StatCard
-              label="Unrealised P&L"
-              value={`${portfolio.unrealisedPnl > 0 ? '+' : ''}₹${portfolio.unrealisedPnl.toLocaleString('en-IN')}`}
-              sub="OPEN POSITIONS"
+              label="Net Paper P&L"
+              value={`${portfolio.unrealisedPnl >= 0 ? '+' : '-'}₹${Math.abs(portfolio.unrealisedPnl).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`}
+              sub={`INVESTED ₹${portfolio.marketValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
               trend={portfolio.unrealisedPnl}
             />
             <StatCard
-              label="Max Drawdown"
+              label="Holdout Max Drawdown"
               value={`${portfolio.drawdown.toFixed(2)}%`}
-              sub="FROM PEAK"
-              trend={-portfolio.drawdown}
+              sub="250D BLIND HOLDOUT (CAP 10%)"
+              trend={portfolio.drawdown <= 10 ? 1 : -1}
             />
             <StatCard
-              label="Sharpe / Sortino"
-              value={`${portfolio.sharpe.toFixed(2)} / ${portfolio.sortino.toFixed(2)}`}
-              sub="RISK-ADJUSTED"
+              label="Swing OOS PF / 250d"
+              value={`${portfolio.pf.toFixed(2)} / +₹${portfolio.holdoutNet.toFixed(0)}`}
+              sub={readiness?.swing_oos_ready ? '8/8 GATES VALIDATED' : 'RESEARCH ONLY'}
+              trend={portfolio.holdoutNet}
             />
           </section>
+
+          {/* ── Active Strategy: Top-5 15d CNC Swing Picks ── */}
+          {swingRecs.length > 0 && (
+            <section className="card p-0 overflow-hidden">
+              <div className="px-4 py-3 flex items-center justify-between border-b border-terminal-border bg-terminal-surface/30">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary flex items-center gap-2">
+                  <TrendingUp size={14} className="text-fin-pos" />
+                  Validated 15-Day CNC Swing Top-5 ({swingData?.as_of?.slice(0, 10) || '--'})
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setActivePage('paper')}
+                  className="text-[10px] font-mono px-2.5 py-1 rounded border border-accent-primary/40 text-accent-primary bg-accent-primary/10 hover:bg-accent-primary/20"
+                >
+                  Open Paper Swing Ledger →
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left whitespace-nowrap">
+                  <thead>
+                    <tr>
+                      {['Rank', 'Symbol', 'Sector', 'Last Close', 'Est 15d Net%', 'RSI(14)', 'Suggested Qty'].map(h => (
+                        <th key={h} className="table-header px-4 py-2">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="font-mono">
+                    {swingRecs.map((r: any) => (
+                      <tr key={r.symbol} className="table-row">
+                        <td className="px-4 py-2 text-text-muted">#{r.rank}</td>
+                        <td className="px-4 py-2 font-bold">{r.symbol}</td>
+                        <td className="px-4 py-2 text-text-secondary">{r.sector}</td>
+                        <td className="px-4 py-2">₹{r.last_close}</td>
+                        <td className="px-4 py-2 text-fin-pos font-semibold">+{r.predicted_15d_net_pct}%</td>
+                        <td className="px-4 py-2">{r.rsi14}</td>
+                        <td className="px-4 py-2">{r.suggested_qty} sh</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
 
           {/* ── Charts ── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -320,35 +378,29 @@ export default function DashboardPage() {
           {activePage === 'signals' && <TradeSignalsView />}
           {activePage === 'ai_terminal' && <AITerminalView />}
           {activePage === 'opportunities' && <OpportunitiesView />}
-          {activePage === 'event_radar' && <PlaceholderView title="Event Radar" desc="Public market events, SEC filings, and news" />}
-          {activePage === 'ai_debate' && <PlaceholderView title="AI Debate Deep-Dive" desc="Full logical reasoning chains and counter-arguments" />}
+          {activePage === 'event_radar' && <EventRadarView />}
+          {activePage === 'ai_debate' && <AITerminalView />}
           {activePage === 'paper' && <PaperValidationView />}
-          {activePage === 'overview' && <PlaceholderView title="Market Overview" />}
+          {activePage === 'overview' && <MarketOverviewView />}
           {activePage === 'news_intel' && <NewsSection />}
-          {activePage === 'company' && <PlaceholderView title="Company Intel" />}
-          {activePage === 'causal_map' && <PlaceholderView title="Causal Map" />}
-          {activePage === 'expectations' && <PlaceholderView title="Expectations" />}
-          {activePage === 'priced_in' && <PlaceholderView title="Priced-In Analysis" />}
-          {activePage === 'strategy' && <PlaceholderView title="Strategy Lab" />}
-          {activePage === 'model_lab' && <PlaceholderView title="Model Lab" />}
-          {activePage === 'journal' && <PlaceholderView title="Trade Journal" desc="Attribution and post-trade analysis" />}
+          {activePage === 'company' && <CompanyIntelView />}
+          {activePage === 'causal_map' && <CausalMapView />}
+          {activePage === 'expectations' && <ExpectationsView />}
+          {activePage === 'priced_in' && <PricedInView />}
+          {activePage === 'strategy' && <StrategyLabView />}
+          {activePage === 'model_lab' && <ModelLabView />}
+          {activePage === 'journal' && <TradeJournalView />}
           {activePage === 'performance' && <RobustnessView />}
-          {activePage === 'data_quality' && <PlaceholderView title="Data Quality" />}
-          {activePage === 'health' && <PlaceholderView title="System Health" />}
-          {activePage === 'alerts' && <PlaceholderView title="Alerts" />}
+          {activePage === 'data_quality' && <DataQualityView />}
+          {activePage === 'health' && <SystemHealthView />}
+          {activePage === 'alerts' && <AlertsView />}
           
           {activePage === 'orders' && <OrderBookView />}
           {activePage === 'portfolio' && <PortfolioView />}
           {activePage === 'risk' && <RiskMonitorView />}
           {activePage === 'bot' && <TradingBotView />}
           {activePage === 'settings' && <TokenSettingsView />}
-          {activePage === 'backtest' && (
-            <div className="card p-8 flex flex-col items-center justify-center h-[400px] text-text-muted gap-3">
-              <Activity size={36} className="opacity-30" />
-              <p className="text-sm">Backtest engine coming soon</p>
-              <p className="text-xs">Will use Upstox historical data — no fake simulation</p>
-            </div>
-          )}
+          {activePage === 'backtest' && <BacktestingView />}
         </main>
         )}
       </div>

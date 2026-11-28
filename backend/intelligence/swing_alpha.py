@@ -543,13 +543,16 @@ def get_swing_status() -> dict[str, Any]:
         return {
             "state": "validated_oos" if report.get("swing_oos_ready") else "research_only",
             "swing_oos_ready": bool(report.get("swing_oos_ready", False)),
+            "schema_version": report.get("schema_version"),
             "architecture": report.get("architecture"),
             "data_through": report.get("data_through"),
             "symbols_count": report.get("symbols_count"),
             "strategy_rules": report.get("strategy_rules"),
             "summary": report.get("summary"),
+            "dev_folds": report.get("dev_folds", []),
             "blind_holdout": report.get("blind_holdout"),
             "gates": report.get("gates"),
+            "top_ridge_coefficients": report.get("top_ridge_coefficients", {}),
         }
     except Exception as exc:
         logger.warning("Failed to load swing status: %s", exc)
@@ -621,6 +624,9 @@ def score_latest_swing_universe(
             "rsi14": round(float(row["rsi14"]), 1),
             "sharpe_20": round(float(row["sharpe_20"]), 2),
             "sma200_dist_pct": round(float(row["sma200_dist"]), 2),
+            "ret_20": round(float(row["ret_20"]), 2),
+            "dist_20_high_pct": round(float(row["dist_20_high"]), 2),
+            "dist_60_high_pct": round(float(row["dist_60_high"]), 2),
         }
         all_ranked.append(entry)
 

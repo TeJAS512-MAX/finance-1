@@ -6,7 +6,7 @@ import {
   ChevronRight, Clock, Database, FileText, Info,
   LayoutDashboard, Newspaper, Shield, ShieldAlert,
   TrendingDown, TrendingUp, Wallet, Zap, Minus, Briefcase, ListOrdered,
-  Key, CheckCircle, XCircle
+  Key, CheckCircle, XCircle, RefreshCw
 } from 'lucide-react'
 import clsx from 'clsx'
 import useSWR from 'swr'
@@ -509,7 +509,7 @@ export function PortfolioView() {
               ['Total Equity', `₹${equity.toLocaleString('en-IN', {maximumFractionDigits: 2})}`],
               ['Cash Balance', `₹${cash.toLocaleString('en-IN', {maximumFractionDigits: 2})}`],
               ['Market Value', `₹${marketValue.toLocaleString('en-IN', {maximumFractionDigits: 2})}`],
-              ['Total P&L', `${totalPnl >= 0 ? '+' : ''}₹${Math.abs(totalPnl).toLocaleString('en-IN', {maximumFractionDigits: 2})}`],
+              ['Total P&L', `${totalPnl >= 0 ? '+' : '-'}₹${Math.abs(totalPnl).toLocaleString('en-IN', {maximumFractionDigits: 2})}`],
               ['Commission Paid', `₹${(data.total_commission ?? 0).toLocaleString('en-IN', {maximumFractionDigits: 2})}`],
               ['Mode', data.is_paper ? 'PAPER TRADING' : 'LIVE TRADING'],
             ].map(([label, value]) => (
@@ -530,57 +530,88 @@ export function PortfolioView() {
 }
 
 export function RiskMonitorView() {
+  const { data: health } = useSWR(`${API_BASE}/health/detail`, fetcher, { refreshInterval: 10000 })
+  const { data: portfolio } = useSWR(`${API_BASE}/api/v1/portfolio`, fetcher, { refreshInterval: 5000 })
+  const { data: posData } = useSWR(`${API_BASE}/api/v1/portfolio/positions`, fetcher, { refreshInterval: 5000 })
+  const { data: readiness } = useSWR(`${API_BASE}/api/v1/bot/readiness`, fetcher, { refreshInterval: 10000 })
+
+  const equity = Number(portfolio?.total_equity ?? 50000)
+  const initialCap = Number(portfolio?.initial_capital ?? 50000)
+  const deployed = Number(portfolio?.total_market_value ?? 0)
+  const deployedPct = equity > 0 ? (deployed / equity) * 100 : 0
+  const liveDdPct = initialCap > 0 && equity < initialCap ? ((initialCap - equity) / initialCap) * 100 : 0
+  const positions: any[] = posData?.positions || []
+  const maxPosPct = equity > 0 && positions.length > 0
+    ? Math.max(...positions.map((p) => (Number(p.quantity || 0) * Number(p.current_price || p.avg_price || 0)) / equity * 100))
+    : 0
+
+  const limits = health?.risk_limits || {}
+  const maxDdLimit = Number(limits.max_drawdown_pct ?? 20.0)
+  const maxSectorLimit = Number(limits.max_sector_exposure_pct ?? 30.0)
+  const maxPosLimit = Number(limits.max_position_size_pct ?? 10.0)
+  const holdoutDd = Number(readiness?.swing_15d_model?.blind_holdout?.worst_offset_max_drawdown_pct ?? 0)
+  const blockers: string[] = readiness?.blocking_reasons || []
+
   return (
     <div className="animate-fade-in flex flex-col h-full space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card bg-[#1f0f0f] border-[#3d1a1a] shadow-card">
-          <h4 className="text-[11px] uppercase tracking-wider font-semibold text-fin-neg mb-3 flex items-center gap-2"><ShieldAlert size={14}/> Max Drawdown</h4>
-          <div className="text-2xl font-mono font-bold text-fin-neg">2.14%</div>
-          <div className="text-[10px] text-text-muted mt-2 font-mono flex justify-between"><span>CURRENT</span> <span>LIMIT: 20.0%</span></div>
+          <h4 className="text-[11px] uppercase tracking-wider font-semibold text-fin-neg mb-3 flex items-center gap-2"><ShieldAlert size={14}/> Live Equity Drawdown</h4>
+          <div className="text-2xl font-mono font-bold text-text-primary">{liveDdPct.toFixed(2)}%</div>
+          <div className="text-[10px] text-text-muted mt-2 font-mono flex justify-between">
+            <span>HOLDOUT MAX: {holdoutDd.toFixed(2)}%</span>
+            <span>LIMIT: {maxDdLimit.toFixed(1)}%</span>
+          </div>
           <div className="w-full bg-terminal-bg h-1.5 rounded-full mt-2.5 overflow-hidden border border-[#3d1a1a]">
-            <div className="bg-fin-neg h-full rounded-full" style={{ width: '10%' }}></div>
+            <div className="bg-fin-neg h-full rounded-full" style={{ width: `${Math.min(100, (liveDdPct / maxDdLimit) * 100)}%` }}></div>
           </div>
         </div>
         <div className="card shadow-card">
-          <h4 className="text-[11px] uppercase tracking-wider font-semibold text-text-secondary mb-3 flex items-center gap-2"><Activity size={14}/> Portfolio VaR</h4>
-          <div className="text-2xl font-mono font-bold text-text-primary">₹14,500</div>
-          <div className="text-[10px] text-text-muted mt-2 font-mono">99% CONFIDENCE (1D)</div>
+          <h4 className="text-[11px] uppercase tracking-wider font-semibold text-text-secondary mb-3 flex items-center gap-2"><Activity size={14}/> Deployed Exposure</h4>
+          <div className="text-2xl font-mono font-bold text-text-primary">{deployedPct.toFixed(1)}%</div>
+          <div className="text-[10px] text-text-muted mt-2 font-mono">₹{deployed.toLocaleString('en-IN', { maximumFractionDigits: 2 })} across {positions.length} positions</div>
         </div>
         <div className="card shadow-card">
-          <h4 className="text-[11px] uppercase tracking-wider font-semibold text-text-secondary mb-3 flex items-center gap-2"><BrainCircuit size={14}/> Beta Profile</h4>
-          <div className="text-2xl font-mono font-bold text-text-primary">0.85</div>
-          <div className="text-[10px] text-text-muted mt-2 font-mono">MARKET EXPOSURE vs NIFTY</div>
+          <h4 className="text-[11px] uppercase tracking-wider font-semibold text-text-secondary mb-3 flex items-center gap-2"><BrainCircuit size={14}/> Max Single Position</h4>
+          <div className="text-2xl font-mono font-bold text-text-primary">{maxPosPct.toFixed(2)}%</div>
+          <div className="text-[10px] text-text-muted mt-2 font-mono">HARD CAP: {maxPosLimit.toFixed(1)}% per stock</div>
         </div>
         <div className="card shadow-card">
-          <h4 className="text-[11px] uppercase tracking-wider font-semibold text-text-secondary mb-3 flex items-center gap-2"><Shield size={14}/> Max Sector Risk</h4>
-          <div className="text-2xl font-mono font-bold text-text-primary">15.2%</div>
-          <div className="text-[10px] text-text-muted mt-2 font-mono flex justify-between"><span>IT SECTOR</span> <span>LIMIT: 30%</span></div>
+          <h4 className="text-[11px] uppercase tracking-wider font-semibold text-text-secondary mb-3 flex items-center gap-2"><Shield size={14}/> Sector &amp; Velocity Caps</h4>
+          <div className="text-2xl font-mono font-bold text-text-primary">{maxSectorLimit.toFixed(0)}% / {limits.max_orders_per_minute ?? 10}</div>
+          <div className="text-[10px] text-text-muted mt-2 font-mono flex justify-between"><span>SECTOR CAP</span><span>ORDERS / MIN</span></div>
           <div className="w-full bg-terminal-bg h-1.5 rounded-full mt-2.5 overflow-hidden border border-terminal-border">
-            <div className="bg-accent-primary h-full rounded-full" style={{ width: '50%' }}></div>
+            <div className="bg-accent-primary h-full rounded-full" style={{ width: `${Math.min(100, (deployedPct / 50) * 100)}%` }}></div>
           </div>
         </div>
       </div>
-      
+
       <div className="card flex-1 p-5 shadow-card">
         <h3 className="text-sm font-semibold tracking-wide text-text-primary mb-4 flex items-center gap-2">
           <AlertTriangle size={16} className="text-fin-warn" />
-          Risk Breaches & Automated Alerts
+          Live Risk Rails &amp; Automated Gate State
         </h3>
         <div className="space-y-3">
           <div className="flex items-start gap-3 p-4 rounded-lg bg-terminal-surface/30 border border-terminal-border/50">
-            <div className="mt-1"><div className="w-2.5 h-2.5 rounded-full bg-fin-pos shadow-[0_0_8px_rgba(53,183,121,0.6)]"></div></div>
+            <div className="mt-1"><div className={clsx("w-2.5 h-2.5 rounded-full", health?.safety_flags?.emergency_kill_switch_active ? "bg-fin-neg" : "bg-fin-pos")}></div></div>
             <div>
-              <div className="text-[13px] font-semibold text-text-primary">All systems operating within safe parameters</div>
-              <div className="text-[11px] text-text-muted mt-1 font-mono">Real-time risk engine active • Evaluated {new Date().toLocaleTimeString('en-IN')}</div>
+              <div className="text-[13px] font-semibold text-text-primary">
+                {health?.safety_flags?.emergency_kill_switch_active ? 'Emergency Kill Switch Triggered' : 'Hard Risk Manager & Kill-Switch Clear'}
+              </div>
+              <div className="text-[11px] text-text-muted mt-1 font-mono">
+                Live execution: {health?.safety_flags?.live_trading_enabled ? 'ENABLED' : 'LOCKED (PAPER)'} • Daily loss limit: {limits.max_daily_loss_pct ?? 5}% • Order cap: {limits.max_orders_per_minute ?? 10}/min
+              </div>
             </div>
           </div>
-          <div className="flex items-start gap-3 p-4 rounded-lg bg-terminal-surface/30 border border-terminal-border/50 opacity-60">
-            <div className="mt-1"><div className="w-2.5 h-2.5 rounded-full bg-fin-neut"></div></div>
-            <div>
-              <div className="text-[13px] font-semibold text-text-primary">Order Velocity Guard Rail Active</div>
-              <div className="text-[11px] text-text-muted mt-1 font-mono">Frequency cap: 10 orders / minute</div>
+          {blockers.length > 0 && (
+            <div className="flex items-start gap-3 p-4 rounded-lg bg-fin-warn/5 border border-fin-warn/30">
+              <div className="mt-1"><div className="w-2.5 h-2.5 rounded-full bg-fin-warn"></div></div>
+              <div>
+                <div className="text-[13px] font-semibold text-text-primary">Live Auto-Trading Gate Blockers ({blockers.length})</div>
+                <div className="text-[11px] text-text-muted mt-1 font-mono">{blockers.join(', ')}</div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -1005,23 +1036,46 @@ export function TradingBotView() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function LivePositions() {
-  const { data, error, isLoading } = useSWR(`${API_BASE}/api/v1/portfolio/positions`, fetcher, { refreshInterval: 5000 })
+  const { data, error, isLoading, mutate } = useSWR(`${API_BASE}/api/v1/portfolio/positions`, fetcher, { refreshInterval: 5000 })
+  const [syncingMtm, setSyncingMtm] = useState(false)
   const positions = data?.positions || []
+
+  const syncLiveQuotes = async () => {
+    setSyncingMtm(true)
+    try {
+      await fetch(`${API_BASE}/api/v1/bot/swing/mark-to-market`, { method: 'POST' })
+      await mutate()
+    } catch {
+      // keep silent error handling
+    }
+    setSyncingMtm(false)
+  }
 
   return (
     <div className="card p-0 overflow-hidden animate-fade-in">
       <div className="px-4 py-3 flex items-center justify-between border-b border-terminal-border bg-terminal-surface/30">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary flex items-center gap-2">
           <Briefcase size={14} className="text-accent-primary" />
-          Live Active Positions
+          Live Active Positions ({positions.length})
         </h3>
-        {isLoading ? (
-          <span className="text-text-muted text-[10px] uppercase font-mono bg-terminal-surface px-2 py-0.5 rounded animate-pulse">Syncing...</span>
-        ) : (
-          <span className="text-fin-pos text-[10px] uppercase font-mono bg-fin-pos/10 px-2 py-0.5 rounded flex items-center gap-1">
-             LIVE <Zap size={10}/>
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={syncLiveQuotes}
+            disabled={syncingMtm}
+            className="text-[10px] font-mono px-2.5 py-1 rounded border border-accent-primary/40 text-accent-primary bg-accent-primary/10 hover:bg-accent-primary/20 flex items-center gap-1"
+          >
+            <RefreshCw size={10} className={syncingMtm ? 'animate-spin' : ''} />
+            {syncingMtm ? 'Syncing...' : 'Mark-to-Market Live'}
+          </button>
+          {isLoading ? (
+            <span className="text-text-muted text-[10px] uppercase font-mono bg-terminal-surface px-2 py-0.5 rounded animate-pulse">Syncing...</span>
+          ) : (
+            <span className="text-fin-pos text-[10px] uppercase font-mono bg-fin-pos/10 px-2 py-0.5 rounded flex items-center gap-1">
+              LIVE <Zap size={10}/>
+            </span>
+          )}
+        </div>
       </div>
       <div className="overflow-x-auto min-h-[300px]">
         {error ? (
@@ -1117,9 +1171,6 @@ export function AITerminalView() {
                     <div>
                       <div className="flex items-center gap-3">
                         <span className="font-bold text-xl tracking-tight text-text-primary">{entry.symbol}</span>
-                        <span className="text-[10px] px-2 py-1 rounded font-mono font-bold tracking-widest border border-terminal-border text-text-muted">
-                          {entry.market_mode === 'crypto' ? 'CRYPTO' : 'STOCKS'}
-                        </span>
                         <span className="text-[10px] px-2 py-1 rounded font-mono font-bold tracking-widest border border-terminal-border text-text-muted">
                           {entry.market_mode === 'crypto' ? 'CRYPTO' : 'STOCKS'}
                         </span>
