@@ -122,7 +122,7 @@ class AITradingEngine:
                 broker = LiveBroker(
                     api_key=os.environ.get("UPSTOX_API_KEY", ""),
                     api_secret=os.environ.get("UPSTOX_API_SECRET", ""),
-                    redirect_uri="https://127.0.0.1"
+                    redirect_uri=os.environ.get("UPSTOX_REDIRECT_URI", "https://127.0.0.1")
                 )
                 self.add_log("WARN", "[LIVE] LIVE TRADING ENABLED. Using Real Upstox Account.")
             else:

@@ -1,9 +1,11 @@
 """api/routes/orders.py — Real order history from the active broker."""
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from api.deps import require_api_access
 
 router = APIRouter()
 
-@router.get("", summary="List real order history from the active broker")
+@router.get("", summary="List real order history from the active broker", dependencies=[Depends(require_api_access("read:portfolio"))])
 async def list_orders():
     """Returns actual filled/rejected orders from the paper or live broker."""
     from trading.bot_engine import engine

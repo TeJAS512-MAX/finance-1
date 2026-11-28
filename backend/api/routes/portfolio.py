@@ -1,7 +1,8 @@
 """api/routes/portfolio.py"""
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from api.deps import require_api_access
 from core.config import get_settings
 from datetime import datetime
 
@@ -21,25 +22,25 @@ async def get_broker():
         return LiveBroker(
             api_key=environ.get("UPSTOX_API_KEY", ""),
             api_secret=environ.get("UPSTOX_API_SECRET", ""),
-            redirect_uri="https://127.0.0.1"
+            redirect_uri=environ.get("UPSTOX_REDIRECT_URI", "https://127.0.0.1")
         )
     else:
         from trading.paper_broker import PaperBroker
         return PaperBroker()
 
-@router.get("", summary="Get portfolio summary")
+@router.get("", summary="Get portfolio summary", dependencies=[Depends(require_api_access("read:portfolio"))])
 async def get_portfolio(): 
     broker = await get_broker()
     account = await broker.get_account()
     return account
 
-@router.get("/positions", summary="Get open positions")
+@router.get("/positions", summary="Get open positions", dependencies=[Depends(require_api_access("read:portfolio"))])
 async def get_positions(): 
     broker = await get_broker()
     positions = await broker.get_positions()
     return {"positions": positions}
 
-@router.get("/history", summary="Get equity curve and trade P&L history")
+@router.get("/history", summary="Get equity curve and trade P&L history", dependencies=[Depends(require_api_access("read:portfolio"))])
 async def get_history(market_mode: Literal["stocks", "crypto"] = Query("stocks")):
     """Returns equity snapshots and per-trade P&L for the dashboard charts."""
     from trading.bot_engine import engine

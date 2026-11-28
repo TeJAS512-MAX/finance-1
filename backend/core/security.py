@@ -108,4 +108,9 @@ ROLES_PERMISSIONS: Dict[str, list[str]] = {
 
 def has_permission(role: str, permission: str) -> bool:
     perms = ROLES_PERMISSIONS.get(role, [])
-    return permission in perms or "admin" in perms or "read:*" in perms
+    if permission in perms or "admin" in perms:
+        return True
+    if ":" in permission:
+        prefix = permission.split(":", 1)[0]
+        return f"{prefix}:*" in perms
+    return False

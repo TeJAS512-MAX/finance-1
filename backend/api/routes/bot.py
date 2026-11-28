@@ -1,7 +1,8 @@
 from typing import Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from api.deps import require_api_access
 from trading.bot_engine import engine
 
 router = APIRouter()
@@ -10,7 +11,7 @@ router = APIRouter()
 class StartRequest(BaseModel):
     market_mode: Literal["stocks", "crypto"] = "stocks"
 
-@router.get("/status")
+@router.get("/status", dependencies=[Depends(require_api_access("read:signals"))])
 async def get_status():
     return {
         "is_running": engine.is_running,
@@ -20,7 +21,7 @@ async def get_status():
         "logs": engine.logs
     }
 
-@router.post("/start")
+@router.post("/start", dependencies=[Depends(require_api_access("paper_trade"))])
 async def start_bot(request: StartRequest | None = None):
     market_mode = request.market_mode if request else "stocks"
     started = engine.start(market_mode=market_mode)
@@ -30,26 +31,26 @@ async def start_bot(request: StartRequest | None = None):
         "message": "CoinDCX adapter is not configured yet." if market_mode == "crypto" else None,
     }
 
-@router.post("/stop")
+@router.post("/stop", dependencies=[Depends(require_api_access("paper_trade"))])
 async def stop_bot():
     engine.stop()
     return {"status": "stopped"}
 
-@router.get("/journal")
+@router.get("/journal", dependencies=[Depends(require_api_access("read:signals"))])
 async def get_journal():
     return {
         "journal": engine.trade_journal
     }
 
 
-@router.get("/readiness")
+@router.get("/readiness", dependencies=[Depends(require_api_access("read:signals"))])
 async def get_readiness():
     from intelligence.readiness import get_readiness_snapshot
 
     return get_readiness_snapshot()
 
 
-@router.post("/swing/paper-scan")
+@router.post("/swing/paper-scan", dependencies=[Depends(require_api_access("paper_trade"))])
 async def run_swing_paper_scan(execute: bool = False, record: bool = False):
     """Score top-5 15d CNC delivery picks, optionally place paper orders, and optionally
     record the tranche into the persistent prospective paper ledger."""
@@ -109,7 +110,7 @@ async def run_swing_paper_scan(execute: bool = False, record: bool = False):
     }
 
 
-@router.get("/swing/ledger")
+@router.get("/swing/ledger", dependencies=[Depends(require_api_access("read:signals"))])
 async def get_swing_ledger():
     """Return the full prospective 15-day CNC paper ledger with aggregate stats."""
     from intelligence.swing_alpha import get_swing_paper_ledger_stats
@@ -117,7 +118,7 @@ async def get_swing_ledger():
     return get_swing_paper_ledger_stats()
 
 
-@router.post("/swing/ledger/{tranche_id}/resolve")
+@router.post("/swing/ledger/{tranche_id}/resolve", dependencies=[Depends(require_api_access("paper_trade"))])
 async def resolve_swing_ledger_tranche(tranche_id: str, exit_prices: dict):
     """
     Resolve a specific open tranche with actual exit prices.

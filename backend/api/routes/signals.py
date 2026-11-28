@@ -3,9 +3,10 @@ import asyncio
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 import httpx
 
+from api.deps import require_api_access
 from core.logging_config import get_logger
 from intelligence.stock_direction import get_candidate_status
 
@@ -89,7 +90,7 @@ async def _analyze_symbol(
         return None
 
 
-@router.get("", summary="List live AI trade signals based on RSI/SMA analysis")
+@router.get("", summary="List live AI trade signals based on RSI/SMA analysis", dependencies=[Depends(require_api_access("read:signals"))])
 async def list_signals():
     """Fetches real candles for all watchlist stocks and returns live signals."""
     try:
@@ -145,7 +146,7 @@ async def list_signals():
         }
 
 
-@router.get("/swing", summary="Top 15-day CNC delivery swing alpha picks")
+@router.get("/swing", summary="Top 15-day CNC delivery swing alpha picks", dependencies=[Depends(require_api_access("read:signals"))])
 async def list_swing_signals():
     """Return latest ranked 15-trading-day CNC delivery opportunities and OOS readiness status."""
     from core.config import get_settings
@@ -159,6 +160,6 @@ async def list_swing_signals():
     }
 
 
-@router.get("/{thesis_id}", summary="Get trade thesis detail")
+@router.get("/{thesis_id}", summary="Get trade thesis detail", dependencies=[Depends(require_api_access("read:signals"))])
 async def get_thesis(thesis_id: str):
     return {"thesis_id": thesis_id, "status": "not_yet_implemented"}

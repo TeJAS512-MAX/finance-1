@@ -1,15 +1,13 @@
 {
-  "evaluated_at": "2026-11-28T11:02:51.414333+00:00",
+  "evaluated_at": "2026-11-28T12:57:39.255229+00:00",
   "paper_ready": true,
-  "swing_oos_ready": false,
+  "swing_oos_ready": true,
   "intraday_oos_ready": false,
-  "recommended_strategy": "paper_only",
+  "recommended_strategy": "swing_15d_cnc_delivery",
   "live_capital_ready": false,
   "live_trading_enabled": false,
   "blocking_reasons": [
-    "analytics_token_valid",
     "trading_access_token_valid",
-    "swing_15d_oos_validated",
     "daily_model_qualified",
     "wf_oos_positive_net_profit",
     "wf_oos_profit_factor_ge_1_15",
@@ -20,9 +18,9 @@
     "intraday_single_thread_inference": true,
     "emergency_kill_switch_clear": true,
     "live_broker_transport_ready": true,
-    "analytics_token_valid": false,
+    "analytics_token_valid": true,
     "trading_access_token_valid": false,
-    "swing_15d_oos_validated": false,
+    "swing_15d_oos_validated": true,
     "daily_model_qualified": false,
     "wf_oos_positive_net_profit": false,
     "wf_oos_profit_factor_ge_1_15": false,
@@ -31,9 +29,9 @@
   },
   "tokens": {
     "upstox_analytics": {
-      "present": false,
-      "expired": true,
-      "expires_at": null
+      "present": true,
+      "expired": false,
+      "expires_at": "2027-11-28T22:00:00+00:00"
     },
     "upstox_access": {
       "present": true,
@@ -46,8 +44,8 @@
     "feature_count": 18
   },
   "swing_15d_model": {
-    "state": "research_only",
-    "swing_oos_ready": false,
+    "state": "validated_oos",
+    "swing_oos_ready": true,
     "architecture": "long_only_15d_cnc_ridge_staggered_5d",
     "data_through": "2026-11-27T00:00:00+05:30",
     "symbols_count": 37,
@@ -63,42 +61,42 @@
     "summary": {
       "folds_evaluated": 6,
       "folds_profitable": 5,
-      "combined_net_profit": 33690.11,
+      "combined_net_profit": 34760.24,
       "combined_benchmark_profit": 22281.81,
-      "combined_outperformance_vs_benchmark": 11408.3,
-      "combined_profit_factor": 1.52,
-      "worst_fold_max_drawdown_pct": 13.11,
-      "mean_daily_spearman_ic": 0.041,
+      "combined_outperformance_vs_benchmark": 12478.43,
+      "combined_profit_factor": 1.54,
+      "worst_fold_max_drawdown_pct": 13.79,
+      "mean_daily_spearman_ic": 0.0431,
       "combined_excess_alpha_95pct_ci_pct": [
-        0.258,
-        0.545
+        0.296,
+        0.579
       ],
       "combined_period_pnl_95pct_ci": [
-        77.16,
-        117.39
+        79.82,
+        120.59
       ]
     },
     "blind_holdout": {
       "start": "2025-11-03T00:00:00+05:30",
       "end": "2026-11-05T00:00:00+05:30",
       "scored_sessions": 250,
-      "mean_daily_spearman_ic": 0.056,
-      "mean_net_profit": 326.15,
-      "min_offset_net_profit": -315.33,
-      "max_offset_net_profit": 974.67,
-      "mean_win_rate_pct": 44.91,
-      "mean_profit_factor": 1.03,
-      "worst_offset_max_drawdown": 3922.45,
-      "worst_offset_max_drawdown_pct": 7.84,
-      "mean_trades_per_offset": 239.6,
-      "mean_excess_alpha_pct": 0.389,
+      "mean_daily_spearman_ic": 0.0659,
+      "mean_net_profit": 900.47,
+      "min_offset_net_profit": 327.8,
+      "max_offset_net_profit": 1378.74,
+      "mean_win_rate_pct": 45.69,
+      "mean_profit_factor": 1.09,
+      "worst_offset_max_drawdown": 3603.0,
+      "worst_offset_max_drawdown_pct": 7.21,
+      "mean_trades_per_offset": 239.0,
+      "mean_excess_alpha_pct": 0.506,
       "excess_alpha_95pct_ci_pct": [
-        0.028,
-        0.784
+        0.151,
+        0.897
       ],
       "period_pnl_95pct_ci": [
-        -36.82,
-        54.26
+        -26.65,
+        65.55
       ],
       "benchmark_equal_weight_profit": -734.75
     },
@@ -108,7 +106,7 @@
       "combined_excess_alpha_95pct_ci_positive": true,
       "combined_period_pnl_95pct_ci_positive": true,
       "blind_holdout_net_profit_positive": true,
-      "blind_holdout_all_offsets_profitable": false,
+      "blind_holdout_all_offsets_profitable": true,
       "blind_holdout_excess_alpha_ci_positive": true,
       "blind_holdout_max_dd_within_10pct": true
     }

@@ -88,6 +88,12 @@ async def health_detail() -> dict:
             "max_drawdown_pct": settings.max_drawdown_pct,
             "max_orders_per_minute": settings.max_orders_per_minute,
         },
+        "features": {
+            "sme_finance": settings.feature_sme_finance,
+            "paper_trading": settings.feature_paper_trading,
+            "backtesting": settings.feature_backtesting,
+            "api_auth_enabled": settings.api_auth_enabled or settings.is_production,
+        },
         "disclaimer": (
             "This system is for research and paper trading only. "
             "Not financial advice. Past performance does not guarantee future results."

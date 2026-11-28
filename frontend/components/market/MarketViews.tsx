@@ -123,8 +123,11 @@ export function StatCard({ label, value, sub, trend }: { label: string; value: s
 
 export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (id: string) => void }) {
   const { data: tokenData } = useSWR(`${API_BASE}/api/v1/token/status`, fetcher, { refreshInterval: 5000 })
+  const { data: healthDetail } = useSWR(`${API_BASE}/health/detail`, fetcher, { refreshInterval: 15000 })
   const tokenOk = tokenData?.token_valid === true
   const tokenExpired = tokenData?.token_expired === true
+  const analyticsOk = tokenData?.analytics_token_valid === true
+  const showSmeFinance = healthDetail?.features?.sme_finance !== false
 
   const navGroups = [
     {
@@ -174,12 +177,12 @@ export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (i
         { id: 'performance',label: 'Performance',    icon: Activity },
       ]
     },
-    {
+    ...(showSmeFinance ? [{
       title: "BUSINESS FINANCE",
       items: [
         { id: 'finance', label: 'SME Finance Hub', icon: Wallet },
       ]
-    },
+    }] : []),
     {
       title: "SYSTEM",
       items: [
@@ -241,7 +244,14 @@ export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (i
       <div className="p-4 border-t border-terminal-border bg-terminal-surface/30">
         <div className="text-[10px] font-mono space-y-2">
           <div className="flex justify-between text-text-muted">
-            <span>UPSTOX TOKEN</span>
+            <span>DATA FEED</span>
+            {analyticsOk || tokenOk
+              ? <span className="text-fin-pos"><StatusDot status="positive" /> LIVE</span>
+              : <span className="text-fin-neg"><StatusDot status="negative" /> MISSING</span>
+            }
+          </div>
+          <div className="flex justify-between text-text-muted">
+            <span>TRADE TOKEN</span>
             {tokenOk
               ? <span className="text-fin-pos"><StatusDot status="positive" /> ACTIVE</span>
               : tokenExpired
@@ -579,11 +589,36 @@ export function RiskMonitorView() {
 
 export function TokenSettingsView() {
   const { data: statusData, mutate: mutateStatus } = useSWR(`${API_BASE}/api/v1/token/status`, fetcher, { refreshInterval: 3000 })
+  const { data: oauthData } = useSWR(`${API_BASE}/api/v1/token/oauth-url`, fetcher, { refreshInterval: 10000 })
   const { data: readinessData, mutate: mutateReadiness } = useSWR(`${API_BASE}/api/v1/bot/readiness`, fetcher, { refreshInterval: 10000 })
   const [token, setToken] = useState('')
   const [analyticsToken, setAnalyticsToken] = useState('')
+  const [oauthCode, setOauthCode] = useState('')
   const [result, setResult] = useState<{success: boolean; message?: string; error?: string} | null>(null)
   const [saving, setSaving] = useState(false)
+
+  const handleExchangeCode = async () => {
+    if (!oauthCode.trim()) return
+    setSaving(true)
+    setResult(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/token/exchange`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: oauthCode.trim() }),
+      })
+      const data = await res.json()
+      setResult(data)
+      if (data.success) {
+        setOauthCode('')
+        mutateStatus()
+        mutateReadiness()
+      }
+    } catch {
+      setResult({ success: false, message: 'Could not reach backend for OAuth exchange.' })
+    }
+    setSaving(false)
+  }
 
   const handleSave = async () => {
     if (!token.trim() && !analyticsToken.trim()) return
@@ -757,6 +792,42 @@ export function TokenSettingsView() {
               {result.message || result.error}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* OAuth Redirect Helper */}
+      <div className="card p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+            Upstox Daily OAuth Exchange (Redirect URL: <span className="font-mono text-text-primary">{oauthData?.redirect_uri || 'https://127.0.0.1'}</span>)
+          </h3>
+          {oauthData?.oauth_url && (
+            <a
+              href={oauthData.oauth_url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[11px] font-mono text-accent-primary hover:underline"
+            >
+              Open Upstox Login →
+            </a>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={oauthCode}
+            onChange={(e) => setOauthCode(e.target.value)}
+            placeholder="Paste redirected URL (https://127.0.0.1/?code=...) or code only"
+            className="flex-1 bg-terminal-bg border border-terminal-border rounded-lg px-3 py-2 font-mono text-xs text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-primary/50"
+          />
+          <button
+            type="button"
+            onClick={handleExchangeCode}
+            disabled={saving || !oauthCode.trim()}
+            className="px-4 py-2 rounded-lg text-xs font-semibold bg-accent-primary/20 text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/30 disabled:opacity-40"
+          >
+            Exchange Code
+          </button>
         </div>
       </div>
 
@@ -1209,6 +1280,7 @@ export function OpportunitiesView() {
 export function PaperValidationView() {
   const { data: readiness } = useSWR(`${API_BASE}/api/v1/bot/readiness`, fetcher, { refreshInterval: 10000 })
   const { data: swing, mutate: mutateSwing } = useSWR(`${API_BASE}/api/v1/signals/swing`, fetcher, { refreshInterval: 15000 })
+  const { data: ledgerData, mutate: mutateLedger } = useSWR(`${API_BASE}/api/v1/bot/swing/ledger`, fetcher, { refreshInterval: 15000 })
   const { data: portfolio, mutate: mutatePortfolio } = useSWR(`${API_BASE}/api/v1/portfolio`, fetcher, { refreshInterval: 5000 })
   const [scanMsg, setScanMsg] = useState<string | null>(null)
   const [running, setRunning] = useState(false)
@@ -1218,17 +1290,19 @@ export function PaperValidationView() {
   const recs: any[] = swing?.recommendations || []
   const paperEq = Number(portfolio?.total_equity ?? 50000)
   const paperPnl = Number(portfolio?.total_pnl ?? 0)
+  const ledgerAgg = ledgerData?.aggregate
 
   const runSwingPaperScan = async (execute: boolean) => {
     setRunning(true)
     setScanMsg(null)
     try {
-      const res = await fetch(`${API_BASE}/api/v1/bot/swing/paper-scan?execute=${execute}`, { method: 'POST' })
+      const res = await fetch(`${API_BASE}/api/v1/bot/swing/paper-scan?execute=${execute}&record=${execute}`, { method: 'POST' })
       const body = await res.json()
       const cnt = body.orders?.length ?? body.recommendations?.length ?? 0
-      setScanMsg(execute ? `Executed ${cnt} paper CNC order(s) (as of ${body.as_of?.slice(0, 10) || 'latest'})` : `Scanned ${cnt} swing candidates`)
+      setScanMsg(execute ? `Executed ${cnt} paper CNC order(s) & logged ledger tranche (as of ${body.as_of?.slice(0, 10) || 'latest'})` : `Scanned ${cnt} swing candidates`)
       mutateSwing()
       mutatePortfolio()
+      mutateLedger()
     } catch {
       setScanMsg('Failed to reach backend paper scanner')
     }
@@ -1323,6 +1397,20 @@ export function PaperValidationView() {
             </table>
           </div>
         </section>
+
+        {ledgerAgg && (
+          <section className="border border-[#151B23] rounded p-4 bg-[#0D1219]/60">
+            <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-widest mb-2">
+              Prospective 15-Day CNC Paper Ledger
+            </h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
+              <div><span className="text-text-muted">Open Tranches:</span> {ledgerAgg.open_tranches}</div>
+              <div><span className="text-text-muted">Resolved:</span> {ledgerAgg.resolved_tranches}</div>
+              <div><span className="text-text-muted">Win Rate:</span> {ledgerAgg.win_rate_pct}%</div>
+              <div><span className="text-text-muted">Realized Net:</span> ₹{ledgerAgg.net_pnl_inr}</div>
+            </div>
+          </section>
+        )}
       </div>
     </div>
   )

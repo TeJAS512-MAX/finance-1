@@ -240,6 +240,25 @@ async def get_daily_history_v3(
     return sorted(candles, key=lambda candle: candle["timestamp"])
 
 
+def _is_jwt_expired(token: str) -> bool:
+    """Return True only when token is a JWT with an expired `exp` timestamp."""
+    parts = token.strip().split(".")
+    if len(parts) != 3:
+        return False
+    try:
+        import base64
+        import json
+
+        payload_b64 = parts[1] + "=" * (-len(parts[1]) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(payload_b64.encode("ascii")).decode("utf-8"))
+        exp = payload.get("exp")
+        if exp is None:
+            return False
+        return datetime.now(timezone.utc).timestamp() >= float(exp)
+    except Exception:
+        return False
+
+
 async def get_live_quote(symbol: str) -> Dict[str, Any]:
     """
     Fetch the latest live market quote for a symbol via Upstox Market Quote API.
@@ -252,28 +271,39 @@ async def get_live_quote(symbol: str) -> Dict[str, Any]:
     url = f"{UPSTOX_BASE}/market-quote/quotes"
     params = {"instrument_key": instrument_key}
     live_token = os.environ.get("UPSTOX_ACCESS_TOKEN", "").strip()
-    headers = (
-        {
+    if live_token and not _is_jwt_expired(live_token):
+        headers = {
             "Authorization": f"Bearer {live_token}",
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
-        if live_token
-        else _get_headers()
-    )
+    else:
+        headers = _get_headers()
 
     async with httpx.AsyncClient(timeout=8.0) as client:
         response = await client.get(url, headers=headers, params=params)
+        if response.status_code == 401 and os.environ.get("UPSTOX_ANALYTICS_TOKEN", "").strip():
+            fallback_headers = _get_headers()
+            if fallback_headers.get("Authorization") != headers.get("Authorization"):
+                response = await client.get(url, headers=fallback_headers, params=params)
         response.raise_for_status()
         data = response.json()
 
-    quote_data = data.get("data", {}).get(instrument_key, {})
-    ohlc = quote_data.get("ohlc", {})
+    data_map = data.get("data", {}) or {}
+    quote_data = (
+        data_map.get(instrument_key)
+        or data_map.get(f"NSE_EQ:{symbol.upper()}")
+        or (next((v for v in data_map.values() if isinstance(v, dict)), {}))
+    )
+    ohlc = quote_data.get("ohlc", {}) or {}
+    ltp_val = quote_data.get("last_price")
+    if not ltp_val:
+        ltp_val = ohlc.get("close", 0.0)
 
     return {
         "symbol":         symbol,
         "instrument_key": instrument_key,
-        "ltp":            quote_data.get("last_price", 0.0),
+        "ltp":            float(ltp_val or 0.0),
         "open":           ohlc.get("open", 0.0),
         "high":           ohlc.get("high", 0.0),
         "low":            ohlc.get("low", 0.0),

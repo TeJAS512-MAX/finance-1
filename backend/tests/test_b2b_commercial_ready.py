@@ -248,3 +248,121 @@ def test_bot_swing_paper_scan_with_record_param(open_client):
     assert resp.status_code == 200
     data = resp.json()
     assert "ledger_tranche" in data
+
+
+# ── 7. Route-Level B2B RBAC Enforcement & Upstox Helpers ─────────────────────
+
+def test_has_permission_wildcard_does_not_leak_paper_trade():
+    from core.security import has_permission
+
+    assert has_permission("viewer", "read:signals") is True
+    assert has_permission("viewer", "paper_trade") is False
+    assert has_permission("analyst", "read:portfolio") is True
+    assert has_permission("analyst", "paper_trade") is False
+    assert has_permission("analyst", "admin") is False
+    assert has_permission("trader", "paper_trade") is True
+    assert has_permission("trader", "admin") is False
+    assert has_permission("admin", "admin") is True
+
+
+def test_b2b_auth_enforced_when_enabled():
+    from main import app
+
+    mock_settings = MagicMock()
+    mock_settings.api_auth_enabled = True
+    mock_settings.is_production = False
+    mock_settings.b2b_api_keys = "vkey_001:viewer,tkey_001:trader,akey_001:admin"
+    mock_settings.jwt_access_token_expire_minutes = 30
+
+    with (
+        patch("api.deps.get_settings", return_value=mock_settings),
+        patch("api.routes.auth.get_settings", return_value=mock_settings),
+        patch("core.security.settings") as mock_sec_settings,
+        patch("intelligence.swing_alpha.score_latest_swing_universe") as mock_score,
+    ):
+        mock_sec_settings.jwt_secret_key.get_secret_value.return_value = "test_jwt_secret_key_32chars_padded"
+        mock_sec_settings.jwt_algorithm = "HS256"
+        mock_sec_settings.jwt_access_token_expire_minutes = 30
+        mock_sec_settings.bcrypt_rounds = 10
+        mock_score.return_value = {
+            "status": "ok",
+            "as_of": "2026-11-27T00:00:00+05:30",
+            "recommendations": [],
+            "all_ranked": [],
+            "capital": 50000.0,
+            "tranche_slot_pct": 3.33,
+            "nifty_above_sma200": True,
+            "nifty_above_sma50": True,
+            "stale_days": 0,
+            "data_source": "cache",
+        }
+        with TestClient(app) as client:
+            # 1) Unauthenticated request blocked with 401
+            assert client.get("/api/v1/signals/swing").status_code == 401
+            assert client.get("/api/v1/bot/status").status_code == 401
+            # 2) Viewer can read signals via X-API-Key, blocked on paper_trade (403)
+            assert client.get("/api/v1/signals/swing", headers={"X-API-Key": "vkey_001"}).status_code == 200
+            assert client.post("/api/v1/bot/swing/paper-scan", headers={"X-API-Key": "vkey_001"}).status_code == 403
+            assert client.post("/api/v1/token/update", json={"analytics_token": "x"}, headers={"X-API-Key": "vkey_001"}).status_code == 403
+            # 3) Trader exchanges API key -> JWT -> allowed on paper-scan, blocked on admin token/update (403)
+            tok_resp = client.post("/api/v1/auth/token", json={"api_key": "tkey_001"})
+            assert tok_resp.status_code == 200
+            trader_jwt = tok_resp.json()["access_token"]
+            assert client.post("/api/v1/bot/swing/paper-scan", headers={"Authorization": f"Bearer {trader_jwt}"}).status_code == 200
+            assert client.post("/api/v1/token/update", json={"analytics_token": "x"}, headers={"Authorization": f"Bearer {trader_jwt}"}).status_code == 403
+
+
+def test_token_oauth_url_returns_default_redirect(open_client, monkeypatch):
+    monkeypatch.setenv("UPSTOX_API_KEY", "demo-client-id")
+    monkeypatch.setenv("UPSTOX_REDIRECT_URI", "https://127.0.0.1")
+    resp = open_client.get("/api/v1/token/oauth-url")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["api_key_set"] is True
+    assert body["redirect_uri"] == "https://127.0.0.1"
+    assert "client_id=demo-client-id" in body["oauth_url"]
+
+
+@pytest.mark.asyncio
+async def test_live_quote_uses_analytics_token_when_daily_token_expired(monkeypatch):
+    import base64
+    from contextlib import asynccontextmanager
+    from services.providers import upstox_market_data as mod
+
+    expired_payload = base64.urlsafe_b64encode(b'{"exp":1000000000}').decode().rstrip("=")
+    expired_jwt = f"hdr.{expired_payload}.sig"
+    monkeypatch.setenv("UPSTOX_ACCESS_TOKEN", expired_jwt)
+    monkeypatch.setenv("UPSTOX_ANALYTICS_TOKEN", "valid-analytics-token")
+
+    seen_auth = []
+
+    class Resp:
+        status_code = 200
+        def raise_for_status(self):
+            return None
+        def json(self):
+            return {
+                "status": "success",
+                "data": {
+                    "NSE_EQ:RELIANCE": {
+                        "last_price": 0.0,
+                        "ohlc": {"open": 1390.0, "high": 1400.0, "low": 1380.0, "close": 1382.6},
+                        "volume": 1000,
+                    }
+                },
+            }
+
+    class Client:
+        async def get(self, url, headers, params):
+            seen_auth.append(headers["Authorization"])
+            return Resp()
+
+    @asynccontextmanager
+    async def fake_client(timeout):
+        yield Client()
+
+    monkeypatch.setattr(mod.httpx, "AsyncClient", fake_client)
+    quote = await mod.get_live_quote("RELIANCE")
+    assert seen_auth == ["Bearer valid-analytics-token"]
+    assert quote["ltp"] == 1382.6
+
