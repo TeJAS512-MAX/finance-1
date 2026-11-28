@@ -1,10 +1,9 @@
 {
-  "evaluated_at": "2026-11-28T09:08:58.358247+00:00",
+  "evaluated_at": "2026-11-28T09:20:07.217836+00:00",
   "paper_ready": true,
   "live_capital_ready": false,
   "live_trading_enabled": false,
   "blocking_reasons": [
-    "live_broker_sdk_installed",
     "analytics_token_valid",
     "trading_access_token_valid",
     "daily_model_qualified",
@@ -16,7 +15,7 @@
     "intraday_ml_loaded": true,
     "intraday_single_thread_inference": true,
     "emergency_kill_switch_clear": true,
-    "live_broker_sdk_installed": false,
+    "live_broker_transport_ready": true,
     "analytics_token_valid": false,
     "trading_access_token_valid": false,
     "daily_model_qualified": false,

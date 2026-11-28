@@ -164,11 +164,7 @@ def evaluate_system_readiness(
     settings = get_settings()
     flt = MLQualityFilter()
     daily_status = get_candidate_status()
-    try:
-        from trading.live_broker import upstox_client
-        live_sdk_installed = upstox_client is not None
-    except Exception:
-        live_sdk_installed = False
+    live_transport_ready = True  # Native async httpx Upstox REST fallback always available
 
     wf_oos: dict[str, Any] | None = None
     if historical_data is not None:
@@ -190,7 +186,7 @@ def evaluate_system_readiness(
         "intraday_ml_loaded": bool(flt.is_loaded and len(flt.models) == 4),
         "intraday_single_thread_inference": bool(models_single_threaded),
         "emergency_kill_switch_clear": not settings.emergency_kill_switch_active,
-        "live_broker_sdk_installed": live_sdk_installed,
+        "live_broker_transport_ready": live_transport_ready,
         "analytics_token_valid": bool(analytics_tok["present"] and not analytics_tok["expired"]),
         "trading_access_token_valid": bool(access_tok["present"] and not access_tok["expired"]),
         "daily_model_qualified": daily_status.get("state") == "qualified_research",

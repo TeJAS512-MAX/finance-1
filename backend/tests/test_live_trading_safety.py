@@ -205,6 +205,122 @@ async def test_live_broker_refuses_orders_and_cancels_when_live_disabled(monkeyp
 
 
 @pytest.mark.asyncio
+async def test_live_broker_httpx_rest_fallback_works_without_upstox_sdk(monkeypatch) -> None:
+    """Verify pure httpx REST execution paths work when upstox_client SDK is absent."""
+    from types import SimpleNamespace
+    from trading import live_broker as lb_mod
+
+    calls = []
+
+    class _FakeResponse:
+        def __init__(self, payload: dict) -> None:
+            self._payload = payload
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return self._payload
+
+    class _FakeAsyncClient:
+        def __init__(self, timeout: float = 8.0) -> None:
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        async def get(self, url: str, headers=None, params=None):
+            calls.append(("GET", url, params))
+            if url.endswith("/user/get-funds-and-margin"):
+                return _FakeResponse({"data": {"equity": {"available_margin": 42000.0, "net_margin": 42500.0}}})
+            if url.endswith("/portfolio/short-term-positions"):
+                return _FakeResponse(
+                    {
+                        "data": [
+                            {
+                                "instrument_token": "NSE_EQ|INE002A01018",
+                                "tradingsymbol": "RELIANCE",
+                                "quantity": -2,
+                                "average_price": 2500.0,
+                                "last_price": 2480.0,
+                                "pnl": 40.0,
+                            }
+                        ]
+                    }
+                )
+            if url.endswith("/order/details"):
+                return _FakeResponse({"data": {"status": "complete", "filled_quantity": 2, "average_price": 2500.0}})
+            if url.endswith("/order/retrieve-all"):
+                return _FakeResponse(
+                    {
+                        "data": [
+                            {
+                                "order_id": "UPX-901",
+                                "tradingsymbol": "RELIANCE",
+                                "transaction_type": "BUY",
+                                "order_type": "MARKET",
+                                "quantity": 2,
+                                "average_price": 2500.0,
+                                "status": "complete",
+                                "order_timestamp": "2026-11-28 09:30:00",
+                            }
+                        ]
+                    }
+                )
+            raise AssertionError(f"Unexpected GET URL: {url}")
+
+        async def post(self, url: str, headers=None, json=None):
+            calls.append(("POST", url, json))
+            return _FakeResponse({"data": {"order_id": "UPX-901"}})
+
+        async def delete(self, url: str, headers=None, params=None):
+            calls.append(("DELETE", url, params))
+            return _FakeResponse({"status": "success"})
+
+    monkeypatch.setenv("UPSTOX_ACCESS_TOKEN", "dummy-rest-token")
+    monkeypatch.setattr(lb_mod, "upstox_client", None)
+    safe_live_cfg = SimpleNamespace(live_trading_enabled=True, emergency_kill_switch_active=False)
+    monkeypatch.setattr(lb_mod, "get_settings", lambda: safe_live_cfg)
+    monkeypatch.setattr(lb_mod, "settings", safe_live_cfg)
+    monkeypatch.setattr(lb_mod.httpx, "AsyncClient", _FakeAsyncClient)
+
+    broker = lb_mod.LiveBroker(api_key="k", api_secret="s", redirect_uri="https://127.0.0.1")
+
+    acct = await broker.get_account()
+    assert acct["status"] == "UPSTOX_CONNECTED"
+    assert acct["cash"] == 42000.0
+
+    positions = await broker.get_positions()
+    assert len(positions) == 1
+    assert positions[0]["side"] == "SHORT"
+    assert positions[0]["symbol"] == "RELIANCE"
+
+    order = await broker.place_order(
+        ticker="NSE_EQ|INE002A01018",
+        direction="BUY",
+        quantity=2,
+        order_type="MARKET",
+        price=2500.0,
+    )
+    assert order["status"] == "EXCHANGE_PENDING"
+    assert order["order_id"] == "UPX-901"
+
+    status = await broker.get_order_status("UPX-901")
+    assert status["status"] == "complete"
+    assert status["filled_quantity"] == 2
+
+    orders = await broker.get_orders()
+    assert len(orders) == 1
+    assert orders[0]["id"] == "UPX-901"
+
+    assert await broker.cancel_order("UPX-901") is True
+    assert [method for method, _, _ in calls] == ["GET", "GET", "POST", "GET", "GET", "DELETE"]
+
+
+@pytest.mark.asyncio
 async def test_readiness_endpoint_reports_honest_trust_gates(client) -> None:
     """GET /api/v1/bot/readiness exposes structured paper and live-capital checks."""
     resp = await client.get("/api/v1/bot/readiness")

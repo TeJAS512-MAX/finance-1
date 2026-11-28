@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 import uuid
 import os
 
+import httpx
 try:
     import upstox_client
 except ImportError:
@@ -42,18 +43,18 @@ class LiveBroker(BrokerProvider):
         # Upstox Initialization
         self.api_key = api_key
         upstox_access = os.getenv("UPSTOX_ACCESS_TOKEN")
+        self._upstox_access_token = upstox_access
         self.configuration = upstox_client.Configuration() if upstox_client is not None else None
         self.portfolio_api = None
         self.user_api = None
         self.order_api = None
-        if upstox_client is None:
-            logger.error("upstox_client SDK not installed. LiveBroker execution disabled.")
-        elif upstox_access:
-            self.configuration.access_token = upstox_access
-            self.portfolio_api = upstox_client.PortfolioApi(upstox_client.ApiClient(self.configuration))
-            self.user_api = upstox_client.UserApi(upstox_client.ApiClient(self.configuration))
-            self.order_api = upstox_client.OrderApi(upstox_client.ApiClient(self.configuration))
-            logger.warning("LIVE BROKER INITIALIZED [UPSTOX EXECUTION]. TRADES WILL USE REAL CAPITAL.")
+        if upstox_access:
+            if upstox_client is not None:
+                self.configuration.access_token = upstox_access
+                self.portfolio_api = upstox_client.PortfolioApi(upstox_client.ApiClient(self.configuration))
+                self.user_api = upstox_client.UserApi(upstox_client.ApiClient(self.configuration))
+                self.order_api = upstox_client.OrderApi(upstox_client.ApiClient(self.configuration))
+            logger.warning("LIVE BROKER INITIALIZED [UPSTOX REST/SDK EXECUTION]. TRADES WILL USE REAL CAPITAL.")
         else:
             logger.error("MISSING UPSTOX_ACCESS_TOKEN in .env. Execution will fail.")
             
@@ -81,9 +82,15 @@ class LiveBroker(BrokerProvider):
     def provider_name(self) -> str:
         return "Hybrid_UpstoxTrade_ZerodhaData"
 
+    def _rest_headers(self) -> Dict[str, str]:
+        return {
+            "Authorization": f"Bearer {self._upstox_access_token or ''}",
+            "Accept": "application/json",
+        }
+
     async def get_account(self) -> Dict[str, Any]:
         """Fetch live account margins and balances from Upstox."""
-        if not self.user_api:
+        if not self._upstox_access_token:
             return {
                 "cash": 0.0,
                 "total_equity": 0.0,
@@ -92,10 +99,19 @@ class LiveBroker(BrokerProvider):
                 "status": "ERROR: MISSING_UPSTOX_ACCESS_TOKEN",
             }
         try:
-            funds_response = await asyncio.to_thread(
-                self.user_api.get_user_fund_margin, api_version='2.0'
-            )
-            equity = funds_response.data.get('equity', {})
+            if self.user_api is not None:
+                funds_response = await asyncio.to_thread(
+                    self.user_api.get_user_fund_margin, api_version='2.0'
+                )
+                equity = funds_response.data.get('equity', {})
+            else:
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    resp = await client.get(
+                        "https://api.upstox.com/v2/user/get-funds-and-margin",
+                        headers=self._rest_headers(),
+                    )
+                    resp.raise_for_status()
+                    equity = resp.json().get("data", {}).get("equity", {})
             return {
                 "cash": equity.get('available_margin', 0.0),
                 "total_equity": equity.get('net_margin', 0.0),
@@ -115,28 +131,41 @@ class LiveBroker(BrokerProvider):
 
     async def get_positions(self) -> List[Dict[str, Any]]:
         """Fetch real open positions from Upstox."""
-        if not self.portfolio_api:
+        if not self._upstox_access_token:
             return []
         try:
-            api_response = await asyncio.to_thread(
-                self.portfolio_api.get_positions, api_version='2.0'
-            )
             positions = []
-            if api_response.data:
-                for pos in api_response.data:
-                    avg_p = pos.average_price or 0.0
-                    qty = pos.quantity or 0
-                    denom = abs(avg_p * qty)
-                    positions.append({
-                        "ticker": pos.instrument_token if hasattr(pos, 'instrument_token') else pos.tradingsymbol,
-                        "symbol": pos.tradingsymbol,
-                        "quantity": qty,
-                        "avg_price": avg_p,
-                        "current_price": pos.last_price,
-                        "pnl": pos.pnl,
-                        "pnl_pct": (pos.pnl / denom) * 100 if denom > 0 else 0.0,
-                        "side": "LONG" if qty > 0 else ("SHORT" if qty < 0 else "FLAT")
-                    })
+            if self.portfolio_api is not None:
+                api_response = await asyncio.to_thread(
+                    self.portfolio_api.get_positions, api_version='2.0'
+                )
+                raw_positions = getattr(api_response, "data", []) or []
+            else:
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    resp = await client.get(
+                        "https://api.upstox.com/v2/portfolio/short-term-positions",
+                        headers=self._rest_headers(),
+                    )
+                    resp.raise_for_status()
+                    raw_positions = resp.json().get("data", []) or []
+
+            for pos in raw_positions:
+                get_f = pos.get if isinstance(pos, dict) else (lambda k, d=None: getattr(pos, k, d))
+                avg_p = float(get_f("average_price", 0.0) or 0.0)
+                qty = float(get_f("quantity", 0) or 0)
+                pnl = float(get_f("pnl", 0.0) or 0.0)
+                denom = abs(avg_p * qty)
+                tsym = get_f("tradingsymbol", "")
+                positions.append({
+                    "ticker": get_f("instrument_token", tsym),
+                    "symbol": tsym,
+                    "quantity": qty,
+                    "avg_price": avg_p,
+                    "current_price": float(get_f("last_price", 0.0) or 0.0),
+                    "pnl": pnl,
+                    "pnl_pct": (pnl / denom) * 100 if denom > 0 else 0.0,
+                    "side": "LONG" if qty > 0 else ("SHORT" if qty < 0 else "FLAT")
+                })
             return positions
         except Exception as e:
             logger.error(f"Failed to fetch Upstox positions: {e}")
@@ -205,8 +234,8 @@ class LiveBroker(BrokerProvider):
         if live_settings.emergency_kill_switch_active or settings.emergency_kill_switch_active:
             logger.error("KILL SWITCH ACTIVE. Order blocked.")
             return {"status": "REJECTED", "reason": "KILL_SWITCH", "is_paper": False}
-        if not self.order_api:
-            logger.error("Upstox OrderApi not initialized (missing access token).")
+        if not self._upstox_access_token:
+            logger.error("Upstox access token missing.")
             return {"status": "REJECTED", "reason": "BROKER_NOT_INITIALIZED", "is_paper": False}
 
         transaction_type = 'BUY' if direction == "BUY" else 'SELL'
@@ -215,25 +244,46 @@ class LiveBroker(BrokerProvider):
         audit("LIVE_ORDER_INITIATED", ticker=ticker, direction=direction, quantity=quantity)
         
         try:
-            body = upstox_client.PlaceOrderRequest(
-                quantity=int(quantity),
-                product='I', # Intraday
-                validity='DAY',
-                price=price if price and order_type_upstox == 'LIMIT' else 0.0,
-                instrument_token=ticker,
-                order_type=order_type_upstox,
-                transaction_type=transaction_type,
-                disclosed_quantity=0,
-                trigger_price=stop_price or 0,
-                is_amo=False
-            )
-            api_response = await asyncio.to_thread(
-                self.order_api.place_order, body, api_version='2.0'
-            )
-            
-            order_id = api_response.data.order_id if api_response.data else str(uuid.uuid4())
+            if self.order_api is not None and upstox_client is not None:
+                body = upstox_client.PlaceOrderRequest(
+                    quantity=int(quantity),
+                    product='I',
+                    validity='DAY',
+                    price=price if price and order_type_upstox == 'LIMIT' else 0.0,
+                    instrument_token=ticker,
+                    order_type=order_type_upstox,
+                    transaction_type=transaction_type,
+                    disclosed_quantity=0,
+                    trigger_price=stop_price or 0,
+                    is_amo=False
+                )
+                api_response = await asyncio.to_thread(
+                    self.order_api.place_order, body, api_version='2.0'
+                )
+                order_id = api_response.data.order_id if api_response.data else str(uuid.uuid4())
+            else:
+                payload = {
+                    "quantity": int(quantity),
+                    "product": "I",
+                    "validity": "DAY",
+                    "price": price if price and order_type_upstox == "LIMIT" else 0.0,
+                    "instrument_token": ticker,
+                    "order_type": order_type_upstox,
+                    "transaction_type": transaction_type,
+                    "disclosed_quantity": 0,
+                    "trigger_price": stop_price or 0,
+                    "is_amo": False,
+                }
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    resp = await client.post(
+                        "https://api.upstox.com/v2/order/place",
+                        headers={**self._rest_headers(), "Content-Type": "application/json"},
+                        json=payload,
+                    )
+                    resp.raise_for_status()
+                    order_id = resp.json().get("data", {}).get("order_id") or str(uuid.uuid4())
+
             logger.warning(f"LIVE UPSTOX ORDER PLACED: {direction} {quantity} {ticker} -> ID: {order_id}")
-            
             return {
                 "order_id": order_id,
                 "ticker": ticker,
@@ -245,12 +295,21 @@ class LiveBroker(BrokerProvider):
             return {"status": "FAILED", "reason": str(e)}
 
     async def cancel_order(self, broker_order_id: str) -> bool:
-        if not self.order_api or not get_settings().live_trading_enabled:
+        if not self._upstox_access_token or not get_settings().live_trading_enabled:
             return False
         try:
-            await asyncio.to_thread(
-                self.order_api.cancel_order, order_id=broker_order_id, api_version='2.0'
-            )
+            if self.order_api is not None:
+                await asyncio.to_thread(
+                    self.order_api.cancel_order, order_id=broker_order_id, api_version='2.0'
+                )
+            else:
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    resp = await client.delete(
+                        "https://api.upstox.com/v2/order/cancel",
+                        headers=self._rest_headers(),
+                        params={"order_id": broker_order_id},
+                    )
+                    resp.raise_for_status()
             audit("LIVE_ORDER_CANCELLED", order_id=broker_order_id)
             return True
         except Exception as e:
@@ -258,39 +317,65 @@ class LiveBroker(BrokerProvider):
             return False
 
     async def get_order_status(self, broker_order_id: str) -> Dict[str, Any]:
-        if not self.order_api:
+        if not self._upstox_access_token:
             return {"order_id": broker_order_id, "status": "UNAVAILABLE"}
         try:
-            resp = await asyncio.to_thread(
-                self.order_api.get_order_details, order_id=broker_order_id, api_version='2.0'
-            )
-            data = resp.data
-            return {
-                "order_id": broker_order_id,
-                "status": getattr(data, "status", "UNKNOWN"),
-                "filled_quantity": getattr(data, "filled_quantity", 0),
-                "average_price": getattr(data, "average_price", 0.0),
-            }
+            if self.order_api is not None:
+                resp = await asyncio.to_thread(
+                    self.order_api.get_order_details, order_id=broker_order_id, api_version='2.0'
+                )
+                data = resp.data
+                return {
+                    "order_id": broker_order_id,
+                    "status": getattr(data, "status", "UNKNOWN"),
+                    "filled_quantity": getattr(data, "filled_quantity", 0),
+                    "average_price": getattr(data, "average_price", 0.0),
+                }
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.get(
+                    "https://api.upstox.com/v2/order/details",
+                    headers=self._rest_headers(),
+                    params={"order_id": broker_order_id},
+                )
+                resp.raise_for_status()
+                data = resp.json().get("data", {})
+                return {
+                    "order_id": broker_order_id,
+                    "status": data.get("status", "UNKNOWN"),
+                    "filled_quantity": data.get("filled_quantity", 0),
+                    "average_price": data.get("average_price", 0.0),
+                }
         except Exception as e:
             logger.error(f"Failed to fetch order status for {broker_order_id}: {e}")
             return {"order_id": broker_order_id, "status": "ERROR", "reason": str(e)}
 
     async def get_orders(self) -> List[Dict[str, Any]]:
-        if not self.order_api:
+        if not self._upstox_access_token:
             return []
         try:
-            resp = await asyncio.to_thread(self.order_api.get_order_book, api_version='2.0')
+            if self.order_api is not None:
+                resp = await asyncio.to_thread(self.order_api.get_order_book, api_version='2.0')
+                raw_orders = getattr(resp, "data", []) or []
+            else:
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    resp = await client.get(
+                        "https://api.upstox.com/v2/order/retrieve-all",
+                        headers=self._rest_headers(),
+                    )
+                    resp.raise_for_status()
+                    raw_orders = resp.json().get("data", []) or []
             orders = []
-            for o in getattr(resp, "data", []) or []:
+            for o in raw_orders:
+                get_f = o.get if isinstance(o, dict) else (lambda k, d=None: getattr(o, k, d))
                 orders.append({
-                    "id": getattr(o, "order_id", ""),
-                    "symbol": getattr(o, "tradingsymbol", ""),
-                    "side": getattr(o, "transaction_type", ""),
-                    "type": getattr(o, "order_type", ""),
-                    "qty": getattr(o, "quantity", 0),
-                    "price": getattr(o, "average_price", 0.0) or getattr(o, "price", 0.0),
-                    "status": getattr(o, "status", "UNKNOWN"),
-                    "time": getattr(o, "order_timestamp", "--"),
+                    "id": get_f("order_id", ""),
+                    "symbol": get_f("tradingsymbol", ""),
+                    "side": get_f("transaction_type", ""),
+                    "type": get_f("order_type", ""),
+                    "qty": get_f("quantity", 0),
+                    "price": get_f("average_price", 0.0) or get_f("price", 0.0),
+                    "status": get_f("status", "UNKNOWN"),
+                    "time": get_f("order_timestamp", "--"),
                 })
             return orders
         except Exception as e:
