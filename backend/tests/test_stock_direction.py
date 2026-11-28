@@ -575,3 +575,90 @@ def test_prediction_is_withheld_for_unqualified_or_stale_candidates(tmp_path, mo
 
     with pytest.raises(ValueError, match="stale"):
         predict_next_session("TEST", _candles(), model_path=stale_artifact)
+
+
+def test_train_stock_direction_updates_stale_model_without_overwriting_qualified(
+    tmp_path, monkeypatch
+):
+    from backtesting import train_stock_direction as runner
+
+    model_path = tmp_path / "stock_direction_candidate.joblib"
+    metadata_path = tmp_path / "stock_direction_candidate_meta.json"
+    shadow_path = tmp_path / "stock_direction_shadow_candidate.joblib"
+    report_path = tmp_path / "stock_direction_last_training_report.json"
+
+    joblib.dump({"model": _FakeModel(), "metadata": {"schema_version": 3}}, model_path)
+    metadata_path.write_text('{"schema_version": 3}', encoding="utf-8")
+
+    async def fake_fetch(*args, **kwargs):
+        return {"TEST": _candles(60)}, {"provider": "fake", "fetched_symbols": ["TEST"], "failed_symbols": {}}
+
+    def fake_train(*args, **kwargs):
+        joblib.dump(
+            {
+                "model": _FakeModel(0.0),
+                "metadata": {
+                    "schema_version": MODEL_SCHEMA_VERSION,
+                    "eligible_for_live_display": False,
+                    "model_type": "zero_return_baseline",
+                    "test": {
+                        "mae_pct": 1.0,
+                        "best_baseline": "zero_return_baseline",
+                        "baselines": {"zero_return_baseline": {"mae_pct": 1.0}},
+                        "mae_improvement_vs_zero_return_baseline_95pct_ci": [0.0, 0.0],
+                    },
+                    "artifact_training": {"through": "2026-11-27T00:00:00+05:30"},
+                    "execution_costs": {"commission_pct_per_side": 0.03, "slippage_pct_per_side": 0.05},
+                    "paper_backtest": {"net_profit": 0.0},
+                },
+            },
+            kwargs["model_path"],
+        )
+        kwargs["metadata_path"].write_text('{"schema_version": 10}', encoding="utf-8")
+        return {
+            "schema_version": MODEL_SCHEMA_VERSION,
+            "eligible_for_live_display": False,
+            "historical_promotion_enabled": False,
+        }
+
+    monkeypatch.setattr(runner, "MODEL_PATH", model_path)
+    monkeypatch.setattr(runner, "METADATA_PATH", metadata_path)
+    monkeypatch.setattr(runner, "SHADOW_MODEL_PATH", shadow_path)
+    monkeypatch.setattr(runner, "TRAINING_REPORT_PATH", report_path)
+    monkeypatch.setattr(runner, "fetch_upstox_daily_data", fake_fetch)
+    monkeypatch.setattr(runner, "train_stock_direction_candidate", fake_train)
+
+    runner.main()
+    assert get_candidate_status(model_path)["state"] == "withheld"
+
+    # Qualified current-schema model must be preserved on later withheld runs
+    qualified_bundle = joblib.load(model_path)
+    qualified_bundle["metadata"]["eligible_for_live_display"] = True
+    qualified_bundle["metadata"]["model_type"] = "qualified_model"
+    joblib.dump(qualified_bundle, model_path)
+
+    runner.main()
+    assert get_candidate_status(model_path)["state"] == "qualified_research"
+    assert get_candidate_status(model_path)["model"] == "qualified_model"
+
+
+def test_conviction_threshold_estimator_and_enriched_features():
+    wrapper = stock_direction._ConvictionThresholdEstimator(
+        _FakeModel(prediction=0.12), min_signal_pct=0.15
+    )
+    assert np.array_equal(wrapper.predict(np.zeros((2, 3))), np.zeros(2))
+    high = stock_direction._ConvictionThresholdEstimator(
+        _FakeModel(prediction=0.20), min_signal_pct=0.15
+    )
+    assert np.allclose(high.predict(np.zeros((2, 3))), np.array([0.20, 0.20]))
+
+    ds = stock_direction.build_direction_dataset(
+        {"TEST": _candles(80), "NIFTY50": _candles(80)},
+        commission_pct=0.03,
+        slippage_pct=0.05,
+    )
+    cols = stock_direction._model_feature_columns(["TEST"], include_market_context=True)
+    x = stock_direction._model_input(ds, cols)
+    assert "excess_return_1" in x.columns
+    assert "close_in_range" in x.columns
+    assert not x.isin([float("inf"), float("-inf")]).any().any()

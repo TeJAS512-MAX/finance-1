@@ -33,15 +33,19 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 MODEL_PATH = DATA_DIR / "stock_direction_candidate.joblib"
 METADATA_PATH = DATA_DIR / "stock_direction_candidate_meta.json"
 SHADOW_MODEL_PATH = DATA_DIR / "stock_direction_shadow_candidate.joblib"
-MODEL_SCHEMA_VERSION = 10
+MODEL_SCHEMA_VERSION = 11
 MARKET_CONTEXT_SYMBOL = "NIFTY50"
 PAPER_PROFIT_TARGET = 500.0
+RESEARCH_EXTENDED_PROFIT_TARGET = 1_000.0
 PAPER_MAX_DRAWDOWN = 1_000.0
+SIGNAL_THRESHOLDS = (0.0, 0.05, 0.10, 0.15)
 MODEL_NAMES = (
     "ridge_regression",
     "random_forest_regression",
     "extra_trees_regression",
     "hist_gradient_boosting_regression",
+    "regularized_hist_gradient_boosting",
+    "ridge_hgb_blend_regression",
     "tree_voting_regression",
 )
 FEATURE_COLUMNS = [
@@ -57,12 +61,22 @@ FEATURE_COLUMNS = [
     "candle_body_pct",
     "overnight_gap_pct",
     "realized_volatility_20",
+    "close_in_range",
+    "dist_20d_high_pct",
+    "rsi_centered",
+    "gap_x_body",
 ]
 MARKET_FEATURE_COLUMNS = [
     "nifty_return_1",
     "nifty_return_5",
     "nifty_return_20",
     "nifty_realized_volatility_20",
+]
+MARKET_RELATIVE_FEATURE_COLUMNS = [
+    "excess_return_1",
+    "excess_return_5",
+    "excess_return_20",
+    "volatility_ratio_vs_nifty",
 ]
 CANDLE_COLUMNS = ("timestamp", "open", "high", "low", "close", "volume")
 
@@ -198,6 +212,10 @@ def _feature_frame(candles: list[dict[str, Any]]) -> pd.DataFrame:
         axis=1,
     ).max(axis=1)
     average_volume = frame["volume"].rolling(20, min_periods=5).mean()
+    candle_span = (frame["high"] - frame["low"]).replace(0, np.nan)
+    rolling_high_20 = frame["high"].rolling(20, min_periods=5).max()
+    candle_body_pct = (close - frame["open"]) / frame["open"] * 100
+    overnight_gap_pct = (frame["open"] - previous_close) / previous_close * 100
     features = pd.DataFrame(
         {
             "timestamp": frame["timestamp"],
@@ -213,9 +231,13 @@ def _feature_frame(candles: list[dict[str, Any]]) -> pd.DataFrame:
             "return_5": close.pct_change(5, fill_method=None) * 100,
             "return_20": close.pct_change(20, fill_method=None) * 100,
             "volume_ratio": frame["volume"] / average_volume,
-            "candle_body_pct": (close - frame["open"]) / frame["open"] * 100,
-            "overnight_gap_pct": (frame["open"] - previous_close) / previous_close * 100,
+            "candle_body_pct": candle_body_pct,
+            "overnight_gap_pct": overnight_gap_pct,
             "realized_volatility_20": returns.rolling(20, min_periods=20).std(ddof=0),
+            "close_in_range": (close - frame["low"]) / candle_span,
+            "dist_20d_high_pct": (close / rolling_high_20 - 1) * 100,
+            "rsi_centered": rsi - 50.0,
+            "gap_x_body": overnight_gap_pct * candle_body_pct,
         }
     )
     features[FEATURE_COLUMNS] = features[FEATURE_COLUMNS].replace([np.inf, -np.inf], np.nan)
@@ -251,7 +273,11 @@ def _model_feature_columns(
 ) -> list[str]:
     return [
         *FEATURE_COLUMNS,
-        *(MARKET_FEATURE_COLUMNS if include_market_context else []),
+        *(
+            [*MARKET_FEATURE_COLUMNS, *MARKET_RELATIVE_FEATURE_COLUMNS]
+            if include_market_context
+            else []
+        ),
         *(f"symbol__{symbol.upper()}" for symbol in sorted(set(symbols))),
     ]
 
@@ -259,10 +285,24 @@ def _model_feature_columns(
 def _model_input(frame: pd.DataFrame, model_feature_columns: list[str]) -> pd.DataFrame:
     numeric_features = [
         column
-        for column in (*FEATURE_COLUMNS, *MARKET_FEATURE_COLUMNS)
+        for column in (*FEATURE_COLUMNS, *MARKET_FEATURE_COLUMNS, *MARKET_RELATIVE_FEATURE_COLUMNS)
         if column in model_feature_columns
     ]
     model_input = frame.reindex(columns=numeric_features).copy()
+    if {"return_1", "nifty_return_1"}.issubset(frame.columns) and "excess_return_1" in model_input:
+        model_input["excess_return_1"] = frame["return_1"] - frame["nifty_return_1"]
+    if {"return_5", "nifty_return_5"}.issubset(frame.columns) and "excess_return_5" in model_input:
+        model_input["excess_return_5"] = frame["return_5"] - frame["nifty_return_5"]
+    if {"return_20", "nifty_return_20"}.issubset(frame.columns) and "excess_return_20" in model_input:
+        model_input["excess_return_20"] = frame["return_20"] - frame["nifty_return_20"]
+    if (
+        {"realized_volatility_20", "nifty_realized_volatility_20"}.issubset(frame.columns)
+        and "volatility_ratio_vs_nifty" in model_input
+    ):
+        model_input["volatility_ratio_vs_nifty"] = frame["realized_volatility_20"] / frame[
+            "nifty_realized_volatility_20"
+        ].replace(0, np.nan)
+    model_input[numeric_features] = model_input[numeric_features].replace([np.inf, -np.inf], np.nan)
     if "symbol" in frame:
         normalized_symbols = frame["symbol"].astype(str).str.upper()
         for column in model_feature_columns:
@@ -450,6 +490,29 @@ def chronological_split(
     return splits
 
 
+class _ConvictionThresholdEstimator:
+    """Zero out marginal predicted returns below a walk-forward selected floor."""
+
+    def __init__(self, estimator: Any, min_signal_pct: float = 0.0) -> None:
+        self.estimator = estimator
+        self.min_signal_pct = float(min_signal_pct)
+
+    def predict(self, X: Any) -> np.ndarray:
+        raw = np.asarray(self.estimator.predict(X), dtype=float)
+        if self.min_signal_pct <= 0.0:
+            return raw
+        return np.where(raw >= self.min_signal_pct, raw, 0.0)
+
+
+def _set_single_thread_inference(estimator: Any) -> None:
+    if hasattr(estimator, "n_jobs"):
+        estimator.n_jobs = 1
+    for nested in getattr(estimator, "estimators_", []) or []:
+        _set_single_thread_inference(nested)
+    for _, step in getattr(estimator, "steps", []) or []:
+        _set_single_thread_inference(step)
+
+
 def _make_regressor(name: str) -> Any:
     if name == "tree_voting_regression":
         return VotingRegressor(
@@ -461,6 +524,25 @@ def _make_regressor(name: str) -> Any:
                     _make_regressor("hist_gradient_boosting_regression"),
                 ),
             ]
+        )
+    if name == "ridge_hgb_blend_regression":
+        return VotingRegressor(
+            estimators=[
+                (
+                    "ridge",
+                    Pipeline(
+                        [
+                            ("scaler", StandardScaler()),
+                            ("regressor", Ridge(alpha=250.0)),
+                        ]
+                    ),
+                ),
+                (
+                    "hgb",
+                    _make_regressor("regularized_hist_gradient_boosting"),
+                ),
+            ],
+            weights=[0.5, 0.5],
         )
 
     regressor = {
@@ -486,11 +568,20 @@ def _make_regressor(name: str) -> Any:
             early_stopping=False,
             random_state=42,
         ),
+        "regularized_hist_gradient_boosting": HistGradientBoostingRegressor(
+            max_iter=150,
+            learning_rate=0.03,
+            max_leaf_nodes=15,
+            min_samples_leaf=50,
+            l2_regularization=5.0,
+            early_stopping=False,
+            random_state=42,
+        ),
     }.get(name)
     if name == "zero_return_baseline":
         return DummyRegressor(strategy="constant", constant=0.0)
     if name == "ridge_regression":
-        return Ridge(alpha=10.0)
+        return Ridge(alpha=100.0)
     if regressor is None:
         raise ValueError(f"Unknown model: {name}")
     return regressor
@@ -647,10 +738,11 @@ def _date_bootstrap_mae_improvement(
 
 
 def _feature_importance(
-    model: Pipeline,
+    model: Any,
     model_feature_columns: list[str],
 ) -> dict[str, float]:
-    regressor = model.named_steps["regressor"]
+    base_model = getattr(model, "estimator", model)
+    regressor = base_model.named_steps["regressor"]
     if hasattr(regressor, "feature_importances_"):
         values = regressor.feature_importances_
     elif hasattr(regressor, "coef_"):
@@ -658,11 +750,16 @@ def _feature_importance(
         if values.ndim > 1:
             values = values.mean(axis=0)
     elif hasattr(regressor, "estimators_"):
-        member_importances = [
-            estimator.feature_importances_
-            for estimator in regressor.estimators_
-            if hasattr(estimator, "feature_importances_")
-        ]
+        member_importances = []
+        for estimator in regressor.estimators_:
+            inner = estimator.named_steps.get("regressor", estimator) if hasattr(estimator, "named_steps") else estimator
+            if hasattr(inner, "feature_importances_"):
+                member_importances.append(inner.feature_importances_)
+            elif hasattr(inner, "coef_"):
+                coef = np.abs(inner.coef_)
+                if coef.ndim > 1:
+                    coef = coef.mean(axis=0)
+                member_importances.append(coef)
         if not member_importances:
             return {}
         values = np.mean(member_importances, axis=0)
@@ -719,12 +816,15 @@ def train_stock_direction_candidate(
     )
 
     unique_train_dates = np.array(sorted(train["timestamp"].unique()))
-    fold_results: dict[str, list[float]] = {
-        name: [] for name in (*MODEL_NAMES, "zero_return_baseline")
+    raw_fold_mae: dict[tuple[str, float], list[float]] = {
+        (name, th): [] for name in MODEL_NAMES for th in SIGNAL_THRESHOLDS
     }
-    fold_profit_per_session: dict[str, list[float]] = {
-        name: [] for name in (*MODEL_NAMES, "zero_return_baseline")
+    raw_fold_profit: dict[tuple[str, float], list[float]] = {
+        (name, th): [] for name in MODEL_NAMES for th in SIGNAL_THRESHOLDS
     }
+    baseline_fold_mae: list[float] = []
+    baseline_fold_profit: list[float] = []
+
     for _, validation_indices in TimeSeriesSplit(n_splits=3).split(unique_train_dates):
         fold_validation_start = unique_train_dates[validation_indices[0]]
         fold_dates = unique_train_dates[validation_indices]
@@ -736,33 +836,57 @@ def train_stock_direction_candidate(
         if fold_train.empty or fold_validation.empty:
             continue
         actual = fold_validation["target_net_return_pct"].to_numpy(dtype=float)
-        fold_results["zero_return_baseline"].append(
+        baseline_fold_mae.append(
             float(mean_absolute_error(actual, np.zeros(len(actual))))
         )
-        fold_profit_per_session["zero_return_baseline"].append(0.0)
+        baseline_fold_profit.append(0.0)
+        fold_train_x = _model_input(fold_train, model_feature_columns)
+        fold_val_x = _model_input(fold_validation, model_feature_columns)
         for name in MODEL_NAMES:
             model = _make_model(name)
-            model.fit(
-                _model_input(fold_train, model_feature_columns),
-                fold_train["target_net_return_pct"],
-            )
-            prediction = model.predict(_model_input(fold_validation, model_feature_columns))
-            fold_results[name].append(float(mean_absolute_error(actual, prediction)))
-            fold_backtest = _simulate_long_only_paper_backtest(
-                fold_validation,
-                prediction,
-                initial_capital=settings.paper_trading_initial_capital,
-                profit_target=PAPER_PROFIT_TARGET,
-                max_drawdown=PAPER_MAX_DRAWDOWN,
-                max_position_pct=settings.max_position_size_pct,
-                commission_pct=commission_pct,
-                slippage_pct=slippage_pct,
-            )
-            fold_profit_per_session[name].append(
-                fold_backtest["net_profit"] / max(fold_backtest["sessions_evaluated"], 1)
-            )
-    if not all(fold_results.values()):
+            model.fit(fold_train_x, fold_train["target_net_return_pct"])
+            raw_prediction = np.asarray(model.predict(fold_val_x), dtype=float)
+            for th in SIGNAL_THRESHOLDS:
+                gated_prediction = (
+                    np.where(raw_prediction >= th, raw_prediction, 0.0)
+                    if th > 0.0
+                    else raw_prediction
+                )
+                raw_fold_mae[(name, th)].append(
+                    float(mean_absolute_error(actual, gated_prediction))
+                )
+                fold_backtest = _simulate_long_only_paper_backtest(
+                    fold_validation,
+                    gated_prediction,
+                    initial_capital=settings.paper_trading_initial_capital,
+                    profit_target=RESEARCH_EXTENDED_PROFIT_TARGET,
+                    max_drawdown=PAPER_MAX_DRAWDOWN,
+                    max_position_pct=settings.max_position_size_pct,
+                    commission_pct=commission_pct,
+                    slippage_pct=slippage_pct,
+                )
+                raw_fold_profit[(name, th)].append(
+                    fold_backtest["net_profit"] / max(fold_backtest["sessions_evaluated"], 1)
+                )
+    if not baseline_fold_mae:
         raise ValueError("Not enough time-ordered samples to complete walk-forward validation")
+
+    best_threshold_by_model: dict[str, float] = {"zero_return_baseline": 0.0}
+    fold_results: dict[str, list[float]] = {"zero_return_baseline": baseline_fold_mae}
+    fold_profit_per_session: dict[str, list[float]] = {
+        "zero_return_baseline": baseline_fold_profit
+    }
+    for name in MODEL_NAMES:
+        best_th = max(
+            SIGNAL_THRESHOLDS,
+            key=lambda th: (
+                float(np.mean(raw_fold_profit[(name, th)])),
+                -float(np.mean(raw_fold_mae[(name, th)])),
+            ),
+        )
+        best_threshold_by_model[name] = best_th
+        fold_results[name] = raw_fold_mae[(name, best_th)]
+        fold_profit_per_session[name] = raw_fold_profit[(name, best_th)]
 
     model_names = [*MODEL_NAMES, "zero_return_baseline"]
     selected_name = max(
@@ -772,13 +896,20 @@ def train_stock_direction_candidate(
             -float(np.mean(fold_results[name])),
         ),
     )
+    selected_threshold = best_threshold_by_model[selected_name]
     best_baseline_name = "zero_return_baseline"
 
-    model = _make_model(selected_name)
-    model.fit(
-        _model_input(train, model_feature_columns),
-        train["target_net_return_pct"],
-    )
+    def _fit_wrapped(frame: pd.DataFrame, model_name: str, threshold: float) -> Any:
+        fitted = _make_model(model_name)
+        fitted.fit(_model_input(frame, model_feature_columns), frame["target_net_return_pct"])
+        _set_single_thread_inference(fitted)
+        return (
+            _ConvictionThresholdEstimator(fitted, threshold)
+            if threshold > 0.0 and model_name != "zero_return_baseline"
+            else fitted
+        )
+
+    model = _fit_wrapped(train, selected_name, selected_threshold)
     validation_prediction = model.predict(
         _model_input(validation, model_feature_columns)
     )
@@ -796,16 +927,22 @@ def train_stock_direction_candidate(
         commission_pct=commission_pct,
         slippage_pct=slippage_pct,
     )
+    validation_backtest_1000 = _simulate_long_only_paper_backtest(
+        validation,
+        validation_prediction,
+        initial_capital=settings.paper_trading_initial_capital,
+        profit_target=RESEARCH_EXTENDED_PROFIT_TARGET,
+        max_drawdown=PAPER_MAX_DRAWDOWN,
+        max_position_pct=settings.max_position_size_pct,
+        commission_pct=commission_pct,
+        slippage_pct=slippage_pct,
+    )
     validation_beats_zero_return_baseline = (
         mean_absolute_error(validation_actual, validation_prediction)
         < mean_absolute_error(validation_actual, np.zeros(len(validation_actual)))
     )
     final_training = pd.concat([train, validation], ignore_index=True)
-    final_model = _make_model(selected_name)
-    final_model.fit(
-        _model_input(final_training, model_feature_columns),
-        final_training["target_net_return_pct"],
-    )
+    final_model = _fit_wrapped(final_training, selected_name, selected_threshold)
     test_actual = test["target_net_return_pct"].to_numpy(dtype=float)
     test_prediction = final_model.predict(_model_input(test, model_feature_columns))
     paper_backtest = _simulate_long_only_paper_backtest(
@@ -813,6 +950,16 @@ def train_stock_direction_candidate(
         test_prediction,
         initial_capital=settings.paper_trading_initial_capital,
         profit_target=PAPER_PROFIT_TARGET,
+        max_drawdown=PAPER_MAX_DRAWDOWN,
+        max_position_pct=settings.max_position_size_pct,
+        commission_pct=settings.backtest_default_commission_pct,
+        slippage_pct=settings.backtest_default_slippage_pct,
+    )
+    paper_backtest_1000 = _simulate_long_only_paper_backtest(
+        test,
+        test_prediction,
+        initial_capital=settings.paper_trading_initial_capital,
+        profit_target=RESEARCH_EXTENDED_PROFIT_TARGET,
         max_drawdown=PAPER_MAX_DRAWDOWN,
         max_position_pct=settings.max_position_size_pct,
         commission_pct=settings.backtest_default_commission_pct,
@@ -866,17 +1013,18 @@ def train_stock_direction_candidate(
     }
     shadow_models = {}
     for model_name in (*MODEL_NAMES, "zero_return_baseline"):
-        challenger = _make_model(model_name)
-        challenger.fit(
-            _model_input(dataset, model_feature_columns),
-            dataset["target_net_return_pct"],
+        shadow_models[model_name] = _fit_wrapped(
+            dataset,
+            model_name,
+            best_threshold_by_model[model_name],
         )
-        shadow_models[model_name] = challenger
     final_model = shadow_models[selected_name]
 
     model_path.parent.mkdir(parents=True, exist_ok=True)
     metadata = {
         "model_type": selected_name,
+        "selected_threshold_pct": selected_threshold,
+        "walk_forward_thresholds_pct": best_threshold_by_model,
         "schema_version": MODEL_SCHEMA_VERSION,
         "mode": "research_only",
         "data_source": data_source,
@@ -886,6 +1034,7 @@ def train_stock_direction_candidate(
         "historical_promotion_enabled": allow_historical_promotion,
         "promotion_checks": promotion_checks,
         "paper_backtest": paper_backtest,
+        "paper_backtest_1000_target": paper_backtest_1000,
         "execution_costs": {
             "commission_pct_per_side": commission_pct,
             "slippage_pct_per_side": slippage_pct,
@@ -948,6 +1097,7 @@ def train_stock_direction_candidate(
             **_regression_metrics(validation_actual, validation_prediction),
             "beats_zero_return_baseline_by_mae": validation_beats_zero_return_baseline,
             "paper_backtest": validation_backtest,
+            "paper_backtest_1000_target": validation_backtest_1000,
             "baselines": {
                 name: _regression_metrics(validation_actual, prediction)
                 for name, prediction in validation_baselines.items()

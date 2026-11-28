@@ -8,6 +8,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Any
+from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -49,8 +50,9 @@ async def fetch_historical_data(days_back: int = 90) -> Dict[str, List[Dict[str,
                 earliest = now - timedelta(days=days_back)
                 while window_end > earliest:
                     window_start = max(earliest, window_end - timedelta(days=29))
+                    encoded_key = quote(instrument_key, safe="")
                     url = (
-                        f"{UPSTOX_BASE}/historical-candle/{instrument_key}/30minute/"
+                        f"{UPSTOX_BASE}/historical-candle/{encoded_key}/30minute/"
                         f"{window_end.strftime('%Y-%m-%d')}/{window_start.strftime('%Y-%m-%d')}"
                     )
                     response = await client.get(url, headers=_get_headers())
@@ -66,7 +68,7 @@ async def fetch_historical_data(days_back: int = 90) -> Dict[str, List[Dict[str,
                             "volume": int(c[5]),
                         }
                     window_end = window_start - timedelta(days=1)
-                    await asyncio.sleep(0.5)
+                    await asyncio.sleep(0.15)
 
                 all_data[symbol] = [
                     candles_by_timestamp[key]

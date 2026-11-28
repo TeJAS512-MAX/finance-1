@@ -25,8 +25,7 @@ import httpx
 UPSTOX_BASE = "https://api.upstox.com/v2"
 UPSTOX_V3_BASE = "https://api.upstox.com/v3"
 
-# Instrument key map: symbol → Upstox instrument_key
-# These are official NSE_EQ instrument keys from Upstox's instrument master
+# Official NSE_EQ instrument keys from Upstox's NSE instrument master (verified 200 OK).
 INSTRUMENT_KEYS: Dict[str, str] = {
     "RELIANCE":   "NSE_EQ|INE002A01018",
     "SBIN":       "NSE_EQ|INE062A01020",
@@ -37,7 +36,34 @@ INSTRUMENT_KEYS: Dict[str, str] = {
     "ICICIBANK":  "NSE_EQ|INE090A01021",
     "WIPRO":      "NSE_EQ|INE075A01022",
     "HDFCBANK":   "NSE_EQ|INE040A01034",
-    "BAJFINANCE": "NSE_EQ|INE296A01024",
+    "BAJFINANCE": "NSE_EQ|INE296A01032",
+    "LT":         "NSE_EQ|INE018A01030",
+    "AXISBANK":   "NSE_EQ|INE238A01034",
+    "KOTAKBANK":  "NSE_EQ|INE237A01036",
+    "BHARTIARTL": "NSE_EQ|INE397D01024",
+    "SUNPHARMA":  "NSE_EQ|INE044A01036",
+    "MARUTI":     "NSE_EQ|INE585B01010",
+    "M&M":        "NSE_EQ|INE101A01026",
+    "NTPC":       "NSE_EQ|INE733E01010",
+    "POWERGRID":  "NSE_EQ|INE752E01010",
+    "HCLTECH":    "NSE_EQ|INE860A01027",
+    "TECHM":      "NSE_EQ|INE669C01036",
+    "TITAN":      "NSE_EQ|INE280A01028",
+    "ULTRACEMCO": "NSE_EQ|INE481G01011",
+    "ASIANPAINT": "NSE_EQ|INE021A01026",
+    "TATASTEEL":  "NSE_EQ|INE081A01020",
+    "JSWSTEEL":   "NSE_EQ|INE019A01038",
+    "HINDUNILVR": "NSE_EQ|INE030A01027",
+    "ADANIPORTS": "NSE_EQ|INE742F01042",
+    "DRREDDY":    "NSE_EQ|INE089A01031",
+    "CIPLA":      "NSE_EQ|INE059A01026",
+    "COALINDIA":  "NSE_EQ|INE522F01014",
+    "ONGC":       "NSE_EQ|INE213A01029",
+    "GRASIM":     "NSE_EQ|INE047A01021",
+    "NESTLEIND":  "NSE_EQ|INE239A01024",
+    "BAJAJFINSV": "NSE_EQ|INE918I01026",
+    "TRENT":      "NSE_EQ|INE849A01020",
+    "BEL":        "NSE_EQ|INE263A01024",
 }
 MARKET_CONTEXT_INSTRUMENT_KEYS: Dict[str, str] = {
     "NIFTY50": "NSE_INDEX|Nifty 50",
@@ -194,9 +220,19 @@ async def get_live_quote(symbol: str) -> Dict[str, Any]:
 
     url = f"{UPSTOX_BASE}/market-quote/quotes"
     params = {"instrument_key": instrument_key}
+    live_token = os.environ.get("UPSTOX_ACCESS_TOKEN", "").strip()
+    headers = (
+        {
+            "Authorization": f"Bearer {live_token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+        if live_token
+        else _get_headers()
+    )
 
     async with httpx.AsyncClient(timeout=8.0) as client:
-        response = await client.get(url, headers=_get_headers(), params=params)
+        response = await client.get(url, headers=headers, params=params)
         response.raise_for_status()
         data = response.json()
 
@@ -218,6 +254,17 @@ async def get_live_quote(symbol: str) -> Dict[str, Any]:
         "timestamp":      datetime.now(timezone.utc).isoformat(),
         "source":         "Upstox Official API (Real-time NSE)",
     }
+
+
+def compute_frac_diff(close: Any, d: float = 0.5, window: int = 10) -> Any:
+    """Compute fixed-width-window fractionally differentiated closing prices."""
+    import numpy as np
+
+    weights = [1.0]
+    for k in range(1, window):
+        weights.append(-weights[-1] / k * (d - k + 1))
+    w_ffd = np.array(weights[::-1], dtype=float)
+    return close.rolling(window).apply(lambda x: float(np.dot(x, w_ffd)), raw=True)
 
 
 async def compute_features(symbol: str, interval: str = "5m") -> Dict[str, Any]:
@@ -274,6 +321,7 @@ async def compute_features(symbol: str, interval: str = "5m") -> Dict[str, Any]:
     range_pct = (high - low) / close * 100
     return_5 = close.pct_change(5) * 100
     return_20 = close.pct_change(20) * 100
+    frac_diff = compute_frac_diff(close, d=0.5, window=10)
 
     # 6. VWAP (Intraday)
     # Convert timestamps to datetime to group by day
@@ -328,6 +376,7 @@ async def compute_features(symbol: str, interval: str = "5m") -> Dict[str, Any]:
         "range_pct":    float(range_pct.iloc[idx]),
         "return_5":     float(return_5.iloc[idx]),
         "return_20":    float(return_20.iloc[idx]),
+        "frac_diff":    float(frac_diff.iloc[idx]),
         "vwap":         float(df['vwap'].iloc[idx]),
         "timestamp":    str(df['timestamp'].iloc[idx]),  # PIT compliance key
         "candle_count": len(candles),

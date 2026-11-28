@@ -51,6 +51,7 @@ async def fetch_upstox_daily_data(
         try:
             async with semaphore:
                 candles = await get_daily_history_v3(symbol, days_back=days_back)
+                await asyncio.sleep(0.05)
             normalized = {}
             for candle in candles:
                 timestamp = datetime.fromisoformat(str(candle["timestamp"]))

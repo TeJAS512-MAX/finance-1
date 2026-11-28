@@ -38,7 +38,10 @@ class MLQualityFilter:
                 for name in ["hgb", "rf", "et", "dnn"]:
                     mp = self.model_dir / f"{self.prefix}_{name}.joblib"
                     if mp.exists():
-                        self.models[name] = joblib.load(mp)
+                        loaded = joblib.load(mp)
+                        if hasattr(loaded, "n_jobs"):
+                            loaded.n_jobs = 1
+                        self.models[name] = loaded
                 
                 meta_path = self.model_dir / f"{self.prefix}_meta.json"
                 if meta_path.exists():
@@ -67,25 +70,33 @@ class MLQualityFilter:
         try:
             values = []
             for col in self.feature_cols:
-                value = features.get(col, 0.0)
-                if col == "direction" and isinstance(value, str):
-                    value = {"LONG": 1.0, "SHORT": -1.0}.get(value.upper(), 0.0)
-                values.append(value)
-                
+                if col == "direction":
+                    value = features.get("direction", features.get("candidate_direction", 0.0))
+                    if isinstance(value, str):
+                        value = {"LONG": 1.0, "SHORT": -1.0}.get(value.upper(), 0.0)
+                else:
+                    value = features.get(col, 0.0)
+                try:
+                    numeric_value = float(value)
+                except (TypeError, ValueError):
+                    numeric_value = 0.0
+                if not np.isfinite(numeric_value):
+                    numeric_value = 0.0
+                values.append(numeric_value)
+
             x = pd.DataFrame([values], columns=self.feature_cols)
             x_scaled = self.scaler.transform(x)
-            
+
             probs = []
-            for name, model in self.models.items():
+            for model in self.models.values():
                 prob = model.predict_proba(x_scaled)[0][1]
                 probs.append(prob)
-                
-            mean_prob = np.mean(probs)
-            # AGGRESSIVE MODE: Rely purely on the mean probability across all 4 models > 0.40
-            if mean_prob < 0.40:
+
+            mean_prob = float(np.mean(probs))
+            if mean_prob < self.approval_threshold:
                 return 0.0
-                
-            return float(mean_prob)
+
+            return mean_prob
         except Exception as e:
             print(f"ML predict error: {e}")
             return 0.0
@@ -145,11 +156,12 @@ class MLQualityFilter:
         for name, model in self.models.items():
             model.fit(X_train_scaled, y_train)
 
+        threshold = 0.40 if mode == "aggressive" else 0.60
         validation_probabilities = np.mean(
             [model.predict_proba(X_validation_scaled)[:, 1] for model in self.models.values()],
             axis=0,
         )
-        validation_predictions = validation_probabilities >= (0.40 if mode == "aggressive" else 0.60)
+        validation_predictions = validation_probabilities >= threshold
         validation_target = validation_df["target"].to_numpy()
         validation_accuracy = float(np.mean(validation_predictions == validation_target))
 
@@ -159,9 +171,11 @@ class MLQualityFilter:
         X_scaled = self.scaler.transform(X)
         for model in self.models.values():
             model.fit(X_scaled, y)
+            if hasattr(model, "n_jobs"):
+                model.n_jobs = 1
             
         self.is_loaded = True
-        self.approval_threshold = 0.40 if mode == "aggressive" else 0.60
+        self.approval_threshold = threshold
         
         # Save
         joblib.dump(self.scaler, self.model_dir / f"{self.prefix}_scaler.joblib")

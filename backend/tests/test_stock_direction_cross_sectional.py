@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from core import config
+from intelligence.stock_direction import MODEL_SCHEMA_VERSION
 from intelligence.stock_direction_cross_sectional import (
     _top_one_signals,
     _volatility_threshold,
@@ -104,7 +105,7 @@ def test_cross_sectional_candidate_is_separate_and_never_promoted(
 
     assert report["architecture"] == "regime_aware_cross_sectional_ranker"
     assert report["schema_version"] == 1
-    assert report["base_feature_schema_version"] == 10
+    assert report["base_feature_schema_version"] == MODEL_SCHEMA_VERSION
     assert pd.Timestamp(report["artifact_training"]["through"]) == pd.Timestamp(
         report["date_ranges"]["test"]["end"]
     ) + pd.Timedelta(days=1)

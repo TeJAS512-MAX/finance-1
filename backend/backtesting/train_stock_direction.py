@@ -21,6 +21,7 @@ from intelligence.stock_direction import (
     METADATA_PATH,
     MODEL_PATH,
     SHADOW_MODEL_PATH,
+    get_candidate_status,
     train_stock_direction_candidate,
 )
 
@@ -63,7 +64,12 @@ def main() -> None:
         shadow_temporary_path.replace(SHADOW_MODEL_PATH)
         report["shadow_candidate_saved"] = True
         report["shadow_candidate_file"] = SHADOW_MODEL_PATH.name
-        if report["eligible_for_live_display"]:
+        existing_status = get_candidate_status(MODEL_PATH).get("state")
+        if report["eligible_for_live_display"] or existing_status in {
+            "not_trained",
+            "needs_retraining",
+            "withheld",
+        }:
             staged_model.replace(MODEL_PATH)
             staged_metadata.replace(METADATA_PATH)
 

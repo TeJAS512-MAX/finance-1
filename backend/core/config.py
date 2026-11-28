@@ -154,8 +154,21 @@ class Settings(BaseSettings):
     @field_validator("debug", mode="before")
     @classmethod
     def parse_debug_flag(cls, v: object) -> object:
-        """Treat common non-boolean build values like 'release' as False."""
-        if isinstance(v, str) and v.strip().lower() in {"release", "prod", "production"}:
+        """Treat common non-boolean build or log-level values like 'release' or 'WARN' as False."""
+        if isinstance(v, str) and v.strip().lower() in {
+            "release",
+            "prod",
+            "production",
+            "warn",
+            "warning",
+            "info",
+            "error",
+            "critical",
+            "off",
+            "none",
+            "null",
+            "",
+        }:
             return False
         return v
 

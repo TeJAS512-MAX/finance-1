@@ -1,11 +1,22 @@
 {
-  "model_type": "hist_gradient_boosting",
-  "schema_version": 3,
+  "model_type": "ridge_regression",
+  "selected_threshold_pct": 0.0,
+  "walk_forward_thresholds_pct": {
+    "zero_return_baseline": 0.0,
+    "ridge_regression": 0.0,
+    "random_forest_regression": 0.15,
+    "extra_trees_regression": 0.15,
+    "hist_gradient_boosting_regression": 0.15,
+    "regularized_hist_gradient_boosting": 0.05,
+    "ridge_hgb_blend_regression": 0.05,
+    "tree_voting_regression": 0.1
+  },
+  "schema_version": 11,
   "mode": "research_only",
-  "data_source": "Upstox Official API",
+  "data_source": "Upstox Official API v3",
   "data_report": {
-    "provider": "Upstox Official API",
-    "requested_days": 365,
+    "provider": "Upstox Official API v3",
+    "requested_days": 3650,
     "requested_symbols": [
       "RELIANCE",
       "SBIN",
@@ -16,48 +27,237 @@
       "ICICIBANK",
       "WIPRO",
       "HDFCBANK",
-      "BAJFINANCE"
+      "BAJFINANCE",
+      "LT",
+      "AXISBANK",
+      "KOTAKBANK",
+      "BHARTIARTL",
+      "SUNPHARMA",
+      "MARUTI",
+      "M&M",
+      "NTPC",
+      "POWERGRID",
+      "HCLTECH",
+      "TECHM",
+      "TITAN",
+      "ULTRACEMCO",
+      "ASIANPAINT",
+      "TATASTEEL",
+      "JSWSTEEL",
+      "HINDUNILVR",
+      "ADANIPORTS",
+      "DRREDDY",
+      "CIPLA",
+      "COALINDIA",
+      "ONGC",
+      "GRASIM",
+      "NESTLEIND",
+      "BAJAJFINSV",
+      "TRENT",
+      "BEL"
     ],
     "fetched_symbols": [
+      "ADANIPORTS",
+      "ASIANPAINT",
+      "AXISBANK",
+      "BAJAJFINSV",
+      "BAJFINANCE",
+      "BEL",
+      "BHARTIARTL",
+      "CIPLA",
+      "COALINDIA",
+      "DRREDDY",
+      "GRASIM",
+      "HCLTECH",
       "HDFCBANK",
+      "HINDUNILVR",
       "ICICIBANK",
       "INFY",
       "ITC",
+      "JSWSTEEL",
+      "KOTAKBANK",
+      "LT",
+      "M&M",
+      "MARUTI",
+      "NESTLEIND",
+      "NTPC",
+      "ONGC",
+      "POWERGRID",
       "RELIANCE",
       "SBIN",
+      "SUNPHARMA",
+      "TATASTEEL",
       "TCS",
+      "TECHM",
+      "TITAN",
+      "TRENT",
+      "ULTRACEMCO",
       "WIPRO",
       "ZOMATO"
     ],
-    "failed_symbols": {
-      "BAJFINANCE": "Only 0 completed daily candles were returned."
-    },
+    "failed_symbols": {},
     "data_start_by_symbol": {
-      "RELIANCE": "2025-11-27T00:00:00+05:30",
-      "SBIN": "2025-11-27T00:00:00+05:30",
-      "TCS": "2025-11-27T00:00:00+05:30",
-      "INFY": "2025-11-27T00:00:00+05:30",
-      "ZOMATO": "2025-11-27T00:00:00+05:30",
-      "ITC": "2025-11-27T00:00:00+05:30",
-      "ICICIBANK": "2025-11-27T00:00:00+05:30",
-      "WIPRO": "2025-11-27T00:00:00+05:30",
-      "HDFCBANK": "2025-11-27T00:00:00+05:30"
+      "ADANIPORTS": "2016-11-30T09:15:00+05:30",
+      "ASIANPAINT": "2016-11-30T09:15:00+05:30",
+      "AXISBANK": "2016-11-30T09:15:00+05:30",
+      "BAJAJFINSV": "2016-11-30T09:15:00+05:30",
+      "BAJFINANCE": "2016-11-30T09:15:00+05:30",
+      "BEL": "2016-11-30T09:15:00+05:30",
+      "BHARTIARTL": "2016-11-30T09:15:00+05:30",
+      "CIPLA": "2016-11-30T09:15:00+05:30",
+      "COALINDIA": "2016-11-30T09:15:00+05:30",
+      "DRREDDY": "2016-11-30T00:00:00+05:30",
+      "GRASIM": "2016-11-30T09:15:00+05:30",
+      "HCLTECH": "2016-11-30T09:15:00+05:30",
+      "HDFCBANK": "2016-11-30T09:15:00+05:30",
+      "HINDUNILVR": "2016-11-30T09:15:00+05:30",
+      "ICICIBANK": "2016-11-30T09:15:00+05:30",
+      "INFY": "2016-11-30T09:15:00+05:30",
+      "ITC": "2016-11-30T09:15:00+05:30",
+      "JSWSTEEL": "2016-11-30T09:15:00+05:30",
+      "KOTAKBANK": "2016-11-30T09:15:00+05:30",
+      "LT": "2016-11-30T09:15:00+05:30",
+      "M&M": "2016-11-30T09:15:00+05:30",
+      "MARUTI": "2016-11-30T09:15:00+05:30",
+      "NESTLEIND": "2016-11-30T09:15:00+05:30",
+      "NTPC": "2016-11-30T09:15:00+05:30",
+      "ONGC": "2016-11-30T09:15:00+05:30",
+      "POWERGRID": "2016-11-30T09:15:00+05:30",
+      "RELIANCE": "2016-11-30T00:00:00+05:30",
+      "SBIN": "2016-11-30T09:15:00+05:30",
+      "SUNPHARMA": "2016-11-30T09:15:00+05:30",
+      "TATASTEEL": "2016-11-30T09:15:00+05:30",
+      "TCS": "2016-11-30T09:15:00+05:30",
+      "TECHM": "2016-11-30T12:00:00+05:30",
+      "TITAN": "2016-11-30T09:15:00+05:30",
+      "TRENT": "2016-11-30T09:15:00+05:30",
+      "ULTRACEMCO": "2016-11-30T09:15:00+05:30",
+      "WIPRO": "2016-11-30T09:15:00+05:30",
+      "ZOMATO": "2021-07-23T00:00:00+05:30"
     },
     "data_end_by_symbol": {
-      "RELIANCE": "2026-11-26T00:00:00+05:30",
-      "SBIN": "2026-11-26T00:00:00+05:30",
-      "TCS": "2026-11-26T00:00:00+05:30",
-      "INFY": "2026-11-26T00:00:00+05:30",
-      "ZOMATO": "2026-11-26T00:00:00+05:30",
-      "ITC": "2026-11-26T00:00:00+05:30",
-      "ICICIBANK": "2026-11-26T00:00:00+05:30",
-      "WIPRO": "2026-11-26T00:00:00+05:30",
-      "HDFCBANK": "2026-11-26T00:00:00+05:30"
+      "ADANIPORTS": "2026-11-27T00:00:00+05:30",
+      "ASIANPAINT": "2026-11-27T00:00:00+05:30",
+      "AXISBANK": "2026-11-27T00:00:00+05:30",
+      "BAJAJFINSV": "2026-11-27T00:00:00+05:30",
+      "BAJFINANCE": "2026-11-27T00:00:00+05:30",
+      "BEL": "2026-11-27T00:00:00+05:30",
+      "BHARTIARTL": "2026-11-27T00:00:00+05:30",
+      "CIPLA": "2026-11-27T00:00:00+05:30",
+      "COALINDIA": "2026-11-27T00:00:00+05:30",
+      "DRREDDY": "2026-11-27T00:00:00+05:30",
+      "GRASIM": "2026-11-27T00:00:00+05:30",
+      "HCLTECH": "2026-11-27T00:00:00+05:30",
+      "HDFCBANK": "2026-11-27T00:00:00+05:30",
+      "HINDUNILVR": "2026-11-27T00:00:00+05:30",
+      "ICICIBANK": "2026-11-27T00:00:00+05:30",
+      "INFY": "2026-11-27T00:00:00+05:30",
+      "ITC": "2026-11-27T00:00:00+05:30",
+      "JSWSTEEL": "2026-11-27T00:00:00+05:30",
+      "KOTAKBANK": "2026-11-27T00:00:00+05:30",
+      "LT": "2026-11-27T00:00:00+05:30",
+      "M&M": "2026-11-27T00:00:00+05:30",
+      "MARUTI": "2026-11-27T00:00:00+05:30",
+      "NESTLEIND": "2026-11-27T00:00:00+05:30",
+      "NTPC": "2026-11-27T00:00:00+05:30",
+      "ONGC": "2026-11-27T00:00:00+05:30",
+      "POWERGRID": "2026-11-27T00:00:00+05:30",
+      "RELIANCE": "2026-11-27T00:00:00+05:30",
+      "SBIN": "2026-11-27T00:00:00+05:30",
+      "SUNPHARMA": "2026-11-27T00:00:00+05:30",
+      "TATASTEEL": "2026-11-27T00:00:00+05:30",
+      "TCS": "2026-11-27T00:00:00+05:30",
+      "TECHM": "2026-11-27T00:00:00+05:30",
+      "TITAN": "2026-11-27T00:00:00+05:30",
+      "TRENT": "2026-11-27T00:00:00+05:30",
+      "ULTRACEMCO": "2026-11-27T00:00:00+05:30",
+      "WIPRO": "2026-11-27T00:00:00+05:30",
+      "ZOMATO": "2026-11-27T00:00:00+05:30"
     },
-    "fetched_at": "2026-11-27T04:06:22.265638+00:00"
+    "requested_market_context": [
+      "NIFTY50"
+    ],
+    "fetched_market_context": [
+      "NIFTY50"
+    ],
+    "failed_market_context": {},
+    "market_context_data_ranges": {
+      "NIFTY50": {
+        "start": "2016-11-30T00:00:00+05:30",
+        "end": "2026-11-27T00:00:00+05:30"
+      }
+    },
+    "fetched_at": "2026-11-28T05:55:49.467556+00:00"
   },
-  "eligible_for_live_display": true,
-  "target": "direction of the next daily close relative to the latest completed daily close",
+  "eligible_for_live_display": false,
+  "historical_gates_passed": false,
+  "historical_promotion_enabled": false,
+  "promotion_checks": {
+    "walk_forward_mae_beats_zero_return_baseline": true,
+    "validation_mae_beats_zero_return_baseline": true,
+    "validation_paper_profit_target_reached": true,
+    "validation_drawdown_within_limit": true,
+    "walk_forward_paper_profit_per_session_positive": true,
+    "holdout_mae_improvement_interval_excludes_zero": true,
+    "holdout_paper_profit_target_reached": false,
+    "historical_promotion_enabled": false
+  },
+  "paper_backtest": {
+    "strategy": "Long-only; enter at next session open and exit at its close",
+    "initial_capital": 50000.0,
+    "profit_target": 500.0,
+    "target_equity": 50500.0,
+    "max_drawdown_limit": 1000.0,
+    "max_position_pct": 10.0,
+    "commission_pct_per_side": 0.03,
+    "slippage_pct_per_side": 0.05,
+    "sessions_in_holdout": 90,
+    "sessions_evaluated": 90,
+    "trades": 0,
+    "win_rate": 0.0,
+    "total_costs": 0.0,
+    "final_equity": 50000.0,
+    "net_profit": 0.0,
+    "max_drawdown": 0.0,
+    "profit_target_reached": false,
+    "max_drawdown_reached": false,
+    "stop_reason": "holdout_complete",
+    "exclusions": "Taxes and exchange/regulatory fees are not modeled."
+  },
+  "paper_backtest_1000_target": {
+    "strategy": "Long-only; enter at next session open and exit at its close",
+    "initial_capital": 50000.0,
+    "profit_target": 1000.0,
+    "target_equity": 51000.0,
+    "max_drawdown_limit": 1000.0,
+    "max_position_pct": 10.0,
+    "commission_pct_per_side": 0.03,
+    "slippage_pct_per_side": 0.05,
+    "sessions_in_holdout": 90,
+    "sessions_evaluated": 90,
+    "trades": 0,
+    "win_rate": 0.0,
+    "total_costs": 0.0,
+    "final_equity": 50000.0,
+    "net_profit": 0.0,
+    "max_drawdown": 0.0,
+    "profit_target_reached": false,
+    "max_drawdown_reached": false,
+    "stop_reason": "holdout_complete",
+    "exclusions": "Taxes and exchange/regulatory fees are not modeled."
+  },
+  "execution_costs": {
+    "commission_pct_per_side": 0.03,
+    "slippage_pct_per_side": 0.05
+  },
+  "evaluation_design": {
+    "pre_test_training_sessions": 2387,
+    "holdout_test_sessions": 90,
+    "validation_fraction_of_training_window": 0.3,
+    "paper_profit_target": 500.0,
+    "paper_max_drawdown": 1000.0
+  },
+  "target": "next-session open-to-close return after configured commission and slippage; trade only when predicted net return is positive",
   "features": [
     "rsi",
     "trend_strength",
@@ -70,509 +270,671 @@
     "volume_ratio",
     "candle_body_pct",
     "overnight_gap_pct",
-    "realized_volatility_20"
+    "realized_volatility_20",
+    "close_in_range",
+    "dist_20d_high_pct",
+    "rsi_centered",
+    "gap_x_body",
+    "nifty_return_1",
+    "nifty_return_5",
+    "nifty_return_20",
+    "nifty_realized_volatility_20",
+    "excess_return_1",
+    "excess_return_5",
+    "excess_return_20",
+    "volatility_ratio_vs_nifty",
+    "symbol__ADANIPORTS",
+    "symbol__ASIANPAINT",
+    "symbol__AXISBANK",
+    "symbol__BAJAJFINSV",
+    "symbol__BAJFINANCE",
+    "symbol__BEL",
+    "symbol__BHARTIARTL",
+    "symbol__CIPLA",
+    "symbol__COALINDIA",
+    "symbol__DRREDDY",
+    "symbol__GRASIM",
+    "symbol__HCLTECH",
+    "symbol__HDFCBANK",
+    "symbol__HINDUNILVR",
+    "symbol__ICICIBANK",
+    "symbol__INFY",
+    "symbol__ITC",
+    "symbol__JSWSTEEL",
+    "symbol__KOTAKBANK",
+    "symbol__LT",
+    "symbol__M&M",
+    "symbol__MARUTI",
+    "symbol__NESTLEIND",
+    "symbol__NTPC",
+    "symbol__ONGC",
+    "symbol__POWERGRID",
+    "symbol__RELIANCE",
+    "symbol__SBIN",
+    "symbol__SUNPHARMA",
+    "symbol__TATASTEEL",
+    "symbol__TCS",
+    "symbol__TECHM",
+    "symbol__TITAN",
+    "symbol__TRENT",
+    "symbol__ULTRACEMCO",
+    "symbol__WIPRO",
+    "symbol__ZOMATO"
+  ],
+  "shadow_challenger_models": [
+    "extra_trees_regression",
+    "hist_gradient_boosting_regression",
+    "random_forest_regression",
+    "regularized_hist_gradient_boosting",
+    "ridge_hgb_blend_regression",
+    "ridge_regression",
+    "tree_voting_regression",
+    "zero_return_baseline"
+  ],
+  "market_context_symbols": [
+    "NIFTY50"
   ],
   "trained_symbols": [
+    "ADANIPORTS",
+    "ASIANPAINT",
+    "AXISBANK",
+    "BAJAJFINSV",
+    "BAJFINANCE",
+    "BEL",
+    "BHARTIARTL",
+    "CIPLA",
+    "COALINDIA",
+    "DRREDDY",
+    "GRASIM",
+    "HCLTECH",
     "HDFCBANK",
+    "HINDUNILVR",
     "ICICIBANK",
     "INFY",
     "ITC",
+    "JSWSTEEL",
+    "KOTAKBANK",
+    "LT",
+    "M&M",
+    "MARUTI",
+    "NESTLEIND",
+    "NTPC",
+    "ONGC",
+    "POWERGRID",
     "RELIANCE",
     "SBIN",
+    "SUNPHARMA",
+    "TATASTEEL",
     "TCS",
+    "TECHM",
+    "TITAN",
+    "TRENT",
+    "ULTRACEMCO",
     "WIPRO",
     "ZOMATO"
   ],
   "date_ranges": {
     "train": {
-      "start": "2025-11-26T18:30:00+00:00",
-      "end": "2026-07-01T18:30:00+00:00",
-      "samples": 1309,
-      "unique_dates": 146
+      "start": "2016-11-30T00:00:00+05:30",
+      "end": "2023-08-24T00:00:00+05:30",
+      "samples": 60570,
+      "unique_dates": 1670
     },
     "validation": {
-      "start": "2026-07-05T18:30:00+00:00",
-      "end": "2026-09-08T18:30:00+00:00",
-      "samples": 429,
-      "unique_dates": 48
+      "start": "2023-08-28T00:00:00+05:30",
+      "end": "2026-07-16T00:00:00+05:30",
+      "samples": 26455,
+      "unique_dates": 715
     },
     "test": {
-      "start": "2026-09-10T18:30:00+00:00",
-      "end": "2026-11-24T18:30:00+00:00",
-      "samples": 449,
-      "unique_dates": 50
+      "start": "2026-07-20T00:00:00+05:30",
+      "end": "2026-11-26T00:00:00+05:30",
+      "samples": 3330,
+      "unique_dates": 90
     }
   },
   "artifact_training": {
-    "samples": 2205,
-    "through": "2026-11-25T18:30:00+00:00",
-    "symbols": 9,
-    "generated_at": "2026-11-27T04:07:00.243236+00:00"
+    "samples": 90355,
+    "through": "2026-11-27T00:00:00+05:30",
+    "symbols": 37,
+    "generated_at": "2026-11-28T06:09:10.639608+00:00"
   },
-  "class_distribution": {
-    "DOWN": 1159,
-    "UP": 1046
+  "target_summary_pct": {
+    "mean": -0.2201,
+    "median": -0.2624,
+    "positive_fraction": 0.4152
   },
-  "walk_forward_balanced_accuracy": {
-    "logistic_regression": [
-      0.4813,
-      0.4936,
-      0.4915
+  "walk_forward_mae_pct": {
+    "zero_return_baseline": [
+      1.4476,
+      1.4354,
+      1.1286
     ],
-    "random_forest": [
-      0.5277,
-      0.5279,
-      0.4702
+    "ridge_regression": [
+      1.4667,
+      1.4113,
+      1.1136
     ],
-    "extra_trees": [
-      0.5,
-      0.5,
-      0.5
+    "random_forest_regression": [
+      1.4548,
+      1.4422,
+      1.1311
     ],
-    "hist_gradient_boosting": [
-      0.5398,
-      0.543,
-      0.4598
+    "extra_trees_regression": [
+      1.4509,
+      1.4354,
+      1.1283
     ],
-    "majority_baseline": [
-      0.5,
-      0.5,
-      0.5
+    "hist_gradient_boosting_regression": [
+      1.4606,
+      1.4565,
+      1.1332
     ],
-    "momentum_baseline": [
-      0.5151,
-      0.4626,
-      0.5501
+    "regularized_hist_gradient_boosting": [
+      1.4564,
+      1.4508,
+      1.1319
+    ],
+    "ridge_hgb_blend_regression": [
+      1.4584,
+      1.4419,
+      1.1285
+    ],
+    "tree_voting_regression": [
+      1.4534,
+      1.4427,
+      1.1285
     ]
   },
-  "selected_model": "hist_gradient_boosting",
-  "selected_model_beats_walk_forward_baselines": true,
-  "best_walk_forward_baseline": "momentum_baseline",
-  "validation": {
-    "accuracy": 0.4848,
-    "balanced_accuracy": 0.4771,
-    "macro_f1": 0.4759,
-    "precision_by_direction": {
-      "DOWN": 0.5238,
-      "UP": 0.4294
-    },
-    "recall_by_direction": {
-      "DOWN": 0.5665,
-      "UP": 0.3878
-    },
-    "confusion_matrix_down_up": [
-      [
-        132,
-        101
-      ],
-      [
-        120,
-        76
-      ]
+  "walk_forward_paper_profit_per_session": {
+    "zero_return_baseline": [
+      0.0,
+      0.0,
+      0.0
     ],
-    "prediction_counts": {
-      "DOWN": 252,
-      "UP": 177
+    "ridge_regression": [
+      -40.4884,
+      594.61,
+      23.425
+    ],
+    "random_forest_regression": [
+      -41.1968,
+      -91.5515,
+      29.884
+    ],
+    "extra_trees_regression": [
+      -35.8069,
+      0.0,
+      1.9923
+    ],
+    "hist_gradient_boosting_regression": [
+      -43.8058,
+      -86.6867,
+      -39.28
+    ],
+    "regularized_hist_gradient_boosting": [
+      -38.8814,
+      509.735,
+      -49.77
+    ],
+    "ridge_hgb_blend_regression": [
+      -37.8158,
+      521.69,
+      -66.925
+    ],
+    "tree_voting_regression": [
+      -44.6706,
+      -144.2033,
+      -38.8967
+    ]
+  },
+  "selected_model": "ridge_regression",
+  "selected_model_beats_walk_forward_zero_return_baseline_by_mae": true,
+  "selected_model_beats_validation_zero_return_baseline_by_mae": true,
+  "selected_model_positive_walk_forward_paper_profit": true,
+  "best_walk_forward_baseline": "zero_return_baseline",
+  "validation": {
+    "mae_pct": 1.0386,
+    "rmse_pct": 1.4387,
+    "r2": 0.0002,
+    "trade_signals": 27,
+    "mean_predicted_net_return_pct": -0.233,
+    "beats_zero_return_baseline_by_mae": true,
+    "paper_backtest": {
+      "strategy": "Long-only; enter at next session open and exit at its close",
+      "initial_capital": 50000.0,
+      "profit_target": 500.0,
+      "target_equity": 50500.0,
+      "max_drawdown_limit": 1000.0,
+      "max_position_pct": 10.0,
+      "commission_pct_per_side": 0.03,
+      "slippage_pct_per_side": 0.05,
+      "sessions_in_holdout": 715,
+      "sessions_evaluated": 191,
+      "trades": 13,
+      "win_rate": 0.9231,
+      "total_costs": 67.61,
+      "final_equity": 50826.99,
+      "net_profit": 826.99,
+      "max_drawdown": 0.0,
+      "profit_target_reached": true,
+      "max_drawdown_reached": false,
+      "stop_reason": "profit_target_reached",
+      "exclusions": "Taxes and exchange/regulatory fees are not modeled."
+    },
+    "paper_backtest_1000_target": {
+      "strategy": "Long-only; enter at next session open and exit at its close",
+      "initial_capital": 50000.0,
+      "profit_target": 1000.0,
+      "target_equity": 51000.0,
+      "max_drawdown_limit": 1000.0,
+      "max_position_pct": 10.0,
+      "commission_pct_per_side": 0.03,
+      "slippage_pct_per_side": 0.05,
+      "sessions_in_holdout": 715,
+      "sessions_evaluated": 421,
+      "trades": 23,
+      "win_rate": 0.8261,
+      "total_costs": 130.01,
+      "final_equity": 51222.54,
+      "net_profit": 1222.54,
+      "max_drawdown": 88.03,
+      "profit_target_reached": true,
+      "max_drawdown_reached": false,
+      "stop_reason": "profit_target_reached",
+      "exclusions": "Taxes and exchange/regulatory fees are not modeled."
     },
     "baselines": {
-      "majority_baseline": {
-        "accuracy": 0.5431,
-        "balanced_accuracy": 0.5,
-        "macro_f1": 0.352,
-        "precision_by_direction": {
-          "DOWN": 0.5431,
-          "UP": 0.0
-        },
-        "recall_by_direction": {
-          "DOWN": 1.0,
-          "UP": 0.0
-        },
-        "confusion_matrix_down_up": [
-          [
-            233,
-            0
-          ],
-          [
-            196,
-            0
-          ]
-        ],
-        "prediction_counts": {
-          "DOWN": 429,
-          "UP": 0
-        }
-      },
-      "momentum_baseline": {
-        "accuracy": 0.4779,
-        "balanced_accuracy": 0.4739,
-        "macro_f1": 0.4739,
-        "precision_by_direction": {
-          "DOWN": 0.5193,
-          "UP": 0.4286
-        },
-        "recall_by_direction": {
-          "DOWN": 0.5193,
-          "UP": 0.4286
-        },
-        "confusion_matrix_down_up": [
-          [
-            121,
-            112
-          ],
-          [
-            112,
-            84
-          ]
-        ],
-        "prediction_counts": {
-          "DOWN": 233,
-          "UP": 196
-        }
+      "zero_return_baseline": {
+        "mae_pct": 1.0571,
+        "rmse_pct": 1.4526,
+        "r2": -0.0192,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": 0.0
       }
     }
   },
   "test": {
-    "accuracy": 0.5501,
-    "balanced_accuracy": 0.555,
-    "macro_f1": 0.5474,
-    "precision_by_direction": {
-      "DOWN": 0.5222,
-      "UP": 0.5922
-    },
-    "recall_by_direction": {
-      "DOWN": 0.6589,
-      "UP": 0.4511
-    },
-    "confusion_matrix_down_up": [
-      [
-        141,
-        73
-      ],
-      [
-        129,
-        106
-      ]
-    ],
-    "prediction_counts": {
-      "DOWN": 270,
-      "UP": 179
-    },
+    "mae_pct": 1.0302,
+    "rmse_pct": 1.4018,
+    "r2": -0.0021,
+    "trade_signals": 0,
+    "mean_predicted_net_return_pct": -0.2212,
     "by_symbol": {
+      "ADANIPORTS": {
+        "samples": 90,
+        "mae_pct": 1.2554,
+        "rmse_pct": 1.785,
+        "r2": 0.0016,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2522
+      },
+      "ASIANPAINT": {
+        "samples": 90,
+        "mae_pct": 0.8697,
+        "rmse_pct": 1.1269,
+        "r2": 0.0079,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.202
+      },
+      "AXISBANK": {
+        "samples": 90,
+        "mae_pct": 0.9457,
+        "rmse_pct": 1.3784,
+        "r2": 0.0055,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.1964
+      },
+      "BAJAJFINSV": {
+        "samples": 90,
+        "mae_pct": 1.0888,
+        "rmse_pct": 1.3942,
+        "r2": -0.0129,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2367
+      },
+      "BAJFINANCE": {
+        "samples": 90,
+        "mae_pct": 1.2984,
+        "rmse_pct": 1.7102,
+        "r2": -0.0085,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2214
+      },
+      "BEL": {
+        "samples": 90,
+        "mae_pct": 0.9206,
+        "rmse_pct": 1.291,
+        "r2": 0.0036,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2453
+      },
+      "BHARTIARTL": {
+        "samples": 90,
+        "mae_pct": 1.0083,
+        "rmse_pct": 1.3243,
+        "r2": 0.01,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.184
+      },
+      "CIPLA": {
+        "samples": 90,
+        "mae_pct": 0.7325,
+        "rmse_pct": 0.9491,
+        "r2": -0.0213,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2452
+      },
+      "COALINDIA": {
+        "samples": 90,
+        "mae_pct": 0.8384,
+        "rmse_pct": 1.0871,
+        "r2": -0.0148,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2555
+      },
+      "DRREDDY": {
+        "samples": 90,
+        "mae_pct": 0.8897,
+        "rmse_pct": 1.3199,
+        "r2": -0.062,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2569
+      },
+      "GRASIM": {
+        "samples": 90,
+        "mae_pct": 1.1245,
+        "rmse_pct": 1.4064,
+        "r2": -0.0027,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.1747
+      },
+      "HCLTECH": {
+        "samples": 90,
+        "mae_pct": 1.2264,
+        "rmse_pct": 1.6621,
+        "r2": -0.0154,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2481
+      },
       "HDFCBANK": {
-        "samples": 50,
-        "accuracy": 0.48,
-        "balanced_accuracy": 0.4734,
-        "macro_f1": 0.4724,
-        "precision_by_direction": {
-          "DOWN": 0.4286,
-          "UP": 0.5172
-        },
-        "recall_by_direction": {
-          "DOWN": 0.3913,
-          "UP": 0.5556
-        },
-        "confusion_matrix_down_up": [
-          [
-            9,
-            14
-          ],
-          [
-            12,
-            15
-          ]
-        ],
-        "prediction_counts": {
-          "DOWN": 21,
-          "UP": 29
-        }
+        "samples": 90,
+        "mae_pct": 0.9744,
+        "rmse_pct": 1.3465,
+        "r2": -0.0055,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.1788
+      },
+      "HINDUNILVR": {
+        "samples": 90,
+        "mae_pct": 1.0072,
+        "rmse_pct": 1.5208,
+        "r2": 0.0146,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.1993
       },
       "ICICIBANK": {
-        "samples": 50,
-        "accuracy": 0.66,
-        "balanced_accuracy": 0.6659,
-        "macro_f1": 0.6599,
-        "precision_by_direction": {
-          "DOWN": 0.6071,
-          "UP": 0.7273
-        },
-        "recall_by_direction": {
-          "DOWN": 0.7391,
-          "UP": 0.5926
-        },
-        "confusion_matrix_down_up": [
-          [
-            17,
-            6
-          ],
-          [
-            11,
-            16
-          ]
-        ],
-        "prediction_counts": {
-          "DOWN": 28,
-          "UP": 22
-        }
+        "samples": 90,
+        "mae_pct": 0.8606,
+        "rmse_pct": 1.1917,
+        "r2": -0.0057,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.147
       },
       "INFY": {
-        "samples": 50,
-        "accuracy": 0.54,
-        "balanced_accuracy": 0.529,
-        "macro_f1": 0.5246,
-        "precision_by_direction": {
-          "DOWN": 0.5625,
-          "UP": 0.5
-        },
-        "recall_by_direction": {
-          "DOWN": 0.6667,
-          "UP": 0.3913
-        },
-        "confusion_matrix_down_up": [
-          [
-            18,
-            9
-          ],
-          [
-            14,
-            9
-          ]
-        ],
-        "prediction_counts": {
-          "DOWN": 32,
-          "UP": 18
-        }
+        "samples": 90,
+        "mae_pct": 1.1303,
+        "rmse_pct": 1.4474,
+        "r2": -0.0053,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2003
       },
       "ITC": {
-        "samples": 50,
-        "accuracy": 0.52,
-        "balanced_accuracy": 0.5321,
-        "macro_f1": 0.4792,
-        "precision_by_direction": {
-          "DOWN": 0.5,
-          "UP": 0.6
-        },
-        "recall_by_direction": {
-          "DOWN": 0.8333,
-          "UP": 0.2308
-        },
-        "confusion_matrix_down_up": [
-          [
-            20,
-            4
-          ],
-          [
-            20,
-            6
-          ]
-        ],
-        "prediction_counts": {
-          "DOWN": 40,
-          "UP": 10
-        }
+        "samples": 90,
+        "mae_pct": 1.049,
+        "rmse_pct": 1.4111,
+        "r2": 0.0014,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2911
+      },
+      "JSWSTEEL": {
+        "samples": 90,
+        "mae_pct": 1.0611,
+        "rmse_pct": 1.4495,
+        "r2": -0.0085,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.1588
+      },
+      "KOTAKBANK": {
+        "samples": 90,
+        "mae_pct": 0.9573,
+        "rmse_pct": 1.2662,
+        "r2": -0.0605,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.1852
+      },
+      "LT": {
+        "samples": 90,
+        "mae_pct": 0.7837,
+        "rmse_pct": 0.9928,
+        "r2": -0.005,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.222
+      },
+      "M&M": {
+        "samples": 90,
+        "mae_pct": 1.1498,
+        "rmse_pct": 1.5053,
+        "r2": -0.005,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2334
+      },
+      "MARUTI": {
+        "samples": 90,
+        "mae_pct": 1.0749,
+        "rmse_pct": 1.5344,
+        "r2": -0.0079,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2319
+      },
+      "NESTLEIND": {
+        "samples": 90,
+        "mae_pct": 1.2466,
+        "rmse_pct": 1.7612,
+        "r2": 0.0106,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2227
+      },
+      "NTPC": {
+        "samples": 90,
+        "mae_pct": 0.8498,
+        "rmse_pct": 1.1056,
+        "r2": -0.0029,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2263
+      },
+      "ONGC": {
+        "samples": 90,
+        "mae_pct": 0.7824,
+        "rmse_pct": 1.0635,
+        "r2": -0.0149,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2941
+      },
+      "POWERGRID": {
+        "samples": 90,
+        "mae_pct": 1.052,
+        "rmse_pct": 1.3864,
+        "r2": 0.0081,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.1987
       },
       "RELIANCE": {
-        "samples": 49,
-        "accuracy": 0.5102,
-        "balanced_accuracy": 0.5228,
-        "macro_f1": 0.5084,
-        "precision_by_direction": {
-          "DOWN": 0.4074,
-          "UP": 0.6364
-        },
-        "recall_by_direction": {
-          "DOWN": 0.5789,
-          "UP": 0.4667
-        },
-        "confusion_matrix_down_up": [
-          [
-            11,
-            8
-          ],
-          [
-            16,
-            14
-          ]
-        ],
-        "prediction_counts": {
-          "DOWN": 27,
-          "UP": 22
-        }
+        "samples": 90,
+        "mae_pct": 0.998,
+        "rmse_pct": 1.3175,
+        "r2": -0.0207,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.201
       },
       "SBIN": {
-        "samples": 50,
-        "accuracy": 0.54,
-        "balanced_accuracy": 0.5312,
-        "macro_f1": 0.5308,
-        "precision_by_direction": {
-          "DOWN": 0.4545,
-          "UP": 0.6071
-        },
-        "recall_by_direction": {
-          "DOWN": 0.4762,
-          "UP": 0.5862
-        },
-        "confusion_matrix_down_up": [
-          [
-            10,
-            11
-          ],
-          [
-            12,
-            17
-          ]
-        ],
-        "prediction_counts": {
-          "DOWN": 22,
-          "UP": 28
-        }
+        "samples": 90,
+        "mae_pct": 1.0025,
+        "rmse_pct": 1.2807,
+        "r2": 0.0035,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2472
+      },
+      "SUNPHARMA": {
+        "samples": 90,
+        "mae_pct": 0.8549,
+        "rmse_pct": 1.1396,
+        "r2": -0.006,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2291
+      },
+      "TATASTEEL": {
+        "samples": 90,
+        "mae_pct": 1.1863,
+        "rmse_pct": 1.5826,
+        "r2": -0.0024,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2356
       },
       "TCS": {
-        "samples": 50,
-        "accuracy": 0.64,
-        "balanced_accuracy": 0.633,
-        "macro_f1": 0.625,
-        "precision_by_direction": {
-          "DOWN": 0.6176,
-          "UP": 0.6875
-        },
-        "recall_by_direction": {
-          "DOWN": 0.8077,
-          "UP": 0.4583
-        },
-        "confusion_matrix_down_up": [
-          [
-            21,
-            5
-          ],
-          [
-            13,
-            11
-          ]
-        ],
-        "prediction_counts": {
-          "DOWN": 34,
-          "UP": 16
-        }
+        "samples": 90,
+        "mae_pct": 1.275,
+        "rmse_pct": 1.6964,
+        "r2": -0.0043,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2558
+      },
+      "TECHM": {
+        "samples": 90,
+        "mae_pct": 1.0173,
+        "rmse_pct": 1.3743,
+        "r2": -0.0279,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2154
+      },
+      "TITAN": {
+        "samples": 90,
+        "mae_pct": 1.0298,
+        "rmse_pct": 1.4649,
+        "r2": -0.0073,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.1538
+      },
+      "TRENT": {
+        "samples": 90,
+        "mae_pct": 1.0303,
+        "rmse_pct": 1.3154,
+        "r2": 0.0007,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.1955
+      },
+      "ULTRACEMCO": {
+        "samples": 90,
+        "mae_pct": 1.0622,
+        "rmse_pct": 1.2835,
+        "r2": -0.0275,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2305
       },
       "WIPRO": {
-        "samples": 50,
-        "accuracy": 0.5,
-        "balanced_accuracy": 0.4887,
-        "macro_f1": 0.4833,
-        "precision_by_direction": {
-          "DOWN": 0.5312,
-          "UP": 0.4444
-        },
-        "recall_by_direction": {
-          "DOWN": 0.6296,
-          "UP": 0.3478
-        },
-        "confusion_matrix_down_up": [
-          [
-            17,
-            10
-          ],
-          [
-            15,
-            8
-          ]
-        ],
-        "prediction_counts": {
-          "DOWN": 32,
-          "UP": 18
-        }
+        "samples": 90,
+        "mae_pct": 1.0934,
+        "rmse_pct": 1.6159,
+        "r2": -0.0173,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2685
       },
       "ZOMATO": {
-        "samples": 50,
-        "accuracy": 0.56,
-        "balanced_accuracy": 0.5673,
-        "macro_f1": 0.5484,
-        "precision_by_direction": {
-          "DOWN": 0.5294,
-          "UP": 0.625
-        },
-        "recall_by_direction": {
-          "DOWN": 0.75,
-          "UP": 0.3846
-        },
-        "confusion_matrix_down_up": [
-          [
-            18,
-            6
-          ],
-          [
-            16,
-            10
-          ]
-        ],
-        "prediction_counts": {
-          "DOWN": 34,
-          "UP": 16
-        }
+        "samples": 90,
+        "mae_pct": 1.392,
+        "rmse_pct": 1.7609,
+        "r2": -0.0359,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": -0.2455
       }
     },
     "baselines": {
-      "majority_baseline": {
-        "accuracy": 0.4766,
-        "balanced_accuracy": 0.5,
-        "macro_f1": 0.3228,
-        "precision_by_direction": {
-          "DOWN": 0.4766,
-          "UP": 0.0
-        },
-        "recall_by_direction": {
-          "DOWN": 1.0,
-          "UP": 0.0
-        },
-        "confusion_matrix_down_up": [
-          [
-            214,
-            0
-          ],
-          [
-            235,
-            0
-          ]
-        ],
-        "prediction_counts": {
-          "DOWN": 449,
-          "UP": 0
-        }
-      },
-      "momentum_baseline": {
-        "accuracy": 0.4543,
-        "balanced_accuracy": 0.4533,
-        "macro_f1": 0.4533,
-        "precision_by_direction": {
-          "DOWN": 0.4279,
-          "UP": 0.4786
-        },
-        "recall_by_direction": {
-          "DOWN": 0.4299,
-          "UP": 0.4766
-        },
-        "confusion_matrix_down_up": [
-          [
-            92,
-            122
-          ],
-          [
-            123,
-            112
-          ]
-        ],
-        "prediction_counts": {
-          "DOWN": 215,
-          "UP": 234
-        }
+      "zero_return_baseline": {
+        "mae_pct": 1.0487,
+        "rmse_pct": 1.4076,
+        "r2": -0.0103,
+        "trade_signals": 0,
+        "mean_predicted_net_return_pct": 0.0
       }
     },
-    "best_baseline": "momentum_baseline",
-    "balanced_accuracy_delta_vs_best_baseline_95pct_ci": [
-      0.0361,
-      0.1688
+    "best_baseline": "zero_return_baseline",
+    "mae_improvement_vs_zero_return_baseline_95pct_ci": [
+      0.0005,
+      0.0363
     ],
-    "out_of_sample_beats_baseline_with_95pct_confidence": true
+    "out_of_sample_beats_zero_return_baseline_with_95pct_confidence": true
   },
-  "top_feature_importance": {}
+  "top_feature_importance": {
+    "candle_body_pct": 0.142217,
+    "return_1": 0.121296,
+    "trend_strength": 0.113003,
+    "overnight_gap_pct": 0.098739,
+    "excess_return_1": 0.080581,
+    "nifty_return_1": 0.079663,
+    "dist_20d_high_pct": 0.043037,
+    "return_20": 0.037918,
+    "nifty_realized_volatility_20": 0.034753,
+    "momentum_10": 0.028882,
+    "nifty_return_20": 0.027769,
+    "realized_volatility_20": 0.025036,
+    "nifty_return_5": 0.021822,
+    "symbol__ONGC": 0.018626,
+    "close_in_range": 0.018084,
+    "excess_return_20": 0.01703,
+    "volume_ratio": 0.01519,
+    "rsi_centered": 0.014988,
+    "rsi": 0.014988,
+    "symbol__ITC": 0.01327,
+    "gap_x_body": 0.011996,
+    "symbol__COALINDIA": 0.011122,
+    "symbol__ICICIBANK": 0.01076,
+    "symbol__TITAN": 0.010467,
+    "symbol__TRENT": 0.01018,
+    "symbol__JSWSTEEL": 0.009439,
+    "symbol__BEL": 0.008673,
+    "symbol__KOTAKBANK": 0.008641,
+    "symbol__CIPLA": 0.008557,
+    "symbol__HDFCBANK": 0.00785,
+    "symbol__TECHM": 0.007825,
+    "symbol__BAJFINANCE": 0.007161,
+    "symbol__NTPC": 0.00697,
+    "symbol__INFY": 0.006893,
+    "symbol__GRASIM": 0.006822,
+    "range_pct": 0.006363,
+    "symbol__TATASTEEL": 0.006118,
+    "symbol__BHARTIARTL": 0.005684,
+    "symbol__ADANIPORTS": 0.005264,
+    "volatility_ratio_vs_nifty": 0.004679,
+    "symbol__LT": 0.004615,
+    "symbol__DRREDDY": 0.004598,
+    "symbol__WIPRO": 0.004542,
+    "symbol__AXISBANK": 0.004495,
+    "symbol__SBIN": 0.004484,
+    "return_5": 0.004369,
+    "symbol__SUNPHARMA": 0.004258,
+    "symbol__ZOMATO": 0.003505,
+    "symbol__MARUTI": 0.003105,
+    "symbol__TCS": 0.002686,
+    "symbol__ULTRACEMCO": 0.002553,
+    "symbol__HCLTECH": 0.002537,
+    "symbol__RELIANCE": 0.002464,
+    "symbol__HINDUNILVR": 0.001191,
+    "symbol__BAJAJFINSV": 0.001067,
+    "symbol__NESTLEIND": 0.000747,
+    "volatility_pct": 0.000669,
+    "symbol__M&M": 0.00055,
+    "symbol__ASIANPAINT": 0.000477,
+    "symbol__POWERGRID": 0.000135,
+    "excess_return_5": 5e-06
+  }
 }

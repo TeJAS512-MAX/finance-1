@@ -101,24 +101,23 @@ async def main():
         data = await fetch_historical_data(days_back=days_back)
         print(f"[INFO] Using Upstox historical candle corpus ({days_back} requested days).")
     
-    # 2. Run Phase-1 backtest to generate dataset
-    print("\n[INFO] Generating Dataset via Phase-1 Simulation...")
-    p1_results = run_backtest(data, use_phase1=True)
-    
-    df = p1_results.get("ml_dataset")
-    required_features = set(model.feature_cols + ["target"])
-    use_trade_dataset = (
-        source != "yahoo"
-        and
-        df is not None
-        and len(df) >= 200
-        and required_features.issubset(df.columns)
-    )
-    if use_trade_dataset:
-        print(f"[OK] Generated dataset with {len(df)} samples.")
-        print(f"Wins: {len(df[df['target'] == 1])}, Losses: {len(df[df['target'] == 0])}")
-    else:
-        print("[WARN] Trade-derived dataset is too small or incomplete; using triple-barrier labels.")
+    df = None
+    if source != "yahoo" and os.environ.get("ML_USE_TRADE_DATASET", "0") == "1":
+        print("\n[INFO] Generating Dataset via Phase-1 Simulation...")
+        p1_results = run_backtest(data, use_phase1=True)
+        candidate_df = p1_results.get("ml_dataset")
+        required_features = set(model.feature_cols + ["target"])
+        if (
+            candidate_df is not None
+            and len(candidate_df) >= 2000
+            and required_features.issubset(candidate_df.columns)
+        ):
+            df = candidate_df
+            print(f"[OK] Generated dataset with {len(df)} samples.")
+            print(f"Wins: {len(df[df['target'] == 1])}, Losses: {len(df[df['target'] == 0])}")
+
+    if df is None:
+        print("\n[INFO] Generating AFML Triple-Barrier Dataset...")
         df = build_triple_barrier_dataset(data)
         print(f"[OK] Generated triple-barrier dataset with {len(df)} samples.")
         print(f"Wins: {len(df[df['target'] == 1])}, Losses: {len(df[df['target'] == 0])}")

@@ -34,6 +34,7 @@ def compute_exits(
     take_profit_mult: Optional[float] = None,
     stop_loss_mult: Optional[float] = None,
     max_hold_minutes: Optional[int] = None,
+    ema_trend_aligned: bool = True,
 ) -> Dict[str, Any]:
     """
     Compute all exit levels for a new position.
@@ -86,6 +87,7 @@ def compute_exits(
         "time_stop_mins": max_hold_minutes,
         "entry_time":     entry_time.isoformat(),
         "exit_engine":    "phase1_atr_v1",
+        "ema_trend_aligned": ema_trend_aligned,
     }
 
 
@@ -149,8 +151,8 @@ def should_exit(
             if pnl_pct < 0.3:   # Only time-exit if not meaningfully profitable
                 return {"exit": True, "reason": f"TIME_STOP ({held_minutes:.0f} min, pnl={pnl_pct:.2f}%)", "urgency": "SOFT"}
 
-    # ── 5. EMA Invalidation (LONG: EMA9 crosses below EMA21) ──────────────────
-    if current_features:
+    # ── 5. EMA Invalidation (only when entry was EMA trend-aligned) ────────────
+    if current_features and exits.get("ema_trend_aligned", True):
         ema9  = current_features.get("ema9", 0)
         ema21 = current_features.get("ema21", 0)
         if direction == "LONG" and ema9 > 0 and ema21 > 0 and ema9 < ema21:

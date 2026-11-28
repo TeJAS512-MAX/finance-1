@@ -55,3 +55,15 @@ async def test_metrics_endpoint(client: AsyncClient) -> None:
     """Prometheus metrics endpoint must be accessible."""
     response = await client.get("/metrics")
     assert response.status_code == 200
+
+
+def test_settings_accepts_non_boolean_debug_log_levels() -> None:
+    from core.config import Settings
+
+    for raw in ("WARN", "release", "INFO", "error"):
+        settings = Settings(
+            secret_key="a" * 32,
+            jwt_secret_key="b" * 32,
+            debug=raw,
+        )
+        assert settings.debug is False

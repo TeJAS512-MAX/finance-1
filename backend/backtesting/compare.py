@@ -27,7 +27,7 @@ async def main():
     
     # 5. Print Comparison
     print("\n" + "=" * 65)
-    print("  RESULTS (Paper Capital: ₹1,000, 5x Margin)")
+    print("  RESULTS (Paper Capital: ₹50,000)")
     print("=" * 65)
     
     def print_stat(name, v1_val, p1_val, p2_val, suffix=""):

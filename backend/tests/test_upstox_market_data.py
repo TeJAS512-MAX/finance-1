@@ -67,6 +67,8 @@ async def test_compute_features_uses_latest_candle(monkeypatch):
     assert result["timestamp"] == candles[-1]["timestamp"]
     assert "ltp" in result
     assert "rsi" in result
+    assert "frac_diff" in result
+    assert mod.INSTRUMENT_KEYS["BAJFINANCE"] == "NSE_EQ|INE296A01032"
 
 
 @pytest.mark.asyncio

@@ -13,14 +13,13 @@ from intelligence.ml_filter import ml_filter
 from intelligence.ai_debate import ai_debate_engine
 from core.config import get_settings
 from risk.risk_manager import RiskManager
+from services.providers.upstox_market_data import compute_frac_diff
 
-def _get_weights_ffd(d: float, window: int) -> np.ndarray:
-    """Generate weights for fractional differentiation."""
-    weights = [1.]
-    for k in range(1, window):
-        w_k = -weights[-1] / k * (d - k + 1)
-        weights.append(w_k)
-    return np.array(weights[::-1])
+def _position_pnl_pct(direction: str, entry_price: float, current_price: float) -> float:
+    """Return signed percentage PnL for LONG or SHORT positions."""
+    raw_pnl_pct = (current_price - entry_price) / entry_price * 100
+    return raw_pnl_pct if direction == "LONG" else -raw_pnl_pct
+
 
 class SimulatedBroker:
     def __init__(self, initial_capital: float):
@@ -45,14 +44,14 @@ class SimulatedBroker:
         max_hold_minutes: int | None = None,
         ml_probability: float | None = None,
     ):
-        # AGGRESSIVE MODE: Scale up to 3x base size on very high confidence
-        multiplier = 1.0
-        if ml_probability is not None and ml_probability > 0.5:
-            # e.g., 0.85 prob -> (0.85 - 0.5) * 6 = 3.1x size. 0.99 prob -> 3.94x size.
-            multiplier = 1.0 + ((ml_probability - 0.5) * 6)
-            
-        # Allocate buying power (total allowed is 5x cash, split across max 5 positions to compound harder)
-        available_buying_power = ((self.cash * 5) / 5.0) * multiplier
+        max_pos_pct = get_settings().max_position_size_pct
+        size_pct = max_pos_pct
+        if ml_probability is not None:
+            # Scale within the hard max_position_size_pct cap by ML confidence.
+            confidence_factor = min(1.0, max(0.5, 0.5 + max(0.0, ml_probability - 0.4)))
+            size_pct = max_pos_pct * confidence_factor
+
+        available_buying_power = self.cash * (size_pct / 100.0)
         qty = int(available_buying_power / price)
         if qty <= 0: return False
 
@@ -98,6 +97,7 @@ class SimulatedBroker:
         # Convert time safely
         t_entry = pd.to_datetime(time_str).to_pydatetime()
         
+        ema_aligned = bool(features.get("ema9", 0) > features.get("ema21", 0)) if (features and direction == "LONG") else bool(features.get("ema9", 0) < features.get("ema21", 0)) if features else True
         exit_plan = exit_engine.compute_exits(
             entry_price=price,
             atr14=atr,
@@ -106,6 +106,7 @@ class SimulatedBroker:
             take_profit_mult=take_profit_mult,
             stop_loss_mult=stop_loss_mult,
             max_hold_minutes=max_hold_minutes,
+            ema_trend_aligned=ema_aligned,
         )
         
         self.positions[symbol] = {
@@ -193,8 +194,7 @@ def _compute_features_for_df(df: pd.DataFrame) -> pd.DataFrame:
     df["return_20"] = close.pct_change(20) * 100
 
     # Fractional Differentiation (d=0.5, window=10)
-    w_ffd = _get_weights_ffd(d=0.5, window=10)
-    df["frac_diff"] = close.rolling(10).apply(lambda x: np.dot(x, w_ffd), raw=True)
+    df["frac_diff"] = compute_frac_diff(close, d=0.5, window=10)
 
     # VWAP
     df['dt'] = pd.to_datetime(df['timestamp'])
@@ -243,19 +243,24 @@ def run_backtest(
         )
     )
     
-    # 1. Precompute features for all symbols
+    # 1. Precompute features and timestamp-indexed lookups for all symbols
     dfs = {}
+    rows_by_symbol: Dict[str, Dict[Any, Dict[str, Any]]] = {}
     for sym, candles in historical_data.items():
         if not candles: continue
         df = pd.DataFrame(candles)
         df = _compute_features_for_df(df)
         dfs[sym] = df
+        ts_map: Dict[Any, Dict[str, Any]] = {}
+        for row_dict in df.to_dict("records"):
+            ts_map.setdefault(row_dict["timestamp"], row_dict)
+        rows_by_symbol[sym] = ts_map
         
     if not dfs:
         return {"error": "No data to backtest"}
 
     # 2. Find common timeline (to step through chronologically)
-    all_times = sorted(list(set(t for df in dfs.values() for t in df['timestamp'])))
+    all_times = sorted(list(set(t for ts_map in rows_by_symbol.values() for t in ts_map)))
     
     # 3. Step through time
     for t in all_times:
@@ -263,10 +268,8 @@ def run_backtest(
         
         # Check exits first
         for sym, pos in list(broker.positions.items()):
-            df = dfs[sym]
-            row = df[df['timestamp'] == t]
-            if row.empty: continue
-            row_dict = row.iloc[0].to_dict()
+            row_dict = rows_by_symbol[sym].get(t)
+            if row_dict is None: continue
             current_price = row_dict['close']
             
             # Simulated intra-candle price action:
@@ -296,7 +299,7 @@ def run_backtest(
                     
                 # 2. Check other conditions at Close
                 decision = exit_engine.should_exit(
-                    position={"pnl_pct": (current_price - pos["entry_price"]) / pos["entry_price"] * 100},
+                    position={"pnl_pct": _position_pnl_pct(direction, pos["entry_price"], current_price)},
                     current_price=current_price,
                     exits=pos["exit_plan"],
                     current_features=row_dict,
@@ -321,10 +324,10 @@ def run_backtest(
                         continue
 
         # Collect features for new entries
-        for sym, df in dfs.items():
-            row = df[df['timestamp'] == t]
-            if not row.empty:
-                r = row.iloc[0].to_dict()
+        for sym, ts_map in rows_by_symbol.items():
+            raw_row = ts_map.get(t)
+            if raw_row is not None:
+                r = dict(raw_row)
                 r["symbol"] = sym
                 r["ltp"] = r["close"]
                 r["candle_open"] = r["open"]
@@ -335,35 +338,41 @@ def run_backtest(
         if use_phase1:
             scored = [opportunity_ranker.score(f) for f in current_features]
             ranked = opportunity_ranker.rank(scored)
-            best = opportunity_ranker.best_candidate(ranked, min_score=min_score)
-            
-            # AGGRESSIVE MODE: Allow max 5 concurrent positions
-            if best and len(broker.positions) < 5 and best["symbol"] not in broker.positions:
-                
-                # Assign direction BEFORE ML prediction so features match training
-                best["direction"] = "LONG" if best["rsi"] < 50 else "SHORT"
+            for candidate in ranked:
+                if len(broker.positions) >= 5:
+                    break
+                if (
+                    candidate.get("opportunity_score", 0.0) < min_score
+                    or candidate.get("candidate_direction") == "NO_TRADE"
+                    or candidate["symbol"] in broker.positions
+                ):
+                    continue
 
-                # Phase 2A: Machine Learning Quality Filter + Meta Labeler
+                # Preserve actual ranker direction for ML features & execution
+                candidate["direction"] = candidate["candidate_direction"]
+
                 approve_trade = True
+                prob = None
                 if use_ml_filter:
-                    prob = ml_filter.predict(best)
+                    prob = ml_filter.predict(candidate)
                     if prob < ml_filter.approval_threshold:
                         approve_trade = False
                     else:
-                        # Feed to AI Debate (Meta-Labeler)
-                        mock_event = {"headline": "NO_CATALYST"} # In live, this would pull from event radar
-                        debate_res = ai_debate_engine.analyze_event(mock_event, {}, ml_probability=prob)
+                        mock_event = {"headline": "NO_CATALYST"}
+                        debate_res = ai_debate_engine.analyze_event(
+                            mock_event, {}, ml_probability=prob
+                        )
                         if debate_res.get("final_decision") != "TRADE":
                             approve_trade = False
-                        
+
                 if approve_trade:
                     broker.buy(
-                        symbol=best["symbol"],
-                        price=best["ltp"],
-                        atr=best["atr14"],
-                        direction=best["candidate_direction"],
+                        symbol=candidate["symbol"],
+                        price=candidate["ltp"],
+                        atr=candidate["atr14"],
+                        direction=candidate["candidate_direction"],
                         time_str=t,
-                        features=best,
+                        features=candidate,
                         take_profit_mult=take_profit_mult,
                         stop_loss_mult=stop_loss_mult,
                         max_hold_minutes=max_hold_minutes,
