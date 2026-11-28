@@ -1,0 +1,80 @@
+{
+  "evaluated_at": "2026-11-28T11:03:34+00:00",
+  "datasets": {
+    "unseen_29_nse_10y_daily": {
+      "file": "backend/data/historical_candles_yahoo_unseen_daily.json",
+      "source": "Yahoo Finance (auto_adjust=true)",
+      "symbols_count": 29,
+      "benchmark_context": "NIFTY50 (^NSEI)",
+      "baseline_before_fixes": {
+        "swing_oos_ready": false,
+        "sector_bug": "All 29 unseen symbols fell back to OTHER -> capped to 2 positions per tranche (~99 trades)",
+        "folds_profitable": 4,
+        "combined_net_profit": 11439.97,
+        "combined_benchmark_profit": 34626.37,
+        "combined_outperformance_vs_benchmark": -23186.4,
+        "combined_profit_factor": 1.42,
+        "mean_daily_spearman_ic": 0.0182,
+        "combined_excess_alpha_95pct_ci_pct": [-0.169, 0.317],
+        "blind_holdout_mean_net_profit": 1359.59,
+        "blind_holdout_ic": -0.0177,
+        "blind_holdout_excess_alpha_95pct_ci_pct": [-0.123, 1.219],
+        "blind_holdout_benchmark_profit": 1182.26
+      },
+      "improved_ai_after_fixes": {
+        "fixes_applied": [
+          "Expanded SYMBOL_SECTORS in bot_engine.py across all 66 NSE large/next-50 equities + UNMAPPED:{sym} fallback guard",
+          "Added training-only _QuantileWinsorizer(0.01, 0.99) + target clipping [-25%, +25%] in swing_alpha.py",
+          "Added strictly date-purged extra_training_data (Core 37 + Unseen 29 cross-universe training)"
+        ],
+        "swing_oos_ready": true,
+        "folds_profitable": 5,
+        "combined_net_profit": 42997.0,
+        "combined_benchmark_profit": 34626.37,
+        "combined_outperformance_vs_benchmark": 8370.63,
+        "combined_profit_factor": 1.62,
+        "worst_fold_max_drawdown_pct": 15.17,
+        "mean_daily_spearman_ic": 0.0241,
+        "combined_excess_alpha_95pct_ci_pct": [0.131, 0.481],
+        "combined_period_pnl_95pct_ci": [103.08, 149.28],
+        "blind_holdout_mean_net_profit": 3343.3,
+        "blind_holdout_min_offset_net_profit": 2777.71,
+        "blind_holdout_max_offset_net_profit": 3690.36,
+        "blind_holdout_profit_factor": 1.32,
+        "blind_holdout_worst_dd_pct": 7.82,
+        "blind_holdout_ic": 0.0121,
+        "blind_holdout_excess_alpha_95pct_ci_pct": [0.091, 0.922],
+        "blind_holdout_period_pnl_95pct_ci": [15.43, 121.92],
+        "blind_holdout_benchmark_profit": 1182.26
+      }
+    },
+    "core_37_upstox_10y_daily_updated": {
+      "swing_oos_ready": false,
+      "folds_profitable": 5,
+      "combined_net_profit": 33690.11,
+      "combined_benchmark_profit": 22281.81,
+      "combined_outperformance_vs_benchmark": 11408.3,
+      "combined_profit_factor": 1.52,
+      "worst_fold_max_drawdown_pct": 13.11,
+      "mean_daily_spearman_ic": 0.041,
+      "combined_excess_alpha_95pct_ci_pct": [0.258, 0.545],
+      "combined_period_pnl_95pct_ci": [77.16, 117.39],
+      "blind_holdout_mean_net_profit": 326.15,
+      "blind_holdout_min_offset_net_profit": -315.33,
+      "blind_holdout_excess_alpha_95pct_ci_pct": [0.028, 0.784],
+      "blind_holdout_benchmark_profit": -734.75,
+      "failing_gate": "blind_holdout_all_offsets_profitable"
+    },
+    "core_36_yahoo_3y_60m_intraday": {
+      "file": "backend/data/historical_candles_yahoo_60m.json",
+      "source": "Yahoo Finance (60m, 730d -> ~3y: 2023-12-13 to 2026-11-27)",
+      "symbols_count": 36,
+      "bars_per_symbol": "5054-5077",
+      "phase1_3fold_net_profit": -18163.15,
+      "phase1_fold_pnls": [-7352.07, -4308.63, -6502.45],
+      "phase2a_3fold_trades": 1,
+      "phase2a_3fold_net_profit": 21.26,
+      "diagnosis": "Unweighted calibrated P(2.5R TP before 1.5R SL) peaked at 0.357 (fold_1) and 0.393 (fold_2) at 99th percentile, strictly below 43.75% post-cost breakeven win rate; Phase-2A correctly vetoed 2,453/2,454 negative-EV hourly breakouts."
+    }
+  }
+}

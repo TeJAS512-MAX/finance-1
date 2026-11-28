@@ -11,6 +11,7 @@ from typing import Any
 import joblib
 import numpy as np
 import pandas as pd
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.linear_model import Ridge
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -20,7 +21,7 @@ DAILY_CACHE_PATH = DATA_DIR / "historical_candles_upstox_daily.json"
 SWING_MODEL_PATH = DATA_DIR / "swing_15d_candidate.joblib"
 SWING_REPORT_PATH = DATA_DIR / "swing_15d_report.json"
 
-SWING_SCHEMA_VERSION = 1
+SWING_SCHEMA_VERSION = 2
 SWING_HORIZON_SESSIONS = 15
 SWING_REBALANCE_STEP = 5  # Weekly staggered tranches (3 concurrent tranches)
 SWING_MAX_POSITIONS = 5
@@ -28,8 +29,27 @@ SWING_MAX_PER_SECTOR = 2
 SWING_TOTAL_ALLOCATION_PCT = 50.0
 SWING_DELIVERY_RT_COST_PCT = 0.32  # Delivery STT + brokerage + stamp/exchange/GST + slippage
 SWING_RIDGE_ALPHA = 500.0
+SWING_TARGET_CLIP_PCT = 25.0
 SWING_PURGE_SESSIONS = 17  # Strictly >= H + 2 so zero target overlap across train/OOS
 SWING_HOLDOUT_SESSIONS = 250
+
+
+class _QuantileWinsorizer(BaseEstimator, TransformerMixin):
+    """Clip numerical feature extremes to training-only [low_q, high_q] bounds."""
+
+    def __init__(self, low_q: float = 0.01, high_q: float = 0.99) -> None:
+        self.low_q = low_q
+        self.high_q = high_q
+
+    def fit(self, X, y=None):
+        arr = np.asarray(X, dtype=float)
+        self.lower_bounds_ = np.nanquantile(arr, self.low_q, axis=0)
+        self.upper_bounds_ = np.nanquantile(arr, self.high_q, axis=0)
+        return self
+
+    def transform(self, X):
+        arr = np.asarray(X, dtype=float)
+        return np.clip(arr, self.lower_bounds_, self.upper_bounds_)
 
 SWING_FEATURE_COLUMNS = [
     "ret_1",
@@ -199,7 +219,8 @@ def build_swing_panel(
         df["gap_pct"] = (os_ / cs.shift(1) - 1.0) * 100.0
 
         df["symbol"] = sym_u
-        df["sector"] = SYMBOL_SECTORS.get(sym_u, "OTHER")
+        # Keep unmapped custom symbols isolated so unrelated stocks do not collapse into one 2-slot bucket.
+        df["sector"] = SYMBOL_SECTORS.get(sym_u, f"UNMAPPED:{sym_u}")
         if include_targets:
             entry_open = os_.shift(-1)
             exit_close = cs.shift(-SWING_HORIZON_SESSIONS)
@@ -219,10 +240,16 @@ def build_swing_panel(
 def _make_swing_pipeline() -> Pipeline:
     return Pipeline(
         [
+            ("winsor", _QuantileWinsorizer(0.01, 0.99)),
             ("scaler", StandardScaler()),
             ("ridge", Ridge(alpha=SWING_RIDGE_ALPHA)),
         ]
     )
+
+
+def _fit_swing_model(frame: pd.DataFrame) -> Pipeline:
+    y_winsorized = frame["fwd_15d"].clip(-SWING_TARGET_CLIP_PCT, SWING_TARGET_CLIP_PCT)
+    return _make_swing_pipeline().fit(frame[SWING_FEATURE_COLUMNS], y_winsorized)
 
 
 def _simulate_swing_partition_all_offsets(
@@ -337,10 +364,19 @@ def train_and_evaluate_swing_alpha(
     initial_capital: float = 50_000.0,
     holdout_sessions: int = SWING_HOLDOUT_SESSIONS,
     save_artifacts: bool = True,
+    extra_training_data: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     """Train and evaluate the 15-day CNC Ridge Swing model across 5 purged dev folds + blind holdout."""
     panel = build_swing_panel(historical_data, include_targets=True)
     clean = panel.dropna(subset=[*SWING_FEATURE_COLUMNS, "fwd_15d"]).copy()
+    extra_clean: pd.DataFrame | None = None
+    if extra_training_data:
+        extra_panel = build_swing_panel(extra_training_data, include_targets=True)
+        extra_subset = extra_panel.dropna(subset=[*SWING_FEATURE_COLUMNS, "fwd_15d"]).copy()
+        eval_syms = set(clean["symbol"].unique())
+        extra_subset = extra_subset[~extra_subset["symbol"].isin(eval_syms)]
+        if not extra_subset.empty:
+            extra_clean = extra_subset
     all_dates = sorted(clean["dt"].unique())
     if len(all_dates) < holdout_sessions + 600:
         raise ValueError(f"Insufficient daily sessions ({len(all_dates)}) for purged 5-fold + {holdout_sessions}-day holdout.")
@@ -357,13 +393,19 @@ def train_and_evaluate_swing_alpha(
     pooled_trades: list[float] = []
     all_ics: list[float] = []
 
+    def _purged_train_slice(cutoff) -> pd.DataFrame:
+        base_tr = clean[clean["dt"] <= cutoff]
+        if extra_clean is None:
+            return base_tr
+        return pd.concat([base_tr, extra_clean[extra_clean["dt"] <= cutoff]], ignore_index=True)
+
     for idx, bucket in enumerate(fold_buckets, start=1):
         oos_start, oos_end = bucket[0], bucket[-1]
         oos_idx = dev_dates.index(oos_start)
         tr_cutoff = dev_dates[max(0, oos_idx - SWING_PURGE_SESSIONS)]
-        tr = clean[clean["dt"] <= tr_cutoff]
+        tr = _purged_train_slice(tr_cutoff)
         oos = clean[(clean["dt"] >= oos_start) & (clean["dt"] <= oos_end)].copy()
-        model = _make_swing_pipeline().fit(tr[SWING_FEATURE_COLUMNS], tr["fwd_15d"])
+        model = _fit_swing_model(tr)
         oos["pred_15d"] = model.predict(oos[SWING_FEATURE_COLUMNS])
 
         fold_res = _simulate_swing_partition_all_offsets(oos, initial_capital=initial_capital)
@@ -380,9 +422,9 @@ def train_and_evaluate_swing_alpha(
         dev_folds.append(fold_res)
 
     # Strict zero-leakage blind holdout evaluation
-    ho_train = clean[clean["dt"] <= holdout_train_cutoff]
+    ho_train = _purged_train_slice(holdout_train_cutoff)
     ho_test = clean[clean["dt"] >= holdout_start].copy()
-    ho_model = _make_swing_pipeline().fit(ho_train[SWING_FEATURE_COLUMNS], ho_train["fwd_15d"])
+    ho_model = _fit_swing_model(ho_train)
     ho_test["pred_15d"] = ho_model.predict(ho_test[SWING_FEATURE_COLUMNS])
     holdout_res = _simulate_swing_partition_all_offsets(ho_test, initial_capital=initial_capital)
     holdout_bench = _simulate_swing_partition_all_offsets(ho_test, initial_capital=initial_capital, equal_weight_benchmark=True)
@@ -396,7 +438,8 @@ def train_and_evaluate_swing_alpha(
     holdout_res["benchmark_equal_weight_profit"] = holdout_bench["mean_net_profit"]
 
     # Fit production artifact on full labeled dataset
-    final_model = _make_swing_pipeline().fit(clean[SWING_FEATURE_COLUMNS], clean["fwd_15d"])
+    full_train = pd.concat([clean, extra_clean], ignore_index=True) if extra_clean is not None else clean
+    final_model = _fit_swing_model(full_train)
     coefs = {
         col: round(float(val), 4)
         for col, val in sorted(
@@ -563,7 +606,7 @@ def score_latest_swing_universe(
         sym = str(row["symbol"])
         pred_pct = round(float(row["pred_15d"]), 3)
         close_px = round(float(row["close"]), 2)
-        sector = SYMBOL_SECTORS.get(sym, "OTHER")
+        sector = str(row["sector"])
         net_after_cost = round(pred_pct - SWING_DELIVERY_RT_COST_PCT, 3)
 
         entry = {

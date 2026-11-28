@@ -215,3 +215,29 @@ async def test_live_broker_supports_cnc_delivery_product(monkeypatch) -> None:
     res = await broker.place_order("NSE_EQ|INE009A01021", "BUY", 1, "MARKET", price=1500.0, product="D")
     assert res["status"] == "EXCHANGE_PENDING"
     assert captured_payloads[0]["product"] == "D"
+
+
+def test_winsorizer_clips_outliers_and_sectors_prevent_unmapped_collapse() -> None:
+    from intelligence.swing_alpha import _QuantileWinsorizer, build_swing_panel
+    from trading.bot_engine import SYMBOL_SECTORS
+
+    X_tr = np.vstack([np.linspace(-2.0, 2.0, 100), np.linspace(0.0, 10.0, 100)]).T
+    w = _QuantileWinsorizer(0.01, 0.99).fit(X_tr)
+    clipped = w.transform(np.array([[-999.0, 999.0]]))
+    assert clipped[0, 0] > -2.1
+    assert clipped[0, 1] < 10.1
+
+    for next50_sym in ("HAL", "INDIGO", "COFORGE", "VBL", "DLF", "SHRIRAMFIN"):
+        assert next50_sym in SYMBOL_SECTORS
+
+    synth = _make_synthetic_daily_universe(240)
+    base_candles = synth["RELIANCE"]
+    custom = {
+        "NIFTY50": synth["NIFTY50"],
+        "CUSTOM_ALPHA": base_candles,
+        "CUSTOM_BETA": base_candles,
+        "CUSTOM_GAMMA": base_candles,
+    }
+    panel = build_swing_panel(custom, include_targets=False)
+    sectors = set(panel["sector"].unique())
+    assert sectors == {"UNMAPPED:CUSTOM_ALPHA", "UNMAPPED:CUSTOM_BETA", "UNMAPPED:CUSTOM_GAMMA"}
