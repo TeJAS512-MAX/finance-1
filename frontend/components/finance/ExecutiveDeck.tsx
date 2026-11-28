@@ -39,6 +39,7 @@ import {
   fetchGstCalcApi,
   fetchProfitModelApi,
   resetProfileApi,
+  fetchReminderApi,
 } from "@/lib/finance/api";
 import {
   ForecastResponse,
@@ -82,8 +83,10 @@ interface ExecutiveDeckProps {
 
 export default function ExecutiveDeck({ user, onLogout, onBackToMarket }: ExecutiveDeckProps) {
   const init = useAetherStore((s) => s.init);
+  const currentDate = useAetherStore((s) => s.currentDate);
   const state = useAetherStore((s) => s.state);
   const singularity = useAetherStore((s) => s.singularity);
+  const candidates = useAetherStore((s) => s.candidates);
   const messages = useAetherStore((s) => s.messages);
   const isThinking = useAetherStore((s) => s.isThinking);
 
@@ -132,6 +135,10 @@ export default function ExecutiveDeck({ user, onLogout, onBackToMarket }: Execut
   const [ledgerData, setLedgerData] = useState<LedgerResponse | null>(null);
 
   // Tab 4: Profit & Loan State
+  const [monthlySalesInput, setMonthlySalesInput] = useState(1800000);
+  const [cogsPctInput, setCogsPctInput] = useState(70);
+  const [fixedCostInput, setFixedCostInput] = useState(80000);
+  const [existingEmiInput, setExistingEmiInput] = useState(25000);
   const [loanPrincipal, setLoanPrincipal] = useState(1000000);
   const [loanRate, setLoanRate] = useState(11.0);
   const [loanTenure, setLoanTenure] = useState(36);
@@ -155,6 +162,11 @@ export default function ExecutiveDeck({ user, onLogout, onBackToMarket }: Execut
       setProfGstin(state.business.gstin || "27AAACU1234M1Z5");
       setProfCash(state.physics_state?.bank_cash || 350000);
       setProfVault(state.physics_state?.tax_vault_balance || 35000);
+      if (state.business.monthly_burn_rate > 0) {
+        setProfBurn(state.business.monthly_burn_rate);
+        setFixedCostInput(state.business.monthly_burn_rate);
+      }
+      setMonthlySalesInput(Math.max(500000, Math.round((state.physics_state?.bank_cash || 300000) * 6)));
     }
   }, [state]);
 
@@ -196,13 +208,17 @@ export default function ExecutiveDeck({ user, onLogout, onBackToMarket }: Execut
 
   const loadProfitModel = useCallback(async () => {
     try {
-      const sales = (state?.physics_state?.bank_cash || 300000) * 6;
-      const data = await fetchProfitModelApi(sales, 70.0, profBurn, 25000);
+      const data = await fetchProfitModelApi(
+        monthlySalesInput,
+        cogsPctInput,
+        fixedCostInput,
+        existingEmiInput
+      );
       setProfitData(data);
     } catch {
       // Graceful fallback
     }
-  }, [state, profBurn]);
+  }, [monthlySalesInput, cogsPctInput, fixedCostInput, existingEmiInput]);
 
   const loadEmi = useCallback(async () => {
     try {
@@ -362,6 +378,24 @@ export default function ExecutiveDeck({ user, onLogout, onBackToMarket }: Execut
     setTimeout(() => setCopiedDraftId(null), 2500);
   };
 
+  const handleCopyInvoiceReminder = async (inv: LedgerDebtorItem) => {
+    try {
+      const res = await fetchReminderApi(inv.id);
+      copyToClipboard(`ledger-${inv.id}`, res.reminder.message);
+    } catch {
+      const fallback = `Hi ${inv.customer_name} Team, gentle reminder regarding Invoice #${inv.invoice_number} for ${fmtInr(inv.amount)} due on ${inv.due_label}.`;
+      copyToClipboard(`ledger-${inv.id}`, fallback);
+    }
+  };
+
+  const displayDate = currentDate
+    ? new Date(currentDate + "T00:00:00").toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "Live Ledger";
+
   // Financial aggregates
   const totalReceivables = state?.invoices?.reduce((sum, i) => sum + (i.unpaid_cash || 0), 0) || 0;
   const totalPayables = state?.obligations?.reduce((sum, o) => sum + (o.amount || 0), 0) || 0;
@@ -505,7 +539,7 @@ export default function ExecutiveDeck({ user, onLogout, onBackToMarket }: Execut
             <AlertTriangle className="w-4 h-4 text-dangerrose shrink-0" />
             <span className="text-slate-200">
               <strong className="text-white font-semibold">GST Alert:</strong>{" "}
-              {fmtInr(deficitAmount)} cash shortfall due on 20 Nov. Unpaid customer bills hold GST liability that must be paid in cash.
+              {fmtInr(deficitAmount)} cash shortfall due on {gstPlanData?.due_label || "20th"}. Unpaid customer bills hold GST liability that must be paid in cash.
             </span>
           </div>
           <button
@@ -939,7 +973,7 @@ export default function ExecutiveDeck({ user, onLogout, onBackToMarket }: Execut
               </button>
             </div>
             <div className="text-[11px] text-slate-400 font-mono hidden xl:block">
-              Sim Date: <span className="text-white font-semibold">16 Nov 2026</span>
+              Ledger Date: <span className="text-white font-semibold">{displayDate}</span>
             </div>
           </div>
 
@@ -947,27 +981,127 @@ export default function ExecutiveDeck({ user, onLogout, onBackToMarket }: Execut
             <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
               {activeTab === "forecast" && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="p-3 rounded-xl bg-black/40 border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block">Lowest Dip</span>
-                      <span className="font-mono font-bold text-base text-dangerrose">
-                        {fmtInr(forecastData?.summary?.lowest_balance ?? -1097915)}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="p-2.5 rounded-xl bg-black/40 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block">Starting Cash</span>
+                      <span className="font-mono font-bold text-sm text-white">
+                        {fmtCompact(forecastData?.summary?.starting_cash ?? bankCash)}
                       </span>
                     </div>
-                    <div className="p-3 rounded-xl bg-black/40 border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block">Runway</span>
-                      <span className="font-mono font-bold text-base text-brand-400">
-                        {forecastData?.summary?.estimated_runway_days ?? 4} Days
+                    <div className="p-2.5 rounded-xl bg-black/40 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block">Lowest Dip</span>
+                      <span className={`font-mono font-bold text-sm ${(forecastData?.summary?.lowest_balance ?? 0) < 0 ? "text-dangerrose" : "text-brand-400"}`}>
+                        {fmtCompact(forecastData?.summary?.lowest_balance ?? 0)}
                       </span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-black/40 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block">Ending Cash</span>
+                      <span className={`font-mono font-bold text-sm ${(forecastData?.summary?.ending_cash ?? 0) < 0 ? "text-dangerrose" : "text-accentcyan"}`}>
+                        {fmtCompact(forecastData?.summary?.ending_cash ?? 0)}
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-black/40 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block">Runway</span>
+                      <span className="font-mono font-bold text-sm text-brand-400">
+                        {forecastData?.summary?.estimated_runway_days ?? runwayDays.toFixed(0)} Days
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Interactive What-If Controls */}
+                  <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-200 flex items-center gap-1.5">
+                        <Sliders className="w-3.5 h-3.5 text-accentcyan" />
+                        <span>What-If Cash Flow Simulator</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDelayDays(0);
+                          setDiscountPct(0);
+                          setExpenseCutPct(0);
+                          setPlannedSpend(0);
+                        }}
+                        className="text-[10px] text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                      <div>
+                        <div className="flex justify-between text-slate-300 mb-1">
+                          <span>Customer Delay Shift</span>
+                          <span className="font-mono text-warningamber">{delayDays >= 0 ? `+${delayDays}` : delayDays}d</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="-15"
+                          max="45"
+                          step="5"
+                          value={delayDays}
+                          onChange={(e) => setDelayDays(Number(e.target.value))}
+                          className="w-full accent-amber-400"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-slate-300 mb-1">
+                          <span>Early Settlement Discount</span>
+                          <span className="font-mono text-brand-400">{discountPct.toFixed(1)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="5"
+                          step="0.5"
+                          value={discountPct}
+                          onChange={(e) => setDiscountPct(Number(e.target.value))}
+                          className="w-full accent-emerald-400"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-slate-300 mb-1">
+                          <span>Overhead Cost Cut</span>
+                          <span className="font-mono text-accentcyan">{expenseCutPct}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="40"
+                          step="5"
+                          value={expenseCutPct}
+                          onChange={(e) => setExpenseCutPct(Number(e.target.value))}
+                          className="w-full accent-cyan-400"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-slate-300 mb-1">
+                          <span>Planned Capex Spend</span>
+                          <span className="font-mono text-purple-300">{fmtCompact(plannedSpend)}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1000000"
+                          step="50000"
+                          value={plannedSpend}
+                          onChange={(e) => setPlannedSpend(Number(e.target.value))}
+                          className="w-full accent-purple-400"
+                        />
+                      </div>
                     </div>
                   </div>
 
                   {/* 45-day Trajectory */}
                   <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-2">
-                    <span className="font-semibold text-slate-200 block">45-Day Cash Progression</span>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-200">45-Day Cash Progression</span>
+                      {isForecastLoading && <span className="text-[10px] text-accentcyan animate-pulse">Updating...</span>}
+                    </div>
                     <div className="h-28 flex items-end gap-1 pt-2">
                       {forecastData?.daily?.slice(0, 30).map((d: ForecastDayItem, idx: number) => {
-                        const hPct = Math.min(100, Math.max(15, (Math.abs(d.balance) / 500000) * 100));
+                        const maxAbs = Math.max(500000, ...(forecastData?.daily?.slice(0, 30).map((x) => Math.abs(x.balance)) || [500000]));
+                        const hPct = Math.min(100, Math.max(12, (Math.abs(d.balance) / maxAbs) * 100));
                         return (
                           <div
                             key={idx}
@@ -981,19 +1115,130 @@ export default function ExecutiveDeck({ user, onLogout, onBackToMarket }: Execut
                       })}
                     </div>
                   </div>
+
+                  {/* Key Cash Events */}
+                  {forecastData?.events && forecastData.events.length > 0 && (
+                    <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-2">
+                      <span className="font-semibold text-slate-200 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-brand-400" />
+                        <span>Upcoming Cash Events</span>
+                      </span>
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                        {forecastData.events.slice(0, 6).map((ev: ForecastEventItem, i: number) => (
+                          <div key={i} className="flex items-center justify-between text-[11px] p-1.5 rounded bg-slate-900/70 border border-slate-800/70">
+                            <span className="text-slate-300 truncate pr-2">{ev.date}: {ev.description}</span>
+                            <span className={`font-mono shrink-0 ${ev.is_negative ? "text-dangerrose" : "text-brand-400"}`}>
+                              {fmtCompact(ev.balance)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Synthesized Liquidity Wormhole Candidates */}
+                  {candidates && candidates.length > 0 && (
+                    <div className="p-3 rounded-xl bg-brand-500/5 border border-brand-500/20 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-brand-300 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Liquidity Wormhole Strategies ({candidates.length})</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleLiquidityBridge}
+                          className="px-2.5 py-1 rounded bg-brand-600 hover:bg-brand-500 text-white text-[10px] font-semibold"
+                        >
+                          Activate Best
+                        </button>
+                      </div>
+                      <div className="space-y-1.5">
+                        {candidates.slice(0, 3).map((c) => (
+                          <div key={c.id} className="p-2 rounded bg-black/40 border border-slate-800 flex items-center justify-between text-[11px]">
+                            <div>
+                              <div className="font-medium text-white">{c.title}</div>
+                              <div className="text-[10px] text-slate-400">APR {c.effective_apr_annualized}% • +{c.runway_days_restored.toFixed(0)}d runway</div>
+                            </div>
+                            <span className="font-mono font-bold text-brand-400">+{fmtCompact(c.gross_liquidity_created)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
               {activeTab === "gst" && (
                 <div className="space-y-3">
-                  <div className="p-3 rounded-xl bg-dangerrose/10 border border-dangerrose/30 space-y-1">
-                    <span className="font-bold text-dangerrose block">GSTR-3B Due in 4 Days (20 Nov)</span>
-                    <span className="text-slate-300">
-                      Net Tax Payable: <strong>{fmtInr(gstPlanData?.net_payable ?? 284915)}</strong>
-                    </span>
+                  <div className={`p-3 rounded-xl border space-y-2 ${
+                    (gstPlanData?.still_to_arrange ?? 0) > 0
+                      ? "bg-dangerrose/10 border-dangerrose/30"
+                      : "bg-brand-500/10 border-brand-500/30"
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className={`font-bold ${(gstPlanData?.still_to_arrange ?? 0) > 0 ? "text-dangerrose" : "text-brand-400"}`}>
+                        GSTR-3B ({gstPlanData?.due_label || "20th"}) • {gstPlanData?.days_left ?? 0} Days Left
+                      </span>
+                      <span className="font-mono text-[11px] text-slate-300">
+                        Vault: {gstPlanData?.vault_coverage_pct ?? 0}%
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-[11px] font-mono">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Output GST</span>
+                        <span className="text-white font-semibold">{fmtCompact(gstPlanData?.output_gst ?? 0)}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">ITC Claimed</span>
+                        <span className="text-brand-400 font-semibold">{fmtCompact(gstPlanData?.itc_claimed ?? 0)}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">To Arrange</span>
+                        <span className="text-warningamber font-semibold">{fmtCompact(gstPlanData?.still_to_arrange ?? 0)}</span>
+                      </div>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-slate-900 overflow-hidden">
+                      <div
+                        className="h-full bg-brand-500 transition-all"
+                        style={{ width: `${Math.min(100, gstPlanData?.vault_coverage_pct ?? 0)}%` }}
+                      />
+                    </div>
                   </div>
+
+                  {gstPlanData?.steps && gstPlanData.steps.length > 0 && (
+                    <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-2">
+                      <span className="font-semibold text-slate-200 block">GST Compliance Action Plan</span>
+                      <div className="space-y-1.5">
+                        {gstPlanData.steps.map((s: GstStepItem, idx: number) => (
+                          <div key={idx} className="p-2 rounded bg-slate-900/60 border border-slate-800/80 space-y-0.5">
+                            <div className="font-medium text-white">{s.title}</div>
+                            <div className="text-[10px] text-slate-400 leading-relaxed">{s.detail}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-2">
-                    <span className="font-semibold text-slate-200 block">GST Calculator</span>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-200">GST Calculator</span>
+                      <div className="flex rounded-lg bg-slate-900 border border-slate-700 p-0.5 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => setCalcMode("gross")}
+                          className={`px-2 py-0.5 rounded ${calcMode === "gross" ? "bg-brand-600 text-white" : "text-slate-400"}`}
+                        >
+                          Inclusive
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCalcMode("net")}
+                          className={`px-2 py-0.5 rounded ${calcMode === "net" ? "bg-brand-600 text-white" : "text-slate-400"}`}
+                        >
+                          Exclusive
+                        </button>
+                      </div>
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
                       <input
                         type="number"
@@ -1013,9 +1258,11 @@ export default function ExecutiveDeck({ user, onLogout, onBackToMarket }: Execut
                       </select>
                     </div>
                     {calcResult && (
-                      <div className="grid grid-cols-2 gap-2 pt-2 text-[11px] font-mono">
-                        <div>Base: {fmtInr(calcResult.base)}</div>
-                        <div className="text-accentcyan">Tax: {fmtInr(calcResult.gst)}</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-[11px] font-mono">
+                        <div><span className="text-[10px] text-slate-400 block">Base</span>{fmtInr(calcResult.base)}</div>
+                        <div><span className="text-[10px] text-slate-400 block">CGST</span>{fmtInr(calcResult.cgst)}</div>
+                        <div><span className="text-[10px] text-slate-400 block">SGST</span>{fmtInr(calcResult.sgst)}</div>
+                        <div className="text-accentcyan"><span className="text-[10px] text-slate-400 block">Total</span>{fmtInr(calcResult.total)}</div>
                       </div>
                     )}
                   </div>
@@ -1024,45 +1271,77 @@ export default function ExecutiveDeck({ user, onLogout, onBackToMarket }: Execut
 
               {activeTab === "ledger" && (
                 <div className="space-y-3">
-                  <div className="flex gap-2 border-b border-slate-800 pb-2">
-                    <button
-                      onClick={() => setLedgerSubTab("debtors")}
-                      className={`px-3 py-1 rounded text-xs ${
-                        ledgerSubTab === "debtors" ? "bg-brand-600 text-white" : "text-slate-400"
-                      }`}
-                    >
-                      Debtors
-                    </button>
-                    <button
-                      onClick={() => setLedgerSubTab("creditors")}
-                      className={`px-3 py-1 rounded text-xs ${
-                        ledgerSubTab === "creditors" ? "bg-brand-600 text-white" : "text-slate-400"
-                      }`}
-                    >
-                      Creditors
-                    </button>
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setLedgerSubTab("debtors")}
+                        className={`px-3 py-1 rounded text-xs ${
+                          ledgerSubTab === "debtors" ? "bg-brand-600 text-white" : "text-slate-400"
+                        }`}
+                      >
+                        Debtors ({ledgerData?.debtors?.summary?.count ?? 0})
+                      </button>
+                      <button
+                        onClick={() => setLedgerSubTab("creditors")}
+                        className={`px-3 py-1 rounded text-xs ${
+                          ledgerSubTab === "creditors" ? "bg-brand-600 text-white" : "text-slate-400"
+                        }`}
+                      >
+                        Creditors ({ledgerData?.creditors?.summary?.count ?? 0})
+                      </button>
+                    </div>
+                    <span className="font-mono text-[11px] text-slate-300">
+                      {ledgerSubTab === "debtors"
+                        ? `Overdue: ${fmtCompact(ledgerData?.debtors?.summary?.overdue_amount ?? 0)}`
+                        : `Deficit: ${fmtCompact(ledgerData?.creditors?.summary?.coverage_deficit ?? 0)}`}
+                    </span>
                   </div>
                   {ledgerSubTab === "debtors" ? (
                     <div className="space-y-2">
+                      {(!ledgerData?.debtors?.invoices || ledgerData.debtors.invoices.length === 0) && (
+                        <div className="p-4 text-center text-slate-500">No pending customer invoices.</div>
+                      )}
                       {ledgerData?.debtors?.invoices?.map((inv: LedgerDebtorItem) => (
-                        <div key={inv.id} className="p-2.5 rounded bg-black/40 border border-slate-800 space-y-1">
+                        <div key={inv.id} className="p-2.5 rounded bg-black/40 border border-slate-800 space-y-1.5">
                           <div className="flex justify-between font-semibold">
                             <span>{inv.customer_name}</span>
                             <span className="font-mono">{fmtInr(inv.amount)}</span>
                           </div>
-                          <div className="text-[10px] text-slate-400">Due: {inv.due_label}</div>
+                          <div className="flex items-center justify-between text-[10px] text-slate-400">
+                            <span>
+                              #{inv.invoice_number} • Due {inv.due_label}
+                              {inv.days_overdue > 0 ? ` (${inv.days_overdue}d overdue)` : ` • Exp ${inv.expected_label}`}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyInvoiceReminder(inv)}
+                              className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center gap-1"
+                            >
+                              {copiedDraftId === `ledger-${inv.id}` ? (
+                                <><Check className="w-3 h-3 text-brand-400" /> Copied</>
+                              ) : (
+                                <><Copy className="w-3 h-3" /> Reminder</>
+                              )}
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
                   ) : (
                     <div className="space-y-2">
+                      {(!ledgerData?.creditors?.liabilities || ledgerData.creditors.liabilities.length === 0) && (
+                        <div className="p-4 text-center text-slate-500">No upcoming payables.</div>
+                      )}
                       {ledgerData?.creditors?.liabilities?.map((lib: LedgerCreditorItem) => (
                         <div key={lib.id} className="p-2.5 rounded bg-black/40 border border-slate-800 space-y-1">
                           <div className="flex justify-between font-semibold">
                             <span>{lib.name}</span>
                             <span className="font-mono">{fmtInr(lib.amount)}</span>
                           </div>
-                          <div className="text-[10px] text-slate-400">Due: {lib.due_label}</div>
+                          <div className="flex justify-between text-[10px] text-slate-400">
+                            <span>{lib.category} • {lib.priority_label}</span>
+                            <span>Due: {lib.due_label} ({lib.days_left}d)</span>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1072,27 +1351,138 @@ export default function ExecutiveDeck({ user, onLogout, onBackToMarket }: Execut
 
               {activeTab === "profit" && (
                 <div className="space-y-3">
-                  <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-2">
-                    <span className="font-semibold text-slate-200 block">Loan EMI Calculator</span>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[11px]">
-                        <span>Loan Amount</span>
-                        <span className="font-mono">{fmtInr(loanPrincipal)}</span>
+                  {/* Profit & Break-Even Model */}
+                  <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-2.5">
+                    <span className="font-semibold text-slate-200 flex items-center gap-1.5">
+                      <PieChart className="w-3.5 h-3.5 text-brand-400" />
+                      <span>Monthly Profit & Break-Even Model</span>
+                    </span>
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div>
+                        <label className="text-[10px] text-slate-400 block mb-0.5">Monthly Sales (₹)</label>
+                        <input
+                          type="number"
+                          step="50000"
+                          value={monthlySalesInput}
+                          onChange={(e) => setMonthlySalesInput(Number(e.target.value))}
+                          className="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-white font-mono"
+                        />
                       </div>
-                      <input
-                        type="range"
-                        min="100000"
-                        max="5000000"
-                        step="50000"
-                        value={loanPrincipal}
-                        onChange={(e) => setLoanPrincipal(Number(e.target.value))}
-                        className="w-full accent-purple-400"
-                      />
+                      <div>
+                        <label className="text-[10px] text-slate-400 block mb-0.5">COGS %</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="99"
+                          value={cogsPctInput}
+                          onChange={(e) => setCogsPctInput(Number(e.target.value))}
+                          className="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-white font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-400 block mb-0.5">Fixed Costs (₹)</label>
+                        <input
+                          type="number"
+                          step="10000"
+                          value={fixedCostInput}
+                          onChange={(e) => setFixedCostInput(Number(e.target.value))}
+                          className="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-white font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-400 block mb-0.5">Existing EMIs (₹)</label>
+                        <input
+                          type="number"
+                          step="5000"
+                          value={existingEmiInput}
+                          onChange={(e) => setExistingEmiInput(Number(e.target.value))}
+                          className="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-white font-mono"
+                        />
+                      </div>
+                    </div>
+                    {profitData && (
+                      <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[11px]">
+                        <div className="p-2 rounded bg-slate-900/70 border border-slate-800">
+                          <span className="text-[10px] text-slate-400 block">Net Profit ({profitData.net_margin_pct}%)</span>
+                          <span className={profitData.net_profit >= 0 ? "text-brand-400 font-bold" : "text-dangerrose font-bold"}>
+                            {fmtInr(profitData.net_profit)}
+                          </span>
+                        </div>
+                        <div className="p-2 rounded bg-slate-900/70 border border-slate-800">
+                          <span className="text-[10px] text-slate-400 block">Break-Even Sales</span>
+                          <span className="text-accentcyan font-bold">{fmtCompact(profitData.break_even_sales)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Loan EMI Calculator */}
+                  <div className="p-3 rounded-xl bg-black/40 border border-slate-800 space-y-2.5">
+                    <span className="font-semibold text-slate-200 block">Loan EMI & Debt Service Check</span>
+                    <div className="space-y-2">
+                      <div>
+                        <div className="flex justify-between text-[11px]">
+                          <span>Loan Amount</span>
+                          <span className="font-mono">{fmtInr(loanPrincipal)}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="100000"
+                          max="5000000"
+                          step="50000"
+                          value={loanPrincipal}
+                          onChange={(e) => setLoanPrincipal(Number(e.target.value))}
+                          className="w-full accent-purple-400"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div>
+                          <div className="flex justify-between">
+                            <span>Rate % p.a.</span>
+                            <span className="font-mono">{loanRate}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="7"
+                            max="24"
+                            step="0.5"
+                            value={loanRate}
+                            onChange={(e) => setLoanRate(Number(e.target.value))}
+                            className="w-full accent-purple-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block mb-0.5 text-slate-400 text-[10px]">Tenure</label>
+                          <select
+                            value={loanTenure}
+                            onChange={(e) => setLoanTenure(Number(e.target.value))}
+                            className="w-full bg-slate-900 border border-slate-700 rounded p-1 text-xs text-white font-mono"
+                          >
+                            <option value={12}>12 Months</option>
+                            <option value={24}>24 Months</option>
+                            <option value={36}>36 Months</option>
+                            <option value={60}>60 Months</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
                     {emiResult && (
-                      <div className="p-2.5 rounded bg-purple-500/10 border border-purple-500/30 font-mono">
-                        <span className="text-[10px] text-purple-300 block">Monthly EMI</span>
-                        <span className="text-base font-bold text-white">{fmtInr(emiResult.monthly_emi)}</span>
+                      <div className="p-2.5 rounded bg-purple-500/10 border border-purple-500/30 space-y-1 font-mono">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] text-purple-300 block">Monthly EMI</span>
+                            <span className="text-base font-bold text-white">{fmtInr(emiResult.monthly_emi)}</span>
+                          </div>
+                          <div className="text-right text-[10px] text-slate-300">
+                            <div>Total Int: {fmtCompact(emiResult.total_interest)}</div>
+                            <div>Total Pay: {fmtCompact(emiResult.total_payment)}</div>
+                          </div>
+                        </div>
+                        {emiResult.verdict?.text && (
+                          <div className="text-[10px] text-slate-300 pt-1 border-t border-purple-500/20 font-sans">
+                            {emiResult.verdict.text}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

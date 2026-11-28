@@ -96,10 +96,13 @@ class CentralNervousSystem:
         gstin: str = "27AAACU1234M1Z5",
         bank_cash: float = 350000.0,
         tax_vault: float = 25000.0,
-        monthly_burn: float = 80000.0
+        monthly_burn: float = 80000.0,
+        use_live_date: bool = True,
     ) -> AetherPravahState:
         """Resets the state to a clean user-defined business ledger with zero mock invoices."""
         from data.finance_archetypes import create_user_custom_business
+        if use_live_date:
+            self.current_date = date.today()
         self.state = create_user_custom_business(
             company_name=company_name,
             owner_name=owner_name,
@@ -223,12 +226,16 @@ class CentralNervousSystem:
 
     def set_archetype(self, archetype_id: str) -> AetherPravahState:
         if archetype_id == "VASTRAKALA":
+            self.current_date = date(2026, 11, 16)
             self.state = generate_vastrakala_data(self.current_date)
         elif archetype_id == "NEXUS_PULSE":
+            self.current_date = date(2026, 11, 16)
             self.state = generate_nexus_pulse_data(self.current_date)
         elif archetype_id == "STEEL_TRADER":
+            self.current_date = date(2026, 11, 16)
             self.state = generate_bharat_steel_data(self.current_date)
         else:
+            self.current_date = date.today()
             self.state = create_user_custom_business(
                 company_name=archetype_id,
                 today=self.current_date
@@ -293,24 +300,32 @@ class CentralNervousSystem:
         self.state.gst_snapshot.singularity_risk_score = singularity.probability_of_default
         self.sync_graph()
 
-    def process_user_message(self, message: str, attached_image_filename: Optional[str] = None) -> Dict[str, Any]:
+    def process_user_message(
+        self,
+        message: str,
+        attached_image_filename: Optional[str] = None,
+        attached_image_bytes: Optional[bytes] = None,
+    ) -> Dict[str, Any]:
         """
         Processes any user message or multimodal upload and returns the
         strict 5-part protective response format.
         """
         # Tier 0: Sensing
         if attached_image_filename:
-            sensor_res = ActiveSensorSwarm.parse_invoice_image_ocr(attached_image_filename)
+            sensor_res = ActiveSensorSwarm.parse_invoice_image_ocr(
+                attached_image_filename, image_bytes=attached_image_bytes
+            )
         else:
             sensor_res = ActiveSensorSwarm.parse_natural_language_or_voice(message)
 
         singularity = self.predict_current_singularity()
         q_raw = message.strip()
 
-        # Check AI Finance Assistant first for rich multi-card financial advisory
-        routed = self.assistant.try_answer(message)
-        if routed is not None:
-            return routed
+        # Check AI Finance Assistant first for text prompts (never override OCR uploads)
+        if not attached_image_filename:
+            routed = self.assistant.try_answer(message)
+            if routed is not None:
+                return routed
 
         # Handle Invoice Creation
         if sensor_res.intent == "CREATE_INVOICE":
@@ -381,8 +396,8 @@ class CentralNervousSystem:
             )
             causal = (
                 f"Because the Indian GST council levies tax on *accrual (bill creation date)* rather than cash collection, "
-                f"issuing this invoice deepened your 20th Nov GST Black Hole by exactly ₹{new_inv.gst_amount:,.2f}. "
-                f"Since Reliance takes ~{cust.typical_delay_days} days to clear funds, bank cash will run dry before payment arrives."
+                f"issuing this invoice deepened your GST Black Hole by exactly ₹{new_inv.gst_amount:,.2f}. "
+                f"Since {cust.name} takes ~{cust.typical_delay_days} days to clear funds, bank cash will run dry before payment arrives."
             )
             actions = [
                 "✨ **Activate Synthesized Liquidity Wormhole** (bridges the deficit via 2% prompt discount + paper factoring)",

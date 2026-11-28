@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
+from core.security import create_access_token, hash_password, verify_password
 from finance import ledger
 from finance.calculators import (
     amortization_by_year,
@@ -22,10 +22,11 @@ from finance.cns import CentralNervousSystem
 from finance.defaults import finance_defaults
 from finance.forecast import Scenario, run_forecast
 from finance.gst_plan import build_gst_plan
+from finance.persistence import FinancePersistence
 
 router = APIRouter()
 
-# Singleton Central Nervous System for SME finance state
+persistence = FinancePersistence()
 cns = CentralNervousSystem()
 cns.set_user_profile(
     company_name="Apex Solutions Enterprise",
@@ -34,6 +35,36 @@ cns.set_user_profile(
     city="Mumbai, Maharashtra",
     gstin="27AAACU1234M1Z5",
 )
+
+USERS_DB: Dict[str, Dict[str, Any]] = {
+    "demo@aetherpravah.com": {
+        "name": "Rajesh Sharma",
+        "email": "demo@aetherpravah.com",
+        "password_hash": hash_password("password123"),
+        "company_name": "Apex Solutions Enterprise",
+        "business_type": "Trading & Services",
+        "city": "Mumbai, Maharashtra",
+        "gstin": "27AAACU1234M1Z5",
+        "bank_cash": 350000.0,
+        "tax_vault": 25000.0,
+        "monthly_burn": 80000.0,
+    }
+}
+
+_loaded = persistence.load()
+if _loaded is not None:
+    _saved_state, _saved_date, _saved_users = _loaded
+    cns.state = _saved_state
+    cns.current_date = _saved_date
+    cns.sync_graph()
+    for _email, _u in _saved_users.items():
+        if "password" in _u and "password_hash" not in _u:
+            _u["password_hash"] = hash_password(str(_u.pop("password")))
+        USERS_DB[_email] = _u
+
+
+def _persist() -> None:
+    persistence.save(cns.state, cns.current_date, USERS_DB)
 
 
 class ChatRequest(BaseModel):
@@ -56,22 +87,6 @@ class RegisterRequest(BaseModel):
     bank_cash: float = 350000.0
     tax_vault: float = 25000.0
     monthly_burn: float = 80000.0
-
-
-USERS_DB: Dict[str, Dict[str, Any]] = {
-    "demo@aetherpravah.com": {
-        "name": "Rajesh Sharma",
-        "email": "demo@aetherpravah.com",
-        "password": "password123",
-        "company_name": "Apex Solutions Enterprise",
-        "business_type": "Trading & Services",
-        "city": "Mumbai, Maharashtra",
-        "gstin": "27AAACU1234M1Z5",
-        "bank_cash": 350000.0,
-        "tax_vault": 25000.0,
-        "monthly_burn": 80000.0,
-    }
-}
 
 
 class ProfileRequest(BaseModel):
@@ -115,6 +130,8 @@ def health_check() -> Dict[str, Any]:
         "system": "AetherPravah Causal Organism",
         "rupees_conserved": cns.state.physics_state.total_rupees_conserved,
         "genome_score": cns.state.genome.overall_score,
+        "persistence": persistence.backend_name,
+        "current_date": cns.current_date.isoformat(),
     }
 
 
@@ -123,7 +140,15 @@ def auth_login(req: LoginRequest) -> Dict[str, Any]:
     email = req.email.strip().lower()
     user = USERS_DB.get(email)
 
-    if not user:
+    if user:
+        stored_hash = user.get("password_hash")
+        if stored_hash:
+            if not verify_password(req.password, stored_hash):
+                raise HTTPException(
+                    status_code=401,
+                    detail="Invalid credentials. Please verify your email and password.",
+                )
+    else:
         if email in ["demo", "guest", "admin"] or "demo" in email:
             user = USERS_DB["demo@aetherpravah.com"]
         elif req.password:
@@ -131,7 +156,7 @@ def auth_login(req: LoginRequest) -> Dict[str, Any]:
             user = {
                 "name": name_part,
                 "email": email,
-                "password": req.password,
+                "password_hash": hash_password(req.password),
                 "company_name": f"{name_part} Enterprises",
                 "business_type": "Trading & Services",
                 "city": "Mumbai, Maharashtra",
@@ -157,8 +182,12 @@ def auth_login(req: LoginRequest) -> Dict[str, Any]:
         tax_vault=user.get("tax_vault"),
         monthly_burn=user.get("monthly_burn"),
     )
+    _persist()
 
-    token = f"tok_{abs(hash(email))}_{int(datetime.now().timestamp())}"
+    token = create_access_token(
+        subject=user["email"],
+        extra_claims={"company_name": user["company_name"], "scope": "sme_finance"},
+    )
     return {
         "status": "AUTHENTICATED",
         "token": token,
@@ -170,6 +199,7 @@ def auth_login(req: LoginRequest) -> Dict[str, Any]:
             "city": user.get("city", "Mumbai, Maharashtra"),
             "gstin": user.get("gstin", "27AAACU1234M1Z5"),
         },
+        "current_date": cns.current_date.isoformat(),
         "state": cns.state.model_dump(),
     }
 
@@ -180,7 +210,7 @@ def auth_register(req: RegisterRequest) -> Dict[str, Any]:
     user = {
         "name": req.name.strip(),
         "email": email,
-        "password": req.password,
+        "password_hash": hash_password(req.password),
         "company_name": req.company_name.strip(),
         "business_type": req.business_type,
         "city": req.city,
@@ -201,8 +231,12 @@ def auth_register(req: RegisterRequest) -> Dict[str, Any]:
         tax_vault=user["tax_vault"],
         monthly_burn=user["monthly_burn"],
     )
+    _persist()
 
-    token = f"tok_{abs(hash(email))}_{int(datetime.now().timestamp())}"
+    token = create_access_token(
+        subject=user["email"],
+        extra_claims={"company_name": user["company_name"], "scope": "sme_finance"},
+    )
     return {
         "status": "REGISTERED",
         "token": token,
@@ -214,6 +248,7 @@ def auth_register(req: RegisterRequest) -> Dict[str, Any]:
             "city": user["city"],
             "gstin": user["gstin"],
         },
+        "current_date": cns.current_date.isoformat(),
         "state": cns.state.model_dump(),
     }
 
@@ -238,6 +273,7 @@ def get_profile() -> Dict[str, Any]:
         "bank_cash": cns.state.physics_state.bank_cash,
         "tax_vault": cns.state.physics_state.tax_vault_balance,
         "runway": cns.state.physics_state.estimated_runway_days,
+        "current_date": cns.current_date.isoformat(),
     }
 
 
@@ -253,8 +289,10 @@ def update_profile(req: ProfileRequest) -> Dict[str, Any]:
         tax_vault=req.tax_vault,
         monthly_burn=req.monthly_burn,
     )
+    _persist()
     return {
         "status": "PROFILE_SAVED",
+        "current_date": cns.current_date.isoformat(),
         "state": new_state.model_dump(),
         "singularity": cns.predict_current_singularity().model_dump(),
     }
@@ -263,8 +301,10 @@ def update_profile(req: ProfileRequest) -> Dict[str, Any]:
 @router.post("/profile/reset", summary="Reset SME business ledger to clean slate")
 def reset_profile_endpoint() -> Dict[str, Any]:
     new_state = cns.reset_user_business()
+    _persist()
     return {
         "status": "RESET_SUCCESS",
+        "current_date": cns.current_date.isoformat(),
         "state": new_state.model_dump(),
         "singularity": cns.predict_current_singularity().model_dump(),
     }
@@ -275,9 +315,11 @@ def create_invoice_endpoint(req: InvoiceCreateRequest) -> Dict[str, Any]:
     inv = cns.add_custom_invoice(
         req.customer_name, req.base_amount, req.gst_rate, req.due_days
     )
+    _persist()
     return {
         "status": "INVOICE_CREATED",
         "invoice": inv.model_dump(),
+        "current_date": cns.current_date.isoformat(),
         "state": cns.state.model_dump(),
     }
 
@@ -287,9 +329,11 @@ def create_expense_endpoint(req: ExpenseCreateRequest) -> Dict[str, Any]:
     obl = cns.add_custom_obligation(
         req.name, req.amount, req.due_days, req.category
     )
+    _persist()
     return {
         "status": "EXPENSE_CREATED",
         "obligation": obl.model_dump(),
+        "current_date": cns.current_date.isoformat(),
         "state": cns.state.model_dump(),
     }
 
@@ -297,9 +341,11 @@ def create_expense_endpoint(req: ExpenseCreateRequest) -> Dict[str, Any]:
 @router.post("/transaction/payment", summary="Record customer payment receipt")
 def record_payment_endpoint(req: PaymentRecordRequest) -> Dict[str, Any]:
     res = cns.record_customer_payment(req.customer_name, req.amount)
+    _persist()
     return {
         "status": "PAYMENT_RECORDED",
         "details": res,
+        "current_date": cns.current_date.isoformat(),
         "state": cns.state.model_dump(),
     }
 
@@ -309,6 +355,7 @@ def get_organism_state() -> Dict[str, Any]:
     cns.sync_graph()
     singularity = cns.predict_current_singularity()
     return {
+        "current_date": cns.current_date.isoformat(),
         "state": cns.state.model_dump(),
         "singularity": singularity.model_dump(),
         "graph": cns.graph.export_graph_visualization(),
@@ -319,8 +366,10 @@ def get_organism_state() -> Dict[str, Any]:
 def switch_archetype(archetype_id: str) -> Dict[str, Any]:
     new_state = cns.set_archetype(archetype_id)
     singularity = cns.predict_current_singularity()
+    _persist()
     return {
         "status": "SWITCHED",
+        "current_date": cns.current_date.isoformat(),
         "state": new_state.model_dump(),
         "singularity": singularity.model_dump(),
         "graph": cns.graph.export_graph_visualization(),
@@ -329,21 +378,31 @@ def switch_archetype(archetype_id: str) -> Dict[str, Any]:
 
 @router.post("/chat", summary="Send conversational finance assistant prompt")
 def handle_chat(req: ChatRequest) -> Dict[str, Any]:
-    return cns.process_user_message(req.message)
+    payload = cns.process_user_message(req.message)
+    payload["current_date"] = cns.current_date.isoformat()
+    _persist()
+    return payload
 
 
 @router.post("/upload-invoice", summary="Upload invoice document for OCR parsing")
 async def upload_invoice(file: UploadFile = File(...)) -> Dict[str, Any]:
-    await file.read()
-    return cns.process_user_message(
+    contents = await file.read()
+    payload = cns.process_user_message(
         message=f"Uploaded invoice document {file.filename}",
         attached_image_filename=file.filename,
+        attached_image_bytes=contents,
     )
+    payload["current_date"] = cns.current_date.isoformat()
+    _persist()
+    return payload
 
 
 @router.post("/wormhole/activate", summary="Activate synthesized liquidity wormhole")
 def activate_wormhole() -> Dict[str, Any]:
-    return cns.process_user_message("activate wormhole")
+    payload = cns.process_user_message("activate wormhole")
+    payload["current_date"] = cns.current_date.isoformat()
+    _persist()
+    return payload
 
 
 @router.get("/wormholes/candidates", summary="List Pareto liquidity wormhole candidates")
@@ -364,13 +423,20 @@ def get_wormhole_candidates() -> Dict[str, Any]:
 
 @router.post("/simulate-delay", summary="Simulate 30-day customer payment delay")
 def simulate_customer_delay() -> Dict[str, Any]:
-    return cns.process_user_message("simulate customer delay")
+    payload = cns.process_user_message("simulate customer delay")
+    payload["current_date"] = cns.current_date.isoformat()
+    _persist()
+    return payload
 
 
 @router.get("/counterfactual", summary="Run Pearlian counterfactual Monte-Carlo trajectories")
 def get_counterfactual_simulation() -> Dict[str, Any]:
     active_w = cns.state.active_wormholes[0] if cns.state.active_wormholes else None
-    burn = 240000.0 if cns.state.business.archetype == "STEEL_TRADER" else 180000.0
+    configured_burn = getattr(cns.state.business, "monthly_burn_rate", None)
+    if configured_burn and configured_burn > 0:
+        burn = float(configured_burn)
+    else:
+        burn = 240000.0 if cns.state.business.archetype == "STEEL_TRADER" else 180000.0
     return CounterfactualSimulator.simulate_trajectories(
         current_date=cns.current_date,
         bank_cash=cns.state.physics_state.bank_cash,

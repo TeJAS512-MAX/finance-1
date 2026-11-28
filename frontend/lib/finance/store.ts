@@ -63,6 +63,7 @@ interface AetherStoreState {
 
   // Business state
   businessKey: string;
+  currentDate: string | null;
   state: BusinessState;
   singularity: GSTSingularity;
   candidates: LiquidityWormhole[];
@@ -191,6 +192,7 @@ export const useAetherStore = create<AetherStoreState>((set, get) => ({
   activeView: "radar",
 
   businessKey: "STEEL_TRADER",
+  currentDate: null,
   state: ARCHETYPES["STEEL_TRADER"].state,
   singularity: ARCHETYPES["STEEL_TRADER"].singularity,
   candidates: ARCHETYPES["STEEL_TRADER"].candidates,
@@ -234,6 +236,7 @@ export const useAetherStore = create<AetherStoreState>((set, get) => ({
       set({
         isLoaded: true,
         isLoading: false,
+        currentDate: data.current_date || null,
         state: data.state,
         singularity: data.singularity,
         candidates: data.candidates || [],
@@ -271,6 +274,7 @@ export const useAetherStore = create<AetherStoreState>((set, get) => ({
       set({
         isLoading: false,
         businessKey: archetypeId,
+        currentDate: data.current_date || null,
         state: data.state,
         singularity: data.singularity,
         candidates: data.candidates || [],
@@ -303,6 +307,7 @@ export const useAetherStore = create<AetherStoreState>((set, get) => ({
       set({
         isLoading: false,
         businessKey: "CUSTOM",
+        currentDate: res.current_date || null,
         state: res.state,
         singularity: res.singularity,
         nodes,
@@ -430,6 +435,7 @@ export const useAetherStore = create<AetherStoreState>((set, get) => ({
 
       set({
         isThinking: false,
+        currentDate: freshState.current_date || null,
         state: freshState.state,
         singularity: freshState.singularity,
         candidates: freshState.candidates || [],
@@ -466,6 +472,7 @@ export const useAetherStore = create<AetherStoreState>((set, get) => ({
 
       set({
         isThinking: false,
+        currentDate: freshState.current_date || null,
         state: freshState.state,
         singularity: freshState.singularity,
         nodes,
@@ -502,6 +509,7 @@ export const useAetherStore = create<AetherStoreState>((set, get) => ({
 
       set({
         isThinking: false,
+        currentDate: freshState.current_date || null,
         state: freshState.state,
         singularity: freshState.singularity,
         nodes,

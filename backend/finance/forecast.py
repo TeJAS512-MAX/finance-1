@@ -34,9 +34,16 @@ def run_forecast(
     running_balance = float(state.physics_state.bank_cash)
 
     # Running daily burn baseline
-    base_monthly_burn = 240000.0 if state.business.archetype == "STEEL_TRADER" else (
-        180000.0 if state.business.archetype == "GARMENT_MANUFACTURER" else 650000.0
-    )
+    if state.business.archetype == "STEEL_TRADER":
+        base_monthly_burn = 240000.0
+    elif state.business.archetype == "GARMENT_MANUFACTURER":
+        base_monthly_burn = 180000.0
+    elif state.business.archetype == "DIGITAL_AGENCY":
+        base_monthly_burn = 650000.0
+    elif state.business.monthly_burn_rate and state.business.monthly_burn_rate > 0:
+        base_monthly_burn = float(state.business.monthly_burn_rate)
+    else:
+        base_monthly_burn = 100000.0
     if scenario.custom_running_cost is not None and scenario.custom_running_cost > 0:
         base_monthly_burn = scenario.custom_running_cost
 
@@ -185,7 +192,7 @@ def run_forecast(
 
     assumptions = [
         f"Daily operating burn estimated at {fmt_inr(daily_burn)} ({fmt_inr(effective_monthly_burn)}/month)",
-        "Statutory GST net payable required strictly on Nov 20th",
+        f"Statutory GST net payable required strictly on {state.gst_snapshot.gstr3b_due_date.strftime('%d %b')}",
         f"Customer delays modeled with +{scenario.delay_days} days shift" if scenario.delay_days != 0 else "Customer delays based on behavioral AI scores",
         f"{scenario.prompt_discount_pct}% prompt settlement discount applied" if scenario.prompt_discount_pct > 0 else "Standard payment terms without dynamic discounting"
     ]

@@ -40,9 +40,19 @@ def create_user_custom_business(
     suppliers: List[Supplier] = []
     obligations: List[Obligation] = []
 
+    # Statutory GSTR-3B due date is the 20th of the following tax filing month
+    if today.day <= 20:
+        due_year, due_month = today.year, today.month
+        period_month = today.month - 1 if today.month > 1 else 12
+        period_year = today.year if today.month > 1 else today.year - 1
+    else:
+        due_month = today.month + 1 if today.month < 12 else 1
+        due_year = today.year if today.month < 12 else today.year + 1
+        period_year, period_month = today.year, today.month
+
     gst_snapshot = GSTLiabilitySnapshot(
-        period="2026-11",
-        gstr3b_due_date=date(2026, 11, 20),
+        period=f"{period_year:04d}-{period_month:02d}",
+        gstr3b_due_date=date(due_year, due_month, 20),
         output_gst_gross=0.0,
         gst_on_unpaid_invoices=0.0,
         input_tax_credit_booked=0.0,

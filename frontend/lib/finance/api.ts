@@ -1,3 +1,4 @@
+import { FINANCE_API_BASE } from "@/lib/config";
 import {
   BusinessState,
   GSTSingularity,
@@ -10,11 +11,10 @@ import {
   ProfitModelResponse,
 } from "./types";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_AETHER_API_URL || "http://127.0.0.1:8000";
-const BACKEND_URL = `${API_BASE}/api/v1/finance`;
+const BACKEND_URL = FINANCE_API_BASE;
 
 export interface BackendStateResponse {
+  current_date?: string;
   state: BusinessState;
   singularity: GSTSingularity;
   graph: {
@@ -282,5 +282,26 @@ export async function resetProfileApi(): Promise<BackendStateResponse> {
     method: "POST",
   });
   if (!res.ok) throw new Error(`Reset profile error: ${res.statusText}`);
+  return await res.json();
+}
+
+export async function fetchReminderApi(invoiceId: string): Promise<{
+  reminder: {
+    invoice_number: string;
+    customer_name: string;
+    amount: number;
+    days_overdue: number;
+    subject: string;
+    message: string;
+    channel: string;
+    tone: string;
+  };
+}> {
+  const res = await fetch(`${BACKEND_URL}/reminder`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ invoice_id: invoiceId }),
+  });
+  if (!res.ok) throw new Error(`Reminder error: ${res.statusText}`);
   return await res.json();
 }

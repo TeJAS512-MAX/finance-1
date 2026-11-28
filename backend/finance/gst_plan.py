@@ -117,7 +117,7 @@ def build_gst_plan(state: AetherPravahState, current_date: date) -> Dict[str, An
     ]
     
     return {
-        "period": "2026-11",
+        "period": snap.period,
         "due_date": due_date.strftime("%Y-%m-%d"),
         "due_label": due_date.strftime("%d %b"),
         "days_left": days_left,

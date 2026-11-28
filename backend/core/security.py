@@ -4,30 +4,44 @@ core/security.py — Authentication, JWT, password hashing, RBAC.
 
 from __future__ import annotations
 
+import base64
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from .config import get_settings
 
 settings = get_settings()
 
+
 # ── Password hashing ─────────────────────────────────────────
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__rounds=settings.bcrypt_rounds,
-)
+
+def _prehash(password: str) -> bytes:
+    """SHA-256 pre-hash encoded as base64 so bcrypt handles any password length."""
+    digest = hashlib.sha256(password.encode("utf-8")).digest()
+    return base64.b64encode(digest)
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    hashed = bcrypt.hashpw(_prehash(password), bcrypt.gensalt(rounds=settings.bcrypt_rounds))
+    return hashed.decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    if hashed.startswith(("$2a$", "$2b$", "$2y$")):
+        try:
+            if bcrypt.checkpw(_prehash(plain), hashed.encode("utf-8")):
+                return True
+        except ValueError:
+            pass
+        try:
+            return bcrypt.checkpw(plain.encode("utf-8")[:72], hashed.encode("utf-8"))
+        except ValueError:
+            return False
+    return False
 
 
 # ── JWT tokens ───────────────────────────────────────────────
@@ -94,4 +108,4 @@ ROLES_PERMISSIONS: Dict[str, list[str]] = {
 
 def has_permission(role: str, permission: str) -> bool:
     perms = ROLES_PERMISSIONS.get(role, [])
-    return permission in perms or "admin" in perms or f"read:*" in perms
+    return permission in perms or "admin" in perms or "read:*" in perms

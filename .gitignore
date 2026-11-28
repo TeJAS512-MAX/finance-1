@@ -98,3 +98,4 @@ status.json
 status2.json
 temp_recent_files.txt
 backend/data/historical_candles*.json
+backend/data/finance_state.json
