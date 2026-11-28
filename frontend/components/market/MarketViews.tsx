@@ -80,7 +80,7 @@ export interface NewsItem {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function pnlColor(v: number) { return v > 0 ? 'text-fin-pos' : v < 0 ? 'text-fin-neg' : 'text-fin-neut' }
-export function pnlBg(v: number)    { return v > 0 ? '#35B779'      : v < 0 ? '#E05252'      : '#8B96A3' }
+export function pnlBg(v: number)    { return v > 0 ? '#059669'      : v < 0 ? '#E11D48'      : '#64748B' }
 
 export function StatusDot({ status }: { status: 'positive' | 'negative' | 'neutral' | 'warning' | 'active' }) {
   const colorMap = {
@@ -100,7 +100,7 @@ export function StatusDot({ status }: { status: 'positive' | 'negative' | 'neutr
 export function KillSwitchBanner({ active }: { active: boolean }) {
   if (!active) return null
   return (
-    <div className="bg-[#2a1313] border-b border-[#3d1a1a] px-5 py-2 flex items-center gap-3 text-[#E05252] text-xs font-medium">
+    <div className="bg-rose-50 border-b border-rose-200 px-5 py-2 flex items-center gap-3 text-rose-700 text-xs font-medium">
       <ShieldAlert size={14} />
       <span>EMERGENCY KILL SWITCH ACTIVE — All new orders halted. Manual review required.</span>
     </div>
@@ -204,15 +204,15 @@ export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (i
   ]
 
   return (
-    <aside className="w-60 shrink-0 bg-[#080C14]/90 backdrop-blur-xl border-r border-white/[0.08] flex flex-col h-full z-10">
-      <div className="px-5 py-4 border-b border-white/[0.08]">
+    <aside className="w-60 shrink-0 bg-white/95 backdrop-blur-xl border-r border-slate-200 flex flex-col h-full z-10 shadow-[4px_0_24px_-12px_rgba(15,23,42,0.08)]">
+      <div className="px-5 py-4 border-b border-slate-200">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 flex items-center justify-center border border-emerald-400/30 bg-gradient-to-br from-emerald-500/20 via-sky-500/15 to-transparent rounded-xl shadow-[0_0_20px_-6px_rgba(16,185,129,0.5)]">
-            <Activity size={16} className="text-emerald-400" />
+          <div className="w-8 h-8 flex items-center justify-center border border-emerald-200 bg-gradient-to-br from-emerald-50 via-blue-50 to-white rounded-xl shadow-[0_6px_18px_-6px_rgba(5,150,105,0.35)]">
+            <Activity size={16} className="text-emerald-600" />
           </div>
           <div>
-            <div className="text-text-primary font-bold text-xs tracking-wider">AECE DESK</div>
-            <div className="text-emerald-400/90 font-mono text-[10px] tracking-widest mt-0.5">DIRECT NSE</div>
+            <div className="text-slate-900 font-bold text-xs tracking-wider">AECE DESK</div>
+            <div className="text-emerald-600 font-mono text-[10px] font-semibold tracking-widest mt-0.5">DIRECT NSE</div>
           </div>
         </div>
       </div>
@@ -232,11 +232,11 @@ export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (i
                   className={clsx(
                     'w-full text-left flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer text-xs transition-all duration-200',
                     active === id
-                      ? 'bg-gradient-to-r from-sky-500/20 via-sky-500/10 to-transparent text-white font-semibold border border-sky-400/30 shadow-[0_0_20px_-6px_rgba(59,130,246,0.5)]'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04] border border-transparent'
+                      ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200 shadow-[0_4px_14px_-4px_rgba(37,99,235,0.22)]'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent'
                   )}
                 >
-                  <Icon size={13} className={active === id ? 'text-sky-400' : 'text-text-muted'} />
+                  <Icon size={13} className={active === id ? 'text-blue-600' : 'text-slate-400'} />
                   <span className="tracking-wide flex-1">{label}</span>
                   {id === 'settings' && (
                     tokenOk
@@ -250,7 +250,7 @@ export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (i
         ))}
       </nav>
 
-      <div className="p-4 border-t border-white/[0.08] bg-white/[0.02]">
+      <div className="p-4 border-t border-slate-200 bg-slate-50/70">
         <div className="text-[10px] font-mono space-y-2">
           <div className="flex justify-between text-text-muted">
             <span>DATA FEED</span>
@@ -564,14 +564,14 @@ export function RiskMonitorView() {
   return (
     <div className="animate-fade-in flex flex-col h-full space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card bg-[#1f0f0f] border-[#3d1a1a] shadow-card">
+        <div className="glow-card glow-card-rose rounded-2xl p-0 shadow-card">
           <h4 className="text-[11px] uppercase tracking-wider font-semibold text-fin-neg mb-3 flex items-center gap-2"><ShieldAlert size={14}/> Live Equity Drawdown</h4>
           <div className="text-2xl font-mono font-bold text-text-primary">{liveDdPct.toFixed(2)}%</div>
           <div className="text-[10px] text-text-muted mt-2 font-mono flex justify-between">
             <span>HOLDOUT MAX: {holdoutDd.toFixed(2)}%</span>
             <span>LIMIT: {maxDdLimit.toFixed(1)}%</span>
           </div>
-          <div className="w-full bg-terminal-bg h-1.5 rounded-full mt-2.5 overflow-hidden border border-[#3d1a1a]">
+          <div className="w-full bg-slate-200 h-1.5 rounded-full mt-2.5 overflow-hidden border border-rose-200">
             <div className="bg-fin-neg h-full rounded-full" style={{ width: `${Math.min(100, (liveDdPct / maxDdLimit) * 100)}%` }}></div>
           </div>
         </div>
@@ -1008,7 +1008,7 @@ export function TradingBotView() {
         )}
       </div>
       
-      <div className="flex-1 bg-[#0d1117] p-5 overflow-y-auto font-mono text-[13px] flex flex-col-reverse shadow-inner">
+      <div className="flex-1 bg-slate-50 border-t border-slate-200 p-5 overflow-y-auto font-mono text-[13px] flex flex-col-reverse">
         <div className="space-y-1">
           {!isRunning && logs.length === 0 && (
             <div className="text-text-muted italic opacity-50 flex flex-col items-center justify-center h-full py-10">
@@ -1017,21 +1017,21 @@ export function TradingBotView() {
             </div>
           )}
           {logs.map((log: any, i: number) => (
-            <div key={i} className="flex gap-4 group hover:bg-[#161b22] px-2 py-1 rounded">
-              <span className="text-[#6e7681] shrink-0 w-20">{log.time}</span>
+            <div key={i} className="flex gap-4 group hover:bg-white px-2.5 py-1.5 rounded-lg transition-colors">
+              <span className="text-slate-400 shrink-0 w-20">{log.time}</span>
               <span className={clsx(
                 "shrink-0 w-16 font-bold",
                 log.level === 'INFO' ? 'text-accent-primary' : 
                 log.level === 'WARN' ? 'text-fin-warn' : 
-                log.level === 'ERROR' ? 'text-fin-neg' : 'text-[#8b949e]'
+                log.level === 'ERROR' ? 'text-fin-neg' : 'text-slate-500'
               )}>{log.level}</span>
-              <span className="text-[#c9d1d9] whitespace-pre-wrap">{log.message}</span>
+              <span className="text-slate-800 whitespace-pre-wrap">{log.message}</span>
             </div>
           ))}
           {isRunning && (
             <div className="flex gap-4 px-2 py-1 items-center">
               <span className="w-2.5 h-2.5 rounded-full bg-fin-pos animate-pulse"></span>
-              <span className="text-[#6e7681] animate-pulse">Waiting for next AI signal tick...</span>
+              <span className="text-slate-400 animate-pulse">Waiting for next AI signal tick...</span>
             </div>
           )}
         </div>
@@ -1136,8 +1136,8 @@ export function LivePositions() {
 
 export function PlaceholderView({ title, desc }: { title: string, desc?: string }) {
   return (
-    <div className="card p-8 flex flex-col items-center justify-center h-[500px] text-text-muted gap-3 border border-[#151B23] bg-[#0B0F14]">
-      <Activity size={36} className="opacity-30 text-[#4F8CFF]" />
+    <div className="card p-8 flex flex-col items-center justify-center h-[500px] text-text-muted gap-3">
+      <Activity size={36} className="opacity-40 text-blue-500" />
       <p className="text-sm font-semibold tracking-wide text-text-primary uppercase">{title}</p>
       {desc && <p className="text-xs">{desc}</p>}
       <div className="mt-4 px-3 py-1 border border-terminal-border rounded text-[10px] font-mono">Module in Development</div>
@@ -1274,21 +1274,21 @@ export function OpportunitiesView() {
   const journal = data?.journal || []
 
   return (
-    <div className="card p-0 overflow-hidden animate-fade-in flex flex-col h-full shadow-card border-[#151B23] bg-[#0B0F14]">
-      <div className="px-5 py-4 border-b border-[#151B23] flex justify-between items-center">
+    <div className="card p-0 overflow-hidden animate-fade-in flex flex-col h-full shadow-card">
+      <div className="px-5 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/60">
         <div>
           <h3 className="text-sm font-semibold tracking-wide text-text-primary flex items-center gap-2">
-            <Zap size={16} className="text-[#4F8CFF]" />
+            <Zap size={16} className="text-blue-600" />
             Live Opportunities
           </h3>
           <p className="text-xs text-text-muted mt-1">Real-time multi-model evaluation table</p>
         </div>
-        {isValidating && <span className="text-[10px] text-[#4F8CFF] animate-pulse border border-[#4F8CFF]/30 px-2 py-1 rounded bg-[#4F8CFF]/10">● POLLING</span>}
+        {isValidating && <span className="text-[10px] text-blue-700 animate-pulse border border-blue-200 px-2 py-1 rounded bg-blue-50 font-semibold">● POLLING</span>}
       </div>
       <div className="flex-1 overflow-x-auto">
         <table className="w-full text-left whitespace-nowrap">
           <thead>
-            <tr className="border-b border-[#151B23]">
+            <tr className="border-b border-slate-200 bg-slate-50/70">
               {['Symbol', 'Technical', 'ML', 'Event', 'Expectation', 'Risk', 'Decision'].map(h => (
                 <th key={h} className="text-[10px] font-semibold text-text-secondary uppercase tracking-widest px-5 py-3">{h}</th>
               ))}
@@ -1304,7 +1304,7 @@ export function OpportunitiesView() {
             ) : journal.map((entry: any, i: number) => {
               const analysis = entry.analysis || {}
               return (
-                <tr key={i} className="border-b border-[#151B23]/50 hover:bg-[#151B23]/30 transition-colors">
+                <tr key={i} className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
                   <td className="px-5 py-3 font-semibold text-text-primary">{entry.symbol}</td>
                   <td className="px-5 py-3">{entry.technical_score.toFixed(0)}</td>
                   <td className={clsx("px-5 py-3", entry.ml_probability >= 0.6 ? 'text-fin-pos' : 'text-text-muted')}>
@@ -1390,7 +1390,7 @@ export function PaperValidationView() {
           >
             {running ? 'Running...' : 'Allocate Paper Swing Tranche'}
           </button>
-          <div className="text-[10px] text-text-secondary bg-[#151B23] px-2 py-1 rounded font-mono border border-terminal-border">
+          <div className="text-[10px] text-text-secondary bg-slate-100 px-2.5 py-1 rounded-md font-mono border border-slate-200">
             {readiness?.live_trading_enabled ? 'LIVE ENABLED' : 'LIVE DISABLED'}
           </div>
         </div>
@@ -1430,10 +1430,10 @@ export function PaperValidationView() {
           <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-widest mb-3">
             Top-5 Weekly 15-Day CNC Swing Candidates ({swing?.as_of ? swing.as_of.slice(0, 10) : 'Awaiting Data'})
           </h4>
-          <div className="overflow-x-auto border border-[#151B23] rounded">
+          <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white">
             <table className="w-full text-left text-xs font-mono">
               <thead>
-                <tr className="border-b border-[#151B23] text-text-muted bg-[#0D1219]">
+                <tr className="border-b border-slate-200 text-text-muted bg-slate-50">
                   <th className="py-2 px-3">Symbol</th>
                   <th className="py-2 px-3">Sector</th>
                   <th className="py-2 px-3 text-right">Last Close</th>
@@ -1443,7 +1443,7 @@ export function PaperValidationView() {
               </thead>
               <tbody>
                 {recs.length > 0 ? recs.map((r) => (
-                  <tr key={r.symbol} className="border-b border-[#151B23]/50">
+                  <tr key={r.symbol} className="border-b border-slate-100 hover:bg-slate-50/60">
                     <td className="py-2 px-3 font-semibold text-text-primary">{r.symbol}</td>
                     <td className="py-2 px-3 text-text-muted">{r.sector}</td>
                     <td className="py-2 px-3 text-right">₹{r.last_close}</td>
@@ -1459,7 +1459,7 @@ export function PaperValidationView() {
         </section>
 
         {ledgerAgg && (
-          <section className="border border-[#151B23] rounded p-4 bg-[#0D1219]/60">
+          <section className="border border-slate-200 rounded-xl p-4 bg-slate-50/70">
             <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-widest mb-2">
               Prospective 15-Day CNC Paper Ledger
             </h4>
@@ -1544,7 +1544,7 @@ export function RobustnessView() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
               <thead>
-                <tr className="border-b border-[#151B23] text-text-muted">
+                <tr className="border-b border-slate-200 text-text-muted bg-slate-50/70">
                   <th className="py-2">Fold</th>
                   <th className="py-2 text-right">Phase-1 PnL</th>
                   <th className="py-2 text-right">Trades</th>
@@ -1555,7 +1555,7 @@ export function RobustnessView() {
               </thead>
               <tbody>
                 {intraFolds.map((f) => (
-                  <tr key={f.fold} className="border-b border-[#151B23]/50">
+                  <tr key={f.fold} className="border-b border-slate-100 hover:bg-slate-50/60">
                     <td className="py-2 text-text-primary">{f.fold}</td>
                     <td className="py-2 text-right text-fin-neg">₹{f.phase1_net_profit}</td>
                     <td className="py-2 text-right">{f.phase2a_trades}</td>
@@ -1580,7 +1580,7 @@ export function RobustnessView() {
           <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-widest mb-3">3. Gate Checklist</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-mono">
             {Object.entries(checks).map(([k, ok]) => (
-              <div key={k} className="flex justify-between border border-[#151B23] rounded px-3 py-2 bg-[#0B0F14]/50">
+              <div key={k} className="flex justify-between border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/80">
                 <span className="text-text-secondary">{k}</span>
                 <span className={ok ? 'text-fin-pos font-semibold' : 'text-fin-neg font-semibold'}>{ok ? 'PASS' : 'BLOCKED'}</span>
               </div>

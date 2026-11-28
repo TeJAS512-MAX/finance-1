@@ -431,4 +431,28 @@ def test_signals_quote_endpoint_unknown_returns_404_and_valid_returns_200(open_c
     assert data["sector"] == "INDUSTRIALS"
 
 
+def test_swing_includes_sparkline_15d_and_manual_paper_order_roundtrip(open_client, monkeypatch):
+    swing = open_client.get("/api/v1/signals/swing").json()
+    top = swing["recommendations"][0]
+    assert len(top["sparkline_15d"]) == 15
+
+    async def fake_quote(sym: str):
+        return {"symbol": sym, "ltp": 500.0, "close": 500.0}
+
+    from services.providers import upstox_market_data
+    from trading import bot_engine
+    from trading.paper_broker import PaperBroker
+    monkeypatch.setattr(upstox_market_data, "get_live_quote", fake_quote)
+    monkeypatch.setattr(bot_engine.engine, "broker", PaperBroker(initial_capital=50_000.0))
+
+    buy_resp = open_client.post("/api/v1/bot/paper-order", json={"symbol": "WIPRO", "direction": "BUY", "quantity": 2})
+    assert buy_resp.status_code == 200
+    assert buy_resp.json()["order"]["status"] == "FILLED"
+
+    sell_resp = open_client.post("/api/v1/bot/paper-order", json={"symbol": "WIPRO", "direction": "SELL", "quantity": 2})
+    assert sell_resp.status_code == 200
+    assert sell_resp.json()["order"]["status"] == "FILLED"
+
+
+
 

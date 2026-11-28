@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Activity, AlertTriangle, BarChart3, BrainCircuit, CheckCircle,
   Database, FileText, Layers, Newspaper, RefreshCw, Search, Shield,
@@ -14,12 +14,19 @@ import clsx from 'clsx'
 import useSWR from 'swr'
 import { API_BASE } from '@/lib/config'
 import { fetcher, pnlBg, pnlColor, StatCard, StatusDot } from './MarketViews'
+import { Sparkline } from './HeroSlidesCarousel'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Market Overview (NIFTY-50 Regime + Ranked 37/67 NSE Universe)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function MarketOverviewView() {
+export function MarketOverviewView({
+  onInspectSymbol,
+  onQuickTrade,
+}: {
+  onInspectSymbol?: (sym: string) => void
+  onQuickTrade?: (sym: string) => void
+} = {}) {
   const { data: swing, isValidating } = useSWR(`${API_BASE}/api/v1/signals/swing`, fetcher, { refreshInterval: 15000 })
   const { data: intraday } = useSWR(`${API_BASE}/api/v1/signals`, fetcher, { refreshInterval: 15000 })
   const [search, setSearch] = useState('')
@@ -102,46 +109,74 @@ export function MarketOverviewView() {
 
         <div className="overflow-x-auto max-h-[540px] overflow-y-auto">
           <table className="w-full text-left font-mono text-xs whitespace-nowrap">
-            <thead className="sticky top-0 bg-[#0D1219] border-b border-terminal-border text-text-muted">
+            <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 text-text-muted">
               <tr>
                 <th className="py-2.5 px-4">Rank</th>
                 <th className="py-2.5 px-4">Symbol</th>
                 <th className="py-2.5 px-4">Sector</th>
                 <th className="py-2.5 px-4 text-right">Last Close</th>
+                <th className="py-2.5 px-4">15D Trend</th>
                 <th className="py-2.5 px-4 text-right">Est 15d Net%</th>
                 <th className="py-2.5 px-4 text-right">RSI(14)</th>
                 <th className="py-2.5 px-4 text-right">Sharpe(20)</th>
                 <th className="py-2.5 px-4 text-right">200 DMA%</th>
                 <th className="py-2.5 px-4">Signal</th>
+                <th className="py-2.5 px-4 text-right">Action</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((r) => (
-                <tr key={r.symbol} className="border-b border-terminal-border/40 hover:bg-terminal-cardHover">
+                <tr
+                  key={r.symbol}
+                  onClick={() => onInspectSymbol?.(r.symbol)}
+                  className="border-b border-slate-200/70 hover:bg-blue-50/40 cursor-pointer transition-colors"
+                >
                   <td className="py-2 px-4 text-text-muted">#{r.rank}</td>
-                  <td className="py-2 px-4 font-bold text-text-primary">{r.symbol}</td>
+                  <td className="py-2 px-4 font-bold text-slate-900 hover:text-blue-700">{r.symbol}</td>
                   <td className="py-2 px-4 text-text-secondary">{r.sector}</td>
-                  <td className="py-2 px-4 text-right">₹{Number(r.last_close).toFixed(2)}</td>
-                  <td className={clsx('py-2 px-4 text-right font-semibold', pnlColor(r.predicted_15d_net_pct))}>
+                  <td className="py-2 px-4 text-right tabular-nums">₹{Number(r.last_close).toFixed(2)}</td>
+                  <td className="py-1.5 px-4">
+                    <Sparkline
+                      values={r.sparkline_15d}
+                      positive={Number(r.predicted_15d_net_pct ?? 0) >= 0}
+                      height={22}
+                      width={74}
+                    />
+                  </td>
+                  <td className={clsx('py-2 px-4 text-right font-semibold tabular-nums', pnlColor(r.predicted_15d_net_pct))}>
                     {r.predicted_15d_net_pct >= 0 ? '+' : ''}{Number(r.predicted_15d_net_pct).toFixed(2)}%
                   </td>
-                  <td className="py-2 px-4 text-right">{r.rsi14}</td>
-                  <td className="py-2 px-4 text-right">{r.sharpe_20}</td>
-                  <td className={clsx('py-2 px-4 text-right', pnlColor(r.sma200_dist_pct))}>
+                  <td className="py-2 px-4 text-right tabular-nums">{r.rsi14}</td>
+                  <td className="py-2 px-4 text-right tabular-nums">{r.sharpe_20}</td>
+                  <td className={clsx('py-2 px-4 text-right tabular-nums', pnlColor(r.sma200_dist_pct))}>
                     {r.sma200_dist_pct >= 0 ? '+' : ''}{r.sma200_dist_pct}%
                   </td>
                   <td className="py-2 px-4">
                     <span className={clsx(
-                      'px-2 py-0.5 rounded text-[10px] font-bold',
-                      r.direction === 'LONG' ? 'bg-fin-pos/15 text-fin-pos' : 'bg-terminal-surface text-text-muted'
+                      'px-2 py-0.5 rounded-md text-[10px] font-bold border',
+                      r.direction === 'LONG'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-slate-100 text-slate-500 border-slate-200'
                     )}>
                       {r.direction}
                     </span>
                   </td>
+                  <td className="py-2 px-4 text-right">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onQuickTrade?.(r.symbol)
+                      }}
+                      className="px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-[10px] font-semibold transition-colors"
+                    >
+                      Trade
+                    </button>
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={9} className="py-8 text-center text-text-muted">No matching symbols in ranked universe.</td></tr>
+                <tr><td colSpan={11} className="py-8 text-center text-text-muted">No matching symbols in ranked universe.</td></tr>
               )}
             </tbody>
           </table>
@@ -241,11 +276,20 @@ export function EventRadarView() {
 // 3. Company Intel (67-Symbol Live Upstox Quote + Swing & Position Inspector)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function CompanyIntelView() {
+export function CompanyIntelView({
+  selectedSymbol,
+  onQuickTrade,
+}: {
+  selectedSymbol?: string
+  onQuickTrade?: (sym: string) => void
+} = {}) {
   const { data: swing } = useSWR(`${API_BASE}/api/v1/signals/swing`, fetcher, { refreshInterval: 20000 })
   const { data: posData } = useSWR(`${API_BASE}/api/v1/portfolio/positions`, fetcher, { refreshInterval: 5000 })
   const symbols: string[] = swing?.universe_symbols || ['TECHM', 'RELIANCE', 'TCS', 'COALINDIA', 'WIPRO', 'ADANIPORTS', 'NESTLEIND']
-  const [selected, setSelected] = useState('TECHM')
+  const [selected, setSelected] = useState(selectedSymbol || 'TECHM')
+  useEffect(() => {
+    if (selectedSymbol) setSelected(selectedSymbol)
+  }, [selectedSymbol])
   const { data: quote, isValidating: loadingQuote, error: quoteErr } = useSWR(
     selected ? `${API_BASE}/api/v1/signals/quote/${encodeURIComponent(selected)}` : null,
     fetcher,
@@ -265,13 +309,24 @@ export function CompanyIntelView() {
           </h3>
           <p className="text-xs text-text-muted mt-0.5">Live Upstox quote, circuit limits, Swing Alpha score &amp; active paper position</p>
         </div>
-        <select
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-          className="bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-xs font-mono text-text-primary min-w-[200px]"
-        >
-          {symbols.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <select
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+            className="bg-white border border-slate-200 focus:border-blue-500 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 min-w-[200px] shadow-sm outline-none"
+          >
+            {symbols.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          {onQuickTrade && (
+            <button
+              type="button"
+              onClick={() => onQuickTrade(selected)}
+              className="px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-colors"
+            >
+              Quick Paper Order ({selected})
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -384,9 +439,9 @@ export function CausalMapView() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData.slice(0, 16)} layout="vertical" margin={{ top: 5, right: 20, left: 95, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" tick={{ fill: '#8B96A3', fontSize: 10, fontFamily: 'monospace' }} />
-                <YAxis type="category" dataKey="feature" width={95} tick={{ fill: '#E2E8F0', fontSize: 11, fontFamily: 'monospace' }} />
-                <ReferenceLine x={0} stroke="#334155" />
+                <XAxis type="number" tick={{ fill: '#64748B', fontSize: 10, fontFamily: 'monospace' }} />
+                <YAxis type="category" dataKey="feature" width={95} tick={{ fill: '#0F172A', fontSize: 11, fontFamily: 'monospace' }} />
+                <ReferenceLine x={0} stroke="#CBD5E1" />
                 <Tooltip formatter={(val: any) => [`${Number(val).toFixed(4)}`, 'Ridge Coef']} />
                 <Bar dataKey="weight" radius={[2, 2, 2, 2]}>
                   {chartData.slice(0, 16).map((entry) => (
@@ -599,12 +654,12 @@ export function BacktestingView() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={folds}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" tick={{ fill: '#8B96A3', fontSize: 10, fontFamily: 'monospace' }} />
-                <YAxis tick={{ fill: '#8B96A3', fontSize: 10, fontFamily: 'monospace' }} tickFormatter={(v) => `₹${v}`} />
-                <ReferenceLine y={0} stroke="#334155" />
+                <XAxis dataKey="name" tick={{ fill: '#64748B', fontSize: 10, fontFamily: 'monospace' }} />
+                <YAxis tick={{ fill: '#64748B', fontSize: 10, fontFamily: 'monospace' }} tickFormatter={(v) => `₹${v}`} />
+                <ReferenceLine y={0} stroke="#CBD5E1" />
                 <Tooltip />
-                <Bar dataKey="mean_net_profit" name="Swing AI Net ₹" fill="#35B779" />
-                <Bar dataKey="benchmark_equal_weight_profit" name="Benchmark ₹" fill="#4F8CFF" />
+                <Bar dataKey="mean_net_profit" name="Swing AI Net ₹" fill="#059669" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="benchmark_equal_weight_profit" name="Benchmark ₹" fill="#2563EB" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

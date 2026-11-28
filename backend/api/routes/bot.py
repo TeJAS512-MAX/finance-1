@@ -11,6 +11,12 @@ router = APIRouter()
 class StartRequest(BaseModel):
     market_mode: Literal["stocks", "crypto"] = "stocks"
 
+
+class ManualPaperOrderRequest(BaseModel):
+    symbol: str
+    direction: Literal["BUY", "SELL"]
+    quantity: int
+
 @router.get("/status", dependencies=[Depends(require_api_access("read:signals"))])
 async def get_status():
     return {
@@ -163,6 +169,46 @@ async def mark_paper_positions_to_live():
 
     acct = await engine.broker.get_account()
     return {"status": "ok", "updated": updated, "account": acct}
+
+
+@router.post("/paper-order", dependencies=[Depends(require_api_access("paper_trade"))])
+async def place_manual_paper_order(payload: ManualPaperOrderRequest):
+    """Execute a simulated BUY or SELL order in PaperBroker using live Upstox LTP."""
+    from fastapi import HTTPException
+    from core.config import get_settings
+    from services.providers.upstox_market_data import INSTRUMENT_KEYS, get_live_quote
+    from trading.paper_broker import PaperBroker, default_paper_state_path
+
+    sym = payload.symbol.strip().upper()
+    if sym not in INSTRUMENT_KEYS:
+        raise HTTPException(status_code=404, detail=f"Unknown NSE symbol: {sym}")
+    if payload.quantity <= 0:
+        raise HTTPException(status_code=400, detail="Quantity must be greater than zero.")
+
+    settings = get_settings()
+    if engine.broker is None:
+        engine.broker = PaperBroker(
+            initial_capital=settings.paper_trading_initial_capital,
+            state_path=default_paper_state_path(),
+        )
+    if not engine.broker.is_paper:
+        return {"status": "blocked", "reason": "PAPER_ONLY_ENDPOINT"}
+
+    quote = await get_live_quote(sym)
+    px = float(quote.get("ltp") or quote.get("close") or 0.0)
+    if px <= 0:
+        raise HTTPException(status_code=502, detail=f"No valid Upstox price available for {sym}.")
+
+    result = await engine.broker.place_order(
+        ticker=sym,
+        direction=payload.direction,
+        quantity=payload.quantity,
+        order_type="MARKET",
+        price=px,
+        tag="manual_desk_paper",
+    )
+    account = await engine.broker.get_account()
+    return {"status": result.get("status"), "order": result, "account": account, "quote_ltp": px}
 
 
 @router.get("/swing/ledger", dependencies=[Depends(require_api_access("read:signals"))])

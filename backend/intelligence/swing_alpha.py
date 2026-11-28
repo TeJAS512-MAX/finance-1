@@ -604,6 +604,13 @@ def score_latest_swing_universe(
     all_ranked: list[dict[str, Any]] = []
     sec_counts: dict[str, int] = {}
 
+    spark_map: dict[str, list[float]] = {}
+    for sym, candles in historical_data.items():
+        s_up = str(sym).upper()
+        if s_up == "NIFTY50" or not candles:
+            continue
+        spark_map[s_up] = [round(float(c["close"]), 2) for c in candles[-15:]]
+
     for rank_idx, row in latest_rows.iterrows():
         sym = str(row["symbol"])
         pred_pct = round(float(row["pred_15d"]), 3)
@@ -627,6 +634,7 @@ def score_latest_swing_universe(
             "ret_20": round(float(row["ret_20"]), 2),
             "dist_20_high_pct": round(float(row["dist_20_high"]), 2),
             "dist_60_high_pct": round(float(row["dist_60_high"]), 2),
+            "sparkline_15d": spark_map.get(sym.upper(), [close_px]),
         }
         all_ranked.append(entry)
 
