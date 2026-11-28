@@ -25,8 +25,9 @@ async def get_broker():
             redirect_uri=environ.get("UPSTOX_REDIRECT_URI", "https://127.0.0.1")
         )
     else:
-        from trading.paper_broker import PaperBroker
-        return PaperBroker()
+        from trading.paper_broker import PaperBroker, default_paper_state_path
+        engine.broker = PaperBroker(state_path=default_paper_state_path())
+        return engine.broker
 
 @router.get("", summary="Get portfolio summary", dependencies=[Depends(require_api_access("read:portfolio"))])
 async def get_portfolio(): 

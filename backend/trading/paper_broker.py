@@ -15,8 +15,11 @@ This broker NEVER connects to a real exchange.
 from __future__ import annotations
 
 import asyncio
+import json
+import os
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from core.config import get_settings
@@ -25,6 +28,16 @@ from services.interfaces import BrokerProvider
 
 logger = get_logger(__name__)
 settings = get_settings()
+
+PAPER_STATE_PATH = Path(__file__).parent.parent / "data" / "paper_broker_state.json"
+
+
+def default_paper_state_path() -> Optional[Path]:
+    """Use persistent disk state at runtime, keeping pytest runs isolated in memory."""
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return None
+    return PAPER_STATE_PATH
+
 
 # Slippage model: fraction of ATR added to market orders
 SLIPPAGE_FRACTION = settings.backtest_default_slippage_pct / 100.0
@@ -35,11 +48,16 @@ class PaperBroker(BrokerProvider):
     """
     Simulated paper broker.
 
-    Maintains an in-memory order book and position ledger.
+    Maintains an order book and position ledger (optionally persisted to disk).
     All prices come from the MarketDataProvider (injected).
     """
 
-    def __init__(self, initial_capital: float | None = None, market_mode: str = "stocks") -> None:
+    def __init__(
+        self,
+        initial_capital: float | None = None,
+        market_mode: str = "stocks",
+        state_path: Optional[Path] = None,
+    ) -> None:
         self._cash = initial_capital or settings.paper_trading_initial_capital
         self._initial_capital = self._cash
         self.market_mode = market_mode
@@ -48,6 +66,47 @@ class PaperBroker(BrokerProvider):
         self._fills: List[Dict[str, Any]] = []
         self._total_commission = 0.0
         self._total_slippage = 0.0
+        self._state_path = state_path
+        if self._state_path is not None:
+            self._load_state()
+
+    def _load_state(self) -> None:
+        if self._state_path is None or not self._state_path.exists():
+            return
+        try:
+            raw = json.loads(self._state_path.read_text(encoding="utf-8"))
+            self._cash = float(raw.get("cash", self._cash))
+            self._initial_capital = float(raw.get("initial_capital", self._initial_capital))
+            self.market_mode = str(raw.get("market_mode", self.market_mode))
+            self._positions = dict(raw.get("positions", {}))
+            self._orders = dict(raw.get("orders", {}))
+            self._fills = list(raw.get("fills", []))
+            self._total_commission = float(raw.get("total_commission", 0.0))
+            self._total_slippage = float(raw.get("total_slippage", 0.0))
+        except Exception as exc:
+            logger.warning("Failed to load PaperBroker state", error=str(exc))
+
+    def _save_state(self) -> None:
+        if self._state_path is None:
+            return
+        try:
+            self._state_path.parent.mkdir(parents=True, exist_ok=True)
+            payload = {
+                "cash": self._cash,
+                "initial_capital": self._initial_capital,
+                "market_mode": self.market_mode,
+                "positions": self._positions,
+                "orders": self._orders,
+                "fills": self._fills,
+                "total_commission": self._total_commission,
+                "total_slippage": self._total_slippage,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            tmp = self._state_path.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+            tmp.replace(self._state_path)
+        except Exception as exc:
+            logger.warning("Failed to save PaperBroker state", error=str(exc))
 
     @property
     def is_paper(self) -> bool:
@@ -220,6 +279,7 @@ class PaperBroker(BrokerProvider):
         }
         self._orders[order_id] = order_record
         self._fills.append(order_record)
+        self._save_state()
 
         audit(
             "PAPER_ORDER_FILLED",
@@ -262,6 +322,7 @@ class PaperBroker(BrokerProvider):
         """Update current price for a position (call on each price tick)."""
         if ticker in self._positions:
             self._positions[ticker]["last_price"] = price
+            self._save_state()
 
     def get_fills(self) -> List[Dict[str, Any]]:
         return list(self._fills)

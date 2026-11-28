@@ -52,15 +52,19 @@ async def get_readiness():
 
 @router.post("/swing/paper-scan", dependencies=[Depends(require_api_access("paper_trade"))])
 async def run_swing_paper_scan(execute: bool = False, record: bool = False):
-    """Score top-5 15d CNC delivery picks, optionally place paper orders, and optionally
-    record the tranche into the persistent prospective paper ledger."""
+    """Score top-5 15d CNC delivery picks, optionally place paper orders using live
+    Upstox market prices, and optionally record the tranche into the persistent ledger."""
     from core.config import get_settings
     from intelligence.swing_alpha import record_swing_paper_tranche, score_latest_swing_universe
-    from trading.paper_broker import PaperBroker
+    from services.providers.upstox_market_data import get_live_quote
+    from trading.paper_broker import PaperBroker, default_paper_state_path
 
     settings = get_settings()
     if engine.broker is None:
-        engine.broker = PaperBroker(initial_capital=settings.paper_trading_initial_capital)
+        engine.broker = PaperBroker(
+            initial_capital=settings.paper_trading_initial_capital,
+            state_path=default_paper_state_path(),
+        )
 
     if execute and not engine.broker.is_paper:
         return {
@@ -75,21 +79,39 @@ async def run_swing_paper_scan(execute: bool = False, record: bool = False):
     placed: list[dict] = []
 
     if execute and scored.get("status") == "ok":
-        existing = {p["symbol"].upper() for p in await engine.broker.get_positions()}
+        existing_positions = await engine.broker.get_positions()
+        existing = {p["symbol"].upper() for p in existing_positions}
+        for sym_held in list(existing):
+            try:
+                q_held = await get_live_quote(sym_held)
+                if q_held.get("ltp", 0) > 0:
+                    engine.broker.update_price(sym_held, float(q_held["ltp"]))
+            except Exception:
+                pass
+
         for rec in scored.get("recommendations", []):
             sym = rec["symbol"].upper()
             qty = int(rec.get("suggested_qty", 0))
             if qty <= 0 or sym in existing:
                 continue
+            exec_price = float(rec["last_close"])
+            try:
+                quote = await get_live_quote(sym)
+                if quote.get("ltp", 0) > 0:
+                    exec_price = float(quote["ltp"])
+                    rec["live_quote_ltp"] = exec_price
+                    rec["last_close"] = exec_price
+            except Exception:
+                pass
             res = await engine.broker.place_order(
                 ticker=sym,
                 direction="BUY",
                 quantity=qty,
                 order_type="MARKET",
-                price=float(rec["last_close"]),
+                price=exec_price,
                 tag="swing_15d_cnc",
             )
-            placed.append({"symbol": sym, "qty": qty, "result": res})
+            placed.append({"symbol": sym, "qty": qty, "exec_price": exec_price, "result": res})
             if res.get("status") == "FILLED":
                 existing.add(sym)
 
@@ -108,6 +130,39 @@ async def run_swing_paper_scan(execute: bool = False, record: bool = False):
         "orders": placed,
         "ledger_tranche": recorded_tranche,
     }
+
+
+@router.post("/swing/mark-to-market", dependencies=[Depends(require_api_access("paper_trade"))])
+async def mark_paper_positions_to_live():
+    """Refresh all open paper positions using live Upstox market quotes."""
+    from core.config import get_settings
+    from services.providers.upstox_market_data import get_live_quote
+    from trading.paper_broker import PaperBroker, default_paper_state_path
+
+    if engine.broker is None:
+        settings = get_settings()
+        engine.broker = PaperBroker(
+            initial_capital=settings.paper_trading_initial_capital,
+            state_path=default_paper_state_path(),
+        )
+    if not engine.broker.is_paper:
+        return {"status": "blocked", "reason": "PAPER_ONLY_ENDPOINT", "updated": []}
+
+    updated: list[dict] = []
+    for pos in await engine.broker.get_positions():
+        sym = pos["symbol"].upper()
+        ticker = pos["ticker"]
+        try:
+            q = await get_live_quote(sym)
+            ltp = float(q.get("ltp", 0.0))
+            if ltp > 0:
+                engine.broker.update_price(ticker, ltp)
+                updated.append({"symbol": sym, "ltp": ltp})
+        except Exception:
+            continue
+
+    acct = await engine.broker.get_account()
+    return {"status": "ok", "updated": updated, "account": acct}
 
 
 @router.get("/swing/ledger", dependencies=[Depends(require_api_access("read:signals"))])

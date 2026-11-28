@@ -126,8 +126,8 @@ class AITradingEngine:
                 )
                 self.add_log("WARN", "[LIVE] LIVE TRADING ENABLED. Using Real Upstox Account.")
             else:
-                from trading.paper_broker import PaperBroker
-                broker = PaperBroker(market_mode=self.market_mode)
+                from trading.paper_broker import PaperBroker, default_paper_state_path
+                broker = PaperBroker(market_mode=self.market_mode, state_path=default_paper_state_path())
                 self.add_log("INFO", f"[PAPER] PAPER TRADING ENABLED. Capital: Rs.{settings.paper_trading_initial_capital}")
 
             self.broker = broker

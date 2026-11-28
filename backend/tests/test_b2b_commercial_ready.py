@@ -366,3 +366,26 @@ async def test_live_quote_uses_analytics_token_when_daily_token_expired(monkeypa
     assert seen_auth == ["Bearer valid-analytics-token"]
     assert quote["ltp"] == 1382.6
 
+
+@pytest.mark.asyncio
+async def test_paper_broker_persists_state_when_path_configured(tmp_path):
+    from trading.paper_broker import PaperBroker
+
+    state_file = tmp_path / "paper_state.json"
+    b1 = PaperBroker(initial_capital=50_000.0, state_path=state_file)
+    fill = await b1.place_order("TECHM", "BUY", 2, "MARKET", price=1800.0, tag="swing_15d_cnc")
+    assert fill["status"] == "FILLED"
+    b1.update_price("TECHM", 1850.0)
+    assert state_file.exists()
+
+    # Re-instantiate from same state file -> preserves cash, fills, and MTM price
+    b2 = PaperBroker(state_path=state_file)
+    pos = await b2.get_positions()
+    acct = await b2.get_account()
+    assert len(pos) == 1
+    assert pos[0]["symbol"] == "TECHM"
+    assert pos[0]["current_price"] == 1850.0
+    assert acct["total_pnl"] != 0.0
+    assert len(b2.get_fills()) == 1
+
+
