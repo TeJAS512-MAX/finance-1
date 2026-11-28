@@ -30,6 +30,7 @@ class SimulatedBroker:
         self.equity_curve: List[float] = []
         self.risk_manager = RiskManager()
         self.peak_equity = initial_capital
+        self._daily_losses: Dict[Any, float] = {}
         
     def buy(
         self,
@@ -56,13 +57,10 @@ class SimulatedBroker:
         if qty <= 0: return False
 
         current_drawdown = max(0.0, (self.peak_equity - self.cash) / self.peak_equity)
-        entry_date = pd.to_datetime(time_str).date()
-        daily_loss = sum(
-            trade["net_pnl"]
-            for trade in self.trade_history
-            if pd.to_datetime(trade["exit_time"]).date() == entry_date and trade["net_pnl"] < 0
-        )
-        daily_loss_pct = abs(daily_loss) / self.cash * 100 if self.cash > 0 else 100.0
+        t_entry_ts = pd.to_datetime(time_str)
+        entry_date = t_entry_ts.date()
+        daily_loss = self._daily_losses.get(entry_date, 0.0)
+        daily_loss_pct = daily_loss / self.cash * 100 if self.cash > 0 else 100.0
         risk_decision = self.risk_manager.evaluate_trade(
             ticker=symbol,
             direction=direction,
@@ -77,7 +75,7 @@ class SimulatedBroker:
             daily_realised_loss_pct=daily_loss_pct,
             price_age_seconds=0.0,
             is_live=False,
-            clock_now=pd.to_datetime(time_str).timestamp(),
+            clock_now=t_entry_ts.timestamp(),
         )
         if not risk_decision.approved:
             return False
@@ -86,16 +84,12 @@ class SimulatedBroker:
             return False
         
         cost = qty * price
-        # Realistic Slippage + Brokerage (Upstox intraday equity: 0.05% or 20, whichever is lower)
+        # Realistic Slippage + Brokerage (Upstox intraday equity: 0.05% slippage + min(20, 0.05%) brokerage per side)
         slippage = cost * 0.0005
         brokerage = min(20.0, cost * 0.0005)
-        total_cost = cost + slippage + brokerage
+        entry_fee = slippage + brokerage
         
-        # We don't actually subtract 5x cost from cash, we just track the margin impact
-        # In reality, you only need cost/5 in cash. But for P&L tracking, we just need entry price.
-        
-        # Convert time safely
-        t_entry = pd.to_datetime(time_str).to_pydatetime()
+        t_entry = t_entry_ts.to_pydatetime()
         
         ema_aligned = bool(features.get("ema9", 0) > features.get("ema21", 0)) if (features and direction == "LONG") else bool(features.get("ema9", 0) < features.get("ema21", 0)) if features else True
         exit_plan = exit_engine.compute_exits(
@@ -113,8 +107,9 @@ class SimulatedBroker:
             "quantity": qty,
             "entry_price": price,
             "direction": direction,
-            "direction": direction,
             "entry_time": time_str,
+            "entry_dt": t_entry,
+            "entry_fee": entry_fee,
             "exit_plan": exit_plan,
             "features": features
         }
@@ -133,13 +128,16 @@ class SimulatedBroker:
         else:
             gross_pnl = (entry - price) * qty
             
-        # Deduct exit slippage and commission
+        # Deduct round-trip slippage and brokerage (entry + exit sides)
         trade_value = price * qty
-        slippage = trade_value * 0.0005
-        brokerage = min(20.0, trade_value * 0.0005)
-        net_pnl = gross_pnl - slippage - brokerage
+        exit_fee = trade_value * 0.0005 + min(20.0, trade_value * 0.0005)
+        entry_fee = pos.get("entry_fee", 0.0)
+        net_pnl = gross_pnl - exit_fee - entry_fee
         
         self.cash += net_pnl
+        if net_pnl < 0:
+            exit_date = pd.to_datetime(time_str).date()
+            self._daily_losses[exit_date] = self._daily_losses.get(exit_date, 0.0) + abs(net_pnl)
         self.peak_equity = max(self.peak_equity, self.cash)
         self.equity_curve.append(self.cash)
         
@@ -193,27 +191,42 @@ def _compute_features_for_df(df: pd.DataFrame) -> pd.DataFrame:
     df["return_5"] = close.pct_change(5) * 100
     df["return_20"] = close.pct_change(20) * 100
 
-    # Fractional Differentiation (d=0.5, window=10)
+    # Fractional Differentiation (d=0.5, window=10) and scale-invariant ratios
     df["frac_diff"] = compute_frac_diff(close, d=0.5, window=10)
+    df["ema9_dist_pct"] = (close - df["ema9"]) / close * 100.0
+    df["ema21_dist_pct"] = (close - df["ema21"]) / close * 100.0
+    df["frac_diff_pct"] = df["frac_diff"] / close * 100.0
+    df["rsi_delta"] = df["rsi"] - df["prev_rsi"]
+    span = (high - low).replace(0.0, np.nan)
+    df["body_pct"] = ((close - df["open"]) / span).fillna(0.0)
+    df["return_1"] = close.pct_change(1).fillna(0.0) * 100.0
 
-    # VWAP
-    df['dt'] = pd.to_datetime(df['timestamp'])
-    df['date'] = df['dt'].dt.date
+    # VWAP (guard zero volume)
+    dt_parsed = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+    df['dt'] = dt_parsed
+    dt_ist = dt_parsed.dt.tz_convert("Asia/Kolkata")
+    df['date'] = dt_ist.dt.date
+    df['hour_ist'] = dt_ist.dt.hour + dt_ist.dt.minute / 60.0
     df['vp'] = ((high + low + close) / 3) * volume
-    df['vwap'] = df.groupby('date')['vp'].cumsum() / df.groupby('date')['volume'].cumsum()
-    # CUSUM Filter (Structural Break Detection)
-    threshold = df["atr14"].mean() * 2.0
-    diffs = close.diff().fillna(0).values
+    cum_vol = df.groupby('date')['volume'].cumsum()
+    cum_vp = df.groupby('date')['vp'].cumsum()
+    df['vwap'] = np.where(cum_vol > 0, cum_vp / cum_vol, close)
+    df['vwap_dist_pct'] = np.where(df['vwap'] > 0, (close - df['vwap']) / df['vwap'] * 100.0, 0.0)
+
+    # Causal CUSUM Filter (expanding ATR prevents future threshold leakage)
+    atr_thresholds = df["atr14"].expanding(min_periods=14).mean().bfill().fillna(0.0).to_numpy() * 2.0
+    diffs = close.diff().fillna(0.0).to_numpy()
     events = np.zeros(len(diffs))
-    pos_sum, neg_sum = 0, 0
+    pos_sum, neg_sum = 0.0, 0.0
     for i in range(len(diffs)):
-        pos_sum = max(0, pos_sum + diffs[i])
-        neg_sum = min(0, neg_sum + diffs[i])
-        if pos_sum > threshold:
-            pos_sum = 0
+        pos_sum = max(0.0, pos_sum + diffs[i])
+        neg_sum = min(0.0, neg_sum + diffs[i])
+        thr = float(atr_thresholds[i]) if atr_thresholds[i] > 0 else float("inf")
+        if pos_sum > thr:
+            pos_sum = 0.0
             events[i] = 1
-        elif neg_sum < -threshold:
-            neg_sum = 0
+        elif neg_sum < -thr:
+            neg_sum = 0.0
             events[i] = -1
     df["cusum_event"] = events
     
@@ -259,21 +272,46 @@ def run_backtest(
     if not dfs:
         return {"error": "No data to backtest"}
 
-    # 2. Find common timeline (to step through chronologically)
+    # 2. Find common timeline and optional vectorized ML batch cache
     all_times = sorted(list(set(t for ts_map in rows_by_symbol.values() for t in ts_map)))
+    ml_batch_probs: Dict[tuple, float] | None = None
+    if (
+        use_phase1
+        and use_ml_filter
+        and getattr(ml_filter, "is_loaded", False)
+        and "predict" not in getattr(ml_filter, "__dict__", {})
+        and hasattr(ml_filter, "predict_batch")
+    ):
+        batch_frames = []
+        for sym, df_sym in dfs.items():
+            if df_sym.empty:
+                continue
+            for dir_val in (1.0, -1.0):
+                sub = df_sym.copy()
+                sub["symbol"] = sym
+                sub["direction"] = dir_val
+                batch_frames.append(sub)
+        if batch_frames:
+            all_df = pd.concat(batch_frames, ignore_index=True)
+            probs = ml_filter.predict_batch(all_df)
+            ml_batch_probs = {
+                (row.symbol, row.timestamp, float(row.direction)): float(p)
+                for row, p in zip(
+                    all_df[["symbol", "timestamp", "direction"]].itertuples(index=False),
+                    probs,
+                )
+            }
     
     # 3. Step through time
     for t in all_times:
         current_features = []
+        current_time = pd.to_datetime(t).to_pydatetime()
         
         # Check exits first
         for sym, pos in list(broker.positions.items()):
             row_dict = rows_by_symbol[sym].get(t)
             if row_dict is None: continue
             current_price = row_dict['close']
-            
-            # Simulated intra-candle price action:
-            current_time = pd.to_datetime(t).to_pydatetime()
             
             if use_phase1:
                 # 1. Check if SL or TP was hit during the candle
@@ -303,7 +341,7 @@ def run_backtest(
                     current_price=current_price,
                     exits=pos["exit_plan"],
                     current_features=row_dict,
-                    entry_time=pd.to_datetime(pos["entry_time"]).to_pydatetime(),
+                    entry_time=pos.get("entry_dt") or pd.to_datetime(pos["entry_time"]).to_pydatetime(),
                     current_time=current_time
                 )
                 if decision["exit"]:
@@ -335,7 +373,53 @@ def run_backtest(
                 current_features.append(r)
 
         # Decide entries
-        if use_phase1:
+        if use_phase1 and use_ml_filter:
+            ml_candidates = []
+            ml_threshold = float(getattr(ml_filter, "approval_threshold", 0.56))
+            for f in current_features:
+                sym = f["symbol"]
+                if sym in broker.positions:
+                    continue
+                if ml_batch_probs is not None:
+                    p_long = ml_batch_probs.get((sym, t, 1.0), 0.0)
+                    p_short = ml_batch_probs.get((sym, t, -1.0), 0.0)
+                    best_dir, prob = ("LONG", p_long) if p_long >= p_short else ("SHORT", p_short)
+                else:
+                    sc = opportunity_ranker.score(f)
+                    if sc.get("candidate_direction") == "NO_TRADE" or sc.get("opportunity_score", 0.0) < min_score:
+                        continue
+                    best_dir = sc["candidate_direction"]
+                    f_cand = {**sc, "direction": best_dir}
+                    prob = ml_filter.predict(f_cand)
+                if prob < ml_threshold:
+                    continue
+                mock_event = {"headline": "NO_CATALYST"}
+                debate_res = ai_debate_engine.analyze_event(
+                    mock_event, {}, ml_probability=prob
+                )
+                if debate_res.get("final_decision") != "TRADE":
+                    continue
+                ml_candidates.append({**f, "candidate_direction": best_dir, "direction": best_dir, "_ml_prob": prob})
+
+            ml_candidates.sort(key=lambda x: x["_ml_prob"], reverse=True)
+            for candidate in ml_candidates:
+                if len(broker.positions) >= 5:
+                    break
+                if candidate["symbol"] in broker.positions:
+                    continue
+                broker.buy(
+                    symbol=candidate["symbol"],
+                    price=candidate["ltp"],
+                    atr=candidate["atr14"],
+                    direction=candidate["candidate_direction"],
+                    time_str=t,
+                    features=candidate,
+                    take_profit_mult=take_profit_mult,
+                    stop_loss_mult=stop_loss_mult,
+                    max_hold_minutes=max_hold_minutes,
+                    ml_probability=candidate["_ml_prob"],
+                )
+        elif use_phase1:
             scored = [opportunity_ranker.score(f) for f in current_features]
             ranked = opportunity_ranker.rank(scored)
             for candidate in ranked:
@@ -348,36 +432,19 @@ def run_backtest(
                 ):
                     continue
 
-                # Preserve actual ranker direction for ML features & execution
                 candidate["direction"] = candidate["candidate_direction"]
-
-                approve_trade = True
-                prob = None
-                if use_ml_filter:
-                    prob = ml_filter.predict(candidate)
-                    if prob < ml_filter.approval_threshold:
-                        approve_trade = False
-                    else:
-                        mock_event = {"headline": "NO_CATALYST"}
-                        debate_res = ai_debate_engine.analyze_event(
-                            mock_event, {}, ml_probability=prob
-                        )
-                        if debate_res.get("final_decision") != "TRADE":
-                            approve_trade = False
-
-                if approve_trade:
-                    broker.buy(
-                        symbol=candidate["symbol"],
-                        price=candidate["ltp"],
-                        atr=candidate["atr14"],
-                        direction=candidate["candidate_direction"],
-                        time_str=t,
-                        features=candidate,
-                        take_profit_mult=take_profit_mult,
-                        stop_loss_mult=stop_loss_mult,
-                        max_hold_minutes=max_hold_minutes,
-                        ml_probability=prob if use_ml_filter else None,
-                    )
+                broker.buy(
+                    symbol=candidate["symbol"],
+                    price=candidate["ltp"],
+                    atr=candidate["atr14"],
+                    direction=candidate["candidate_direction"],
+                    time_str=t,
+                    features=candidate,
+                    take_profit_mult=take_profit_mult,
+                    stop_loss_mult=stop_loss_mult,
+                    max_hold_minutes=max_hold_minutes,
+                    ml_probability=None,
+                )
         else:
             # v1 baseline
             for f in current_features:

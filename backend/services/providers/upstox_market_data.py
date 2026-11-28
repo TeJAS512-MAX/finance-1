@@ -330,10 +330,44 @@ async def compute_features(symbol: str, interval: str = "5m") -> Dict[str, Any]:
     df['typical_price'] = (high + low + close) / 3
     df['vp'] = df['typical_price'] * volume
     
-    # Cumulative sum grouped by day for VWAP
+    # Cumulative sum grouped by day for VWAP (guard zero volume)
     df['cum_vp'] = df.groupby('date')['vp'].cumsum()
     df['cum_vol'] = df.groupby('date')['volume'].cumsum()
-    df['vwap'] = df['cum_vp'] / df['cum_vol']
+    df['vwap'] = np.where(df['cum_vol'] > 0, df['cum_vp'] / df['cum_vol'], close)
+
+    # Scale-invariant derived features matching MLQualityFilter
+    rsi_val = float(rsi_series.iloc[idx]) if pd.notna(rsi_series.iloc[idx]) else 50.0
+    prev_rsi_val = float(rsi_series.iloc[idx - 1]) if idx > 0 and pd.notna(rsi_series.iloc[idx - 1]) else rsi_val
+    ltp_val = float(close.iloc[idx])
+    ema9_val = float(ema9.iloc[idx])
+    ema21_val = float(ema21.iloc[idx])
+    vwap_val = float(df['vwap'].iloc[idx])
+    frac_val = float(frac_diff.iloc[idx]) if pd.notna(frac_diff.iloc[idx]) else 0.0
+    high_val = float(high.iloc[idx])
+    low_val = float(low.iloc[idx])
+    open_val = float(df['open'].iloc[idx])
+    span_val = high_val - low_val
+    dt_ist = pd.to_datetime(df['timestamp'].iloc[idx], utc=True, errors='coerce')
+    if pd.notna(dt_ist):
+        dt_ist = dt_ist.tz_convert("Asia/Kolkata")
+        hour_ist_val = float(dt_ist.hour + dt_ist.minute / 60.0)
+    else:
+        hour_ist_val = 12.0
+    atr_causal = atr14.expanding(min_periods=14).mean().bfill().fillna(0.0).to_numpy() * 2.0
+    diffs = close.diff().fillna(0.0).to_numpy()
+    pos_s, neg_s, cusum_last = 0.0, 0.0, 0.0
+    for i in range(len(diffs)):
+        cusum_last = 0.0
+        pos_s = max(0.0, pos_s + diffs[i])
+        neg_s = min(0.0, neg_s + diffs[i])
+        thr = float(atr_causal[i]) if atr_causal[i] > 0 else float('inf')
+        if pos_s > thr:
+            pos_s = 0.0
+            cusum_last = 1.0
+        elif neg_s < -thr:
+            neg_s = 0.0
+            cusum_last = -1.0
+    ret1_val = float(close.pct_change(1).iloc[idx] * 100.0) if pd.notna(close.pct_change(1).iloc[idx]) else 0.0
 
     # 7. Consecutive Candles Analysis
     is_green = df['close'] > df['open']
@@ -363,21 +397,30 @@ async def compute_features(symbol: str, interval: str = "5m") -> Dict[str, Any]:
         "latest_3_red":   bool(latest_3_red),
         "latest_2_green": bool(latest_2_green),
         "latest_2_red":   bool(latest_2_red),
-        "rsi":          float(rsi_series.iloc[idx]),
-        "prev_rsi":     float(rsi_series.iloc[idx - 1]) if idx > 0 else float(rsi_series.iloc[idx]),
+        "rsi":          rsi_val,
+        "prev_rsi":     prev_rsi_val,
+        "rsi_delta":    rsi_val - prev_rsi_val,
         "sma20":        float(sma20.iloc[idx]),
-        "ema9":         float(ema9.iloc[idx]),
-        "ema21":        float(ema21.iloc[idx]),
+        "ema9":         ema9_val,
+        "ema21":        ema21_val,
+        "ema9_dist_pct":  ((ltp_val - ema9_val) / ltp_val * 100.0) if ltp_val > 0 else 0.0,
+        "ema21_dist_pct": ((ltp_val - ema21_val) / ltp_val * 100.0) if ltp_val > 0 else 0.0,
         "atr14":        float(atr14.iloc[idx]),
         "vol_ratio":    float(vol_ratio.iloc[idx]),
         "momentum":     float(momentum_10.iloc[idx]),
         "volatility":   float(volatility.iloc[idx]),
         "trend_strength": float(trend_strength.iloc[idx]),
         "range_pct":    float(range_pct.iloc[idx]),
+        "return_1":     ret1_val,
         "return_5":     float(return_5.iloc[idx]),
         "return_20":    float(return_20.iloc[idx]),
-        "frac_diff":    float(frac_diff.iloc[idx]),
-        "vwap":         float(df['vwap'].iloc[idx]),
+        "frac_diff":    frac_val,
+        "frac_diff_pct": (frac_val / ltp_val * 100.0) if ltp_val > 0 else 0.0,
+        "vwap":         vwap_val,
+        "vwap_dist_pct": ((ltp_val - vwap_val) / vwap_val * 100.0) if vwap_val > 0 else 0.0,
+        "body_pct":     ((ltp_val - open_val) / span_val) if span_val > 0 else 0.0,
+        "cusum_event":  cusum_last,
+        "hour_ist":     hour_ist_val,
         "timestamp":    str(df['timestamp'].iloc[idx]),  # PIT compliance key
         "candle_count": len(candles),
         "source":       "Upstox Official API (Real-time NSE)",

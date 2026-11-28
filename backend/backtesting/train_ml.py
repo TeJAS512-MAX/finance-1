@@ -1,7 +1,9 @@
 import asyncio
 import json
 import os
+import numpy as np
 import pandas as pd
+from numpy.lib.stride_tricks import sliding_window_view
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -19,59 +21,71 @@ def build_triple_barrier_dataset(
     take_profit_atr: float = 2.5,
     stop_loss_atr: float = 1.5,
 ) -> pd.DataFrame:
-    """Create AFML-style labels using profit, stop, and time barriers."""
-    rows = []
+    """Create vectorized AFML-style labels using profit, stop, and time barriers."""
     round_trip_cost_pct = 0.15
+    feature_cols = [
+        "timestamp", "rsi", "rsi_delta", "ema9", "ema21", "vwap", "atr14",
+        "ema9_dist_pct", "ema21_dist_pct", "vwap_dist_pct",
+        "vol_ratio", "momentum", "volatility", "trend_strength",
+        "range_pct", "return_1", "return_5", "return_20",
+        "frac_diff", "frac_diff_pct", "cusum_event", "body_pct", "hour_ist",
+    ]
+    parts = []
 
     for symbol, candles in historical_data.items():
         if not candles:
             continue
-        frame = _compute_features_for_df(pd.DataFrame(candles).copy())
-        frame = frame.reset_index(drop=True)
-        if len(frame) <= horizon_bars:
+        frame = _compute_features_for_df(pd.DataFrame(candles).copy()).reset_index(drop=True)
+        n = len(frame) - horizon_bars
+        if n <= 0:
             continue
 
-        for index, row in frame.iloc[:-horizon_bars].iterrows():
-            entry_price = float(row["close"])
-            atr = max(float(row["atr14"]), entry_price * 0.001)
-            pt_distance = max(atr * take_profit_atr, entry_price * round_trip_cost_pct / 100)
-            sl_distance = max(atr * stop_loss_atr, entry_price * 0.10 / 100)
-            future = frame.iloc[index + 1:index + 1 + horizon_bars]
-            common = {
-                "timestamp": row["timestamp"],
-                "rsi": row.get("rsi"),
-                "ema9": row.get("ema9"),
-                "ema21": row.get("ema21"),
-                "vwap": row.get("vwap"),
-                "atr14": row.get("atr14"),
-                "vol_ratio": row.get("vol_ratio"),
-                "momentum": row.get("momentum"),
-                "volatility": row.get("volatility"),
-                "trend_strength": row.get("trend_strength"),
-                "range_pct": row.get("range_pct"),
-                "return_5": row.get("return_5"),
-                "return_20": row.get("return_20"),
-                "frac_diff": row.get("frac_diff"),
-                "cusum_event": row.get("cusum_event", 0.0),
-                "symbol": symbol,
-            }
+        close_arr = frame["close"].to_numpy(dtype=float)[:n]
+        atr_raw = frame["atr14"].to_numpy(dtype=float)[:n]
+        high_arr = frame["high"].to_numpy(dtype=float)
+        low_arr = frame["low"].to_numpy(dtype=float)
 
-            long_pt = entry_price + pt_distance
-            long_sl = entry_price - sl_distance
-            long_pt_bar = next((bar for bar, (_, candle) in enumerate(future.iterrows()) if candle["high"] >= long_pt), None)
-            long_sl_bar = next((bar for bar, (_, candle) in enumerate(future.iterrows()) if candle["low"] <= long_sl), None)
-            long_target = int(long_pt_bar is not None and (long_sl_bar is None or long_pt_bar < long_sl_bar))
+        atr = np.maximum(atr_raw, close_arr * 0.001)
+        pt_distance = np.maximum(atr * take_profit_atr, close_arr * round_trip_cost_pct / 100.0)
+        sl_distance = np.maximum(atr * stop_loss_atr, close_arr * 0.10 / 100.0)
 
-            short_pt = entry_price - pt_distance
-            short_sl = entry_price + sl_distance
-            short_pt_bar = next((bar for bar, (_, candle) in enumerate(future.iterrows()) if candle["low"] <= short_pt), None)
-            short_sl_bar = next((bar for bar, (_, candle) in enumerate(future.iterrows()) if candle["high"] >= short_sl), None)
-            short_target = int(short_pt_bar is not None and (short_sl_bar is None or short_pt_bar < short_sl_bar))
+        w_high = sliding_window_view(high_arr[1:], horizon_bars)[:n]
+        w_low = sliding_window_view(low_arr[1:], horizon_bars)[:n]
 
-            rows.append({**common, "direction": 1.0, "target": long_target})
-            rows.append({**common, "direction": -1.0, "target": short_target})
+        long_pt_hits = w_high >= (close_arr + pt_distance)[:, None]
+        long_sl_hits = w_low <= (close_arr - sl_distance)[:, None]
+        has_lpt = long_pt_hits.any(axis=1)
+        has_lsl = long_sl_hits.any(axis=1)
+        lpt_bar = np.where(has_lpt, long_pt_hits.argmax(axis=1), horizon_bars + 1)
+        lsl_bar = np.where(has_lsl, long_sl_hits.argmax(axis=1), horizon_bars + 1)
+        long_target = (has_lpt & (lpt_bar < lsl_bar)).astype(int)
 
-    return pd.DataFrame(rows)
+        short_pt_hits = w_low <= (close_arr - pt_distance)[:, None]
+        short_sl_hits = w_high >= (close_arr + sl_distance)[:, None]
+        has_spt = short_pt_hits.any(axis=1)
+        has_ssl = short_sl_hits.any(axis=1)
+        spt_bar = np.where(has_spt, short_pt_hits.argmax(axis=1), horizon_bars + 1)
+        ssl_bar = np.where(has_ssl, short_sl_hits.argmax(axis=1), horizon_bars + 1)
+        short_target = (has_spt & (spt_bar < ssl_bar)).astype(int)
+
+        base = frame.iloc[:n].reindex(columns=feature_cols).copy()
+        if "cusum_event" in base:
+            base["cusum_event"] = base["cusum_event"].fillna(0.0)
+        base["symbol"] = symbol
+
+        long_df = base.copy()
+        long_df["direction"] = 1.0
+        long_df["target"] = long_target
+        short_df = base.copy()
+        short_df["direction"] = -1.0
+        short_df["target"] = short_target
+
+        parts.append(long_df)
+        parts.append(short_df)
+
+    if not parts:
+        return pd.DataFrame()
+    return pd.concat(parts, ignore_index=True).sort_values(["symbol", "timestamp", "direction"]).reset_index(drop=True)
 
 async def main():
     print("=" * 50)
@@ -81,7 +95,7 @@ async def main():
     # 1. Select the research corpus explicitly. Yahoo is historical-only;
     # Upstox remains the live/execution data source.
     source = os.environ.get("TRAINING_DATA_SOURCE", "upstox").lower()
-    training_mode = os.environ.get("ML_TRAINING_MODE", "aggressive").lower()
+    training_mode = os.environ.get("ML_TRAINING_MODE", "standard").lower()
     days_back = int(os.environ.get("TRAINING_DAYS_BACK", "180"))
     model = MLQualityFilter(
         model_prefix=f"candidate_ml_model_ensemble_{source}"

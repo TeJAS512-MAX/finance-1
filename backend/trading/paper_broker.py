@@ -88,7 +88,10 @@ class PaperBroker(BrokerProvider):
             qty = pos.get("quantity", 0)
             curr = pos.get("last_price", avg_price)
             pnl = (curr - avg_price) * qty if pos["direction"] == "LONG" else (avg_price - curr) * qty
-            pnl_pct = ((curr - avg_price) / avg_price) * 100 if avg_price > 0 else 0
+            if avg_price > 0:
+                pnl_pct = ((curr - avg_price) / avg_price) * 100 if pos["direction"] == "LONG" else ((avg_price - curr) / avg_price) * 100
+            else:
+                pnl_pct = 0
             
             formatted_positions.append({
                 # Keep the broker key.  The trading engine uses the Upstox

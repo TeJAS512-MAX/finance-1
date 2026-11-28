@@ -48,6 +48,24 @@ def score(features: Dict[str, Any]) -> Dict[str, Any]:
     elif rsi > 55 and rsi < prev_rsi and candle_close < candle_open:
         rsi_score     = min(40.0, (rsi - 55.0) * 2.5)   # max 40 at RSI=71
         candidate_dir = "SHORT"
+    elif (
+        45 <= rsi <= 68
+        and close_price > ema9 > ema21
+        and candle_close > candle_open
+        and momentum > 0.2
+        and vol_ratio >= 1.2
+    ):
+        rsi_score     = min(25.0, (rsi - 42.0) * 1.2)
+        candidate_dir = "LONG"
+    elif (
+        32 <= rsi <= 55
+        and close_price < ema9 < ema21
+        and candle_close < candle_open
+        and momentum < -0.2
+        and vol_ratio >= 1.2
+    ):
+        rsi_score     = min(25.0, (58.0 - rsi) * 1.2)
+        candidate_dir = "SHORT"
     else:
         rsi_score     = 0.0
         candidate_dir = "NO_TRADE"

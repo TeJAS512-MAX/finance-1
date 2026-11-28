@@ -107,19 +107,10 @@ class AITradingEngine:
 
             self.broker = broker
 
-            # Full watchlist -- must match INSTRUMENT_KEYS in upstox_market_data.py
-            INSTRUMENTS = {
-                "RELIANCE":   "NSE_EQ|INE002A01018",
-                "SBIN":       "NSE_EQ|INE062A01020",
-                "TCS":        "NSE_EQ|INE467B01029",
-                "INFY":       "NSE_EQ|INE009A01021",
-                "ZOMATO":     "NSE_EQ|INE758T01015",
-                "ITC":        "NSE_EQ|INE154A01025",
-                "ICICIBANK":  "NSE_EQ|INE090A01021",
-                "WIPRO":      "NSE_EQ|INE075A01022",
-                "HDFCBANK":   "NSE_EQ|INE040A01034",
-                "BAJFINANCE": "NSE_EQ|INE296A01024",
-            }
+            from services.providers.upstox_market_data import INSTRUMENT_KEYS
+
+            # Full watchlist synced with canonical Upstox instrument keys
+            INSTRUMENTS = dict(INSTRUMENT_KEYS)
 
             account = await broker.get_account()
             self.add_log("INFO", f"[OK] Broker connected. Cash: Rs.{account.get('cash', 0):.2f}")
@@ -331,8 +322,12 @@ class AITradingEngine:
                             analysis['final_decision'] = "NO_TRADE"
                             analysis['bear_case'] = f"PIT_VIOLATION_KILL: Event available {latest_event_avail} > Decision Time"
 
-                        # Simulate a market fill with realistic latency and spread (fake 0.05% slippage on paper)
-                        simulated_fill_price = decision_price * 1.0005 if analysis.get('expected_direction') == 'LONG' else decision_price * 0.9995
+                        # Simulate a market fill with realistic latency and spread (0.05% slippage on paper)
+                        simulated_fill_price = (
+                            decision_price * 1.0005
+                            if best.get("candidate_direction") == "LONG"
+                            else decision_price * 0.9995
+                        )
 
                         journal_entry = {
                             "timestamp": processing_end_time.isoformat(),
@@ -417,11 +412,18 @@ class AITradingEngine:
                         best = None
 
                     if best:
-                        # Compute ATR-based exits
+                        ema_aligned = (
+                            bool(best.get("ema9", 0) > best.get("ema21", 0))
+                            if direction == "LONG"
+                            else bool(best.get("ema9", 0) < best.get("ema21", 0))
+                        )
+                        # Compute ATR-based exits aligned with 30m 15-bar triple-barrier horizon
                         exit_plan = exit_engine.compute_exits(
                             entry_price=ltp,
                             atr14=atr14,
                             direction=direction,
+                            max_hold_minutes=exit_engine.MAX_HOLD_MINUTES,
+                            ema_trend_aligned=ema_aligned,
                         )
                         self.add_log(
                             "WARN",

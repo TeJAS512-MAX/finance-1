@@ -131,3 +131,18 @@ async def test_invalid_direction_rejected(broker: PaperBroker) -> None:
 async def test_zero_quantity_rejected(broker: PaperBroker) -> None:
     result = await broker.place_order("TCS", "BUY", 0, "MARKET", price=4000.0)
     assert result["status"] == "REJECTED"
+
+
+@pytest.mark.asyncio
+async def test_short_position_pnl_pct_is_positive_when_price_drops(broker: PaperBroker) -> None:
+    broker._positions["TEST_SHORT"] = {
+        "ticker": "TEST_SHORT",
+        "direction": "SHORT",
+        "quantity": 10,
+        "avg_entry_price": 100.0,
+        "last_price": 95.0,
+    }
+    positions = await broker.get_positions()
+    assert len(positions) == 1
+    assert positions[0]["pnl"] == pytest.approx(50.0)
+    assert positions[0]["pnl_pct"] == pytest.approx(5.0)

@@ -234,3 +234,111 @@ def test_contrarian_entry_not_invalidated_by_existing_ema_downtrend():
         current_features={"ema9": 99.0, "ema21": 100.0},
     )
     assert decision["exit"] is False
+
+
+def test_ml_filter_derives_scale_invariant_features_and_predict_batch():
+    import numpy as np
+    import pandas as pd
+    from intelligence.ml_filter import MLQualityFilter, SCALE_INVARIANT_FEATURE_COLS
+
+    class _IdentityScaler:
+        def transform(self, frame):
+            return frame.to_numpy(dtype=float)
+
+    class _ConstantModel:
+        def __init__(self, p: float):
+            self.p = p
+
+        def predict_proba(self, x):
+            assert np.isfinite(x).all()
+            return np.column_stack([np.full(len(x), 1.0 - self.p), np.full(len(x), self.p)])
+
+    filt = MLQualityFilter.__new__(MLQualityFilter)
+    filt.feature_cols = list(SCALE_INVARIANT_FEATURE_COLS)
+    filt.scaler = _IdentityScaler()
+    filt.models = {k: _ConstantModel(0.62) for k in ("hgb", "rf", "et", "dnn")}
+    filt.is_loaded = True
+    filt.approval_threshold = 0.58
+
+    raw_setup = {
+        "close": 102.0, "open": 100.0, "high": 103.0, "low": 99.0,
+        "ema9": 101.0, "ema21": 99.0, "vwap": 100.0, "frac_diff": 2.04,
+        "rsi": 55.0, "prev_rsi": 50.0, "vol_ratio": 1.6, "momentum": 1.2,
+        "volatility": 1.1, "trend_strength": 1.9, "range_pct": 3.9,
+        "return_1": 1.0, "return_5": 2.0, "return_20": 4.0, "cusum_event": 1.0,
+        "timestamp": "2026-11-27T10:00:00+05:30", "candidate_direction": "LONG",
+    }
+    prob_single = filt.predict(raw_setup)
+    assert prob_single == 0.62
+
+    batch_df = pd.DataFrame([{
+        **raw_setup,
+        "direction": 1.0,
+        "rsi_delta": 5.0,
+        "ema9_dist_pct": (102.0 - 101.0) / 102.0 * 100.0,
+        "ema21_dist_pct": (102.0 - 99.0) / 102.0 * 100.0,
+        "vwap_dist_pct": (102.0 - 100.0) / 100.0 * 100.0,
+        "frac_diff_pct": 2.04 / 102.0 * 100.0,
+        "body_pct": (102.0 - 100.0) / (103.0 - 99.0),
+        "hour_ist": 10.0,
+    }])
+    probs = filt.predict_batch(batch_df)
+    assert np.allclose(probs, np.array([0.62]))
+
+
+def test_simulated_broker_charges_round_trip_fees_and_tracks_daily_losses():
+    from backtesting.engine import SimulatedBroker
+
+    broker = SimulatedBroker(initial_capital=50_000.0)
+    assert broker.buy("TEST", price=100.0, atr=1.0, direction="LONG", time_str="2026-11-27T10:00:00+05:30")
+    qty = broker.positions["TEST"]["quantity"]
+    entry_fee = broker.positions["TEST"]["entry_fee"]
+    assert entry_fee > 0.0
+    broker.sell("TEST", price=100.0, time_str="2026-11-27T11:00:00+05:30", reason="FLAT_EXIT")
+    assert len(broker.trade_history) == 1
+    net_pnl = broker.trade_history[0]["net_pnl"]
+    # Both entry and exit fees deducted cleanly even on zero price change
+    assert net_pnl < -entry_fee
+    assert qty > 0
+    assert broker._daily_losses
+
+
+def test_opportunity_ranker_detects_trend_breakout_and_skips_flat_bars():
+    breakout = score({
+        "rsi": 56.0, "prev_rsi": 53.0, "open": 100.0, "close": 102.0,
+        "ema9": 101.0, "ema21": 99.5, "vol_ratio": 1.8, "momentum": 1.0, "vwap": 101.8,
+    })
+    assert breakout["candidate_direction"] == "LONG"
+    assert breakout["opportunity_score"] >= 40.0
+
+    flat = score({
+        "rsi": 50.0, "prev_rsi": 50.0, "open": 100.0, "close": 100.0,
+        "ema9": 100.0, "ema21": 100.0, "vol_ratio": 1.0, "momentum": 0.0, "vwap": 100.0,
+    })
+    assert flat["candidate_direction"] == "NO_TRADE"
+
+
+def test_causal_cusum_threshold_has_no_future_leakage():
+    import pandas as pd
+    from datetime import datetime, timedelta, timezone
+    from backtesting.engine import _compute_features_for_df
+
+    base = datetime(2026, 1, 1, 9, 15, tzinfo=timezone.utc)
+    rows = []
+    for i in range(60):
+        px = 100.0 + (i % 5) * 0.5
+        rows.append({
+            "timestamp": (base + timedelta(minutes=30 * i)).isoformat(),
+            "open": px, "high": px + 1.0, "low": px - 1.0, "close": px + 0.2, "volume": 1000.0,
+        })
+    df_orig = _compute_features_for_df(pd.DataFrame(rows))
+
+    rows_shock = [dict(r) for r in rows]
+    for i in range(45, 60):
+        rows_shock[i]["high"] *= 3.0
+        rows_shock[i]["low"] *= 0.3
+        rows_shock[i]["close"] *= 2.5
+    df_shock = _compute_features_for_df(pd.DataFrame(rows_shock))
+
+    prefix_len = min(20, len(df_orig), len(df_shock))
+    assert (df_orig["cusum_event"].iloc[:prefix_len].values == df_shock["cusum_event"].iloc[:prefix_len].values).all()

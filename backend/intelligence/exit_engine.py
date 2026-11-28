@@ -19,10 +19,10 @@ from typing import Any, Dict, Optional
 
 
 # ── Constants ──────────────────────────────────────────────────────────────────
-ATR_TAKE_PROFIT_MULT  = 2.5    # Take profit = 2.5× ATR above entry
-ATR_STOP_LOSS_MULT    = 1.5    # Stop loss   = 1.5× ATR below entry
+ATR_TAKE_PROFIT_MULT  = 2.5    # Take profit = 2.5× ATR above entry (matches AFML barrier)
+ATR_STOP_LOSS_MULT    = 1.5    # Stop loss   = 1.5× ATR below entry (matches AFML barrier)
 MAX_LOSS_PCT          = 2.0    # Absolute hard stop — never allow more than 2% loss
-MAX_HOLD_MINUTES      = 75     # Time stop — exit if position not profitable after 75 min
+MAX_HOLD_MINUTES      = 450    # Time stop — 15 x 30m bars matching triple-barrier horizon
 MIN_ATR_FALLBACK_PCT  = 0.5    # If ATR is zero/invalid, fall back to 0.5% of price
 
 
